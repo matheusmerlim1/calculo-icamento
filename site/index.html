@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cálculo de içamento</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/desenho.css">
+</head>
+<body>
+
+  <!-- ===================================================== cabeçalho -->
+  <header class="topo">
+    <div class="topo__marca">
+      <span class="topo__logo" aria-hidden="true">I</span>
+      <div>
+        <div class="topo__nome">Cálculo de içamento</div>
+        <div class="topo__sub" id="topo-sub">memorial de cálculo e lista de material</div>
+      </div>
+    </div>
+
+    <label class="campo campo--inline">
+      <span>Estudo</span>
+      <input id="est-nome" placeholder="Nome do estudo">
+    </label>
+    <label class="campo campo--inline">
+      <span>Documento</span>
+      <input id="est-doc" placeholder="nº do documento">
+    </label>
+    <label class="campo campo--inline">
+      <span>Responsável</span>
+      <input id="est-resp" placeholder="quem assina">
+    </label>
+
+    <label class="campo campo--inline"><span>Medidas</span>
+      <select id="un-comp"><option value="mm">mm</option><option value="m">m</option></select></label>
+    <label class="campo campo--inline"><span>Massa</span>
+      <select id="un-massa"><option value="kg">kg</option><option value="t">t</option><option value="N">N</option></select></label>
+
+    <div class="topo__acoes">
+      <button type="button" class="bt bt--fantasma" id="bt-memorial" title="Mostrar ou ocultar os memoriais de cálculo (no relatório impresso eles saem sempre)">Memoriais</button>
+      <button type="button" class="bt bt--fantasma" id="bt-dobrar-tudo" title="Recolher ou abrir todas as caixas">Recolher tudo</button>
+      <button type="button" class="bt bt--fantasma" id="bt-salvar">Salvar (.json)</button>
+      <button type="button" class="bt bt--fantasma" id="bt-abrir">Abrir</button>
+      <button type="button" class="bt" id="bt-relatorio">Relatório</button>
+    </div>
+  </header>
+
+  <!-- ===================================================== içamentos -->
+  <nav class="abas" id="abas" aria-label="Içamentos do estudo"></nav>
+
+  <!-- só aparece no papel: identificação do documento -->
+  <section class="capa" id="capa" aria-hidden="true"></section>
+
+  <main class="folha">
+    <!-- coluna das etapas -->
+    <div class="etapas" id="etapas">
+
+      <section class="etapa" data-etapa="1">
+        <h2><span class="etapa__n">1</span> Corpo a içar<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
+        <div class="etapa__corpo grade">
+          <label class="campo"><span>Identificação</span><input id="ic-nome" placeholder="ex.: Skid de bombas"></label>
+          <label class="campo"><span id="rot-massa">Massa (kg)</span><input type="number" id="ic-massa" min="0" step="10"></label>
+          <label class="campo"><span>Origem do peso</span>
+            <select id="ic-origem">
+              <option value="pesado">pesado em balança</option>
+              <option value="calculado" selected>calculado no modelo</option>
+              <option value="estimado">estimado</option>
+            </select></label>
+          <label class="campo"><span>Local do içamento</span>
+            <select id="ic-local">
+              <option value="offshore">offshore</option>
+              <option value="inshore">abrigado (inshore)</option>
+              <option value="onshore" selected>em terra (onshore)</option>
+            </select></label>
+          <label class="campo"><span>Base normativa</span><select id="ic-base"></select></label>
+          <label class="campo"><span>Consequência da falha</span>
+            <select id="ic-cons"><option value="normal" selected>normal</option><option value="severa">severa</option></select></label>
+        </div>
+        <p class="dica" id="dica-base"></p>
+      </section>
+
+      <section class="etapa etapa--larga" data-etapa="2">
+        <h2><span class="etapa__n">2</span> Tipo de içamento<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
+        <div class="etapa__corpo">
+          <div class="tipos" id="tipos" role="radiogroup" aria-label="Tipo de içamento"></div>
+          <div class="grade" id="campos-arranjo"></div>
+        </div>
+      </section>
+
+      <section class="etapa etapa--larga" data-etapa="3">
+        <h2><span class="etapa__n">3</span> Medidas do içamento<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
+        <div class="etapa__corpo">
+          <div class="figs">
+            <figure class="fig-topo" id="fig-3d-medidas"></figure>
+            <figure class="fig-topo" id="fig-medidas"></figure>
+          </div>
+          <p class="dica">Informe as <b>distâncias do centro de massa até cada ponto de içamento</b>,
+            no sentido mostrado no desenho acima. Não são coordenadas: a figura diz de que lado fica cada ponto.</p>
+          <div id="campos-medidas"></div>
+          <div class="linha-campos">
+            <label class="campo"><span>Ângulo da perna com a estrutura (°)</span>
+              <input type="number" id="ic-angulo" min="1" max="89" step="1"></label>
+            <label class="campo"><span>Medido na perna</span><select id="ic-perna-ang"></select></label>
+            <label class="campo"><span>Hipótese nas quatro pernas</span>
+              <select id="ic-hipotese">
+                <option value="diagonais" selected>pares diagonais (projeto)</option>
+                <option value="elastica">distribuição elástica (comparação)</option>
+              </select></label>
+          </div>
+          <p class="dica" id="saida-altura"></p>
+        </div>
+      </section>
+
+      <section class="etapa" data-etapa="4">
+        <h2><span class="etapa__n">4</span> Fatores de projeto<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
+        <div class="etapa__corpo grade grade--4" id="campos-fatores"></div>
+        <p class="dica">Os fatores vêm da base escolhida e podem ser ajustados. O memorial registra o valor usado.</p>
+      </section>
+
+      <section class="etapa etapa--larga" data-etapa="5">
+        <h2><span class="etapa__n">5</span> Carga em cada perna<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
+        <div class="etapa__corpo">
+          <div id="avisos"></div>
+          <div id="memorial-peso"></div>
+          <table class="tab" id="tab-cargas"></table>
+          <div class="figs">
+            <figure class="fig-topo" id="fig-3d-cargas"></figure>
+            <figure id="fig-planta"></figure>
+            <figure id="fig-elevacao"></figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="etapa" data-etapa="6">
+        <h2><span class="etapa__n">6</span> Linga (cabo de aço)<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
+        <div class="etapa__corpo">
+          <div class="grade">
+            <label class="campo"><span>Construção do cabo</span><select id="ic-linga-tipo"></select></label>
+            <label class="campo"><span>Categoria (grade do arame)</span>
+              <select id="ic-linga-cat">
+                <option value="1770">1770 N/mm²</option>
+                <option value="1960" selected>1960 N/mm²</option>
+                <option value="2160">2160 N/mm²</option>
+              </select></label>
+          </div>
+          <div id="resultado-linga"></div>
+          <p class="dica">MBL requerida = carga governante × FS da linga (etapa 4). A carga governante é a
+            deste içamento, ou a maior do estudo, conforme a opção de linga escolhida no resumo.</p>
+        </div>
+      </section>
+
+      <section class="etapa etapa--larga" data-etapa="7">
+        <h2><span class="etapa__n">7</span> Sapatilho e manilha<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
+        <div class="etapa__corpo">
+          <label class="campo"><span>Tipo de manilha</span><select id="ic-manilha-tipo"></select></label>
+          <div id="resultado-sapatilho-manilha"></div>
+          <p class="dica">Verificações de encaixe (sapatilho × manilha × cabo) — item 6 do método.
+            Colunas conforme o catálogo de cada tabela; conferir fisicamente antes de comprar.</p>
+          <figure class="fig-topo" id="fig-encaixe"></figure>
+          <table class="tab" id="tab-encaixe"></table>
+        </div>
+      </section>
+
+      <section class="etapa etapa--larga" data-etapa="8">
+        <h2><span class="etapa__n">8</span> Olhal (padeye)<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
+        <div class="etapa__corpo">
+          <div class="linha-campos">
+            <label class="campo"><span>Como o olhal é definido</span>
+              <select id="ic-olhal-modo">
+                <option value="fabricado">fabricado — chapa verificada por tensões</option>
+                <option value="comprado">comprado — catálogo comercial</option>
+              </select></label>
+            <label class="campo" id="campo-olhal-comprado" style="display:none">
+              <span>Modelo comercial</span><select id="ic-olhal-tipo"></select></label>
+            <label class="campo"><span>Fy da chapa do olhal (MPa)</span>
+              <input type="number" id="ic-olhal-fy" step="5" min="0"></label>
+          </div>
+          <div id="resultado-olhal"></div>
+        </div>
+      </section>
+
+      <section class="etapa etapa--larga" data-etapa="9">
+        <h2><span class="etapa__n">9</span> Lista de material<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
+        <div class="etapa__corpo">
+          <label class="campo campo--inline"><span>Mostrar</span>
+            <select id="ic-material-modo">
+              <option value="icamento">só deste içamento</option>
+              <option value="estudo">consolidada — todo o estudo</option>
+            </select></label>
+          <div class="linha-campos" style="justify-content:flex-end">
+            <button type="button" class="bt bt--fantasma bt--peq" id="bt-material-xlsx">Baixar em Excel (.xlsx)</button>
+          </div>
+          <table class="tab tab--material" id="tab-material"></table>
+          <p class="dica" id="material-nota"></p>
+        </div>
+      </section>
+    </div>
+
+    <!-- coluna do resumo -->
+    <aside class="resumo" id="resumo"></aside>
+  </main>
+
+  <footer class="rodape">
+    <span>Valores de referência — conferir com a norma contratada e o catálogo vigente do fabricante</span>
+    <span id="rodape-dir"></span>
+  </footer>
+
+  <!-- dados -->
+  <script src="data/fatores.js"></script>
+  <script src="data/manilhas.js"></script>
+  <script src="data/olhais.js"></script>
+  <script src="data/lingas.js"></script>
+  <script src="data/sapatilhos.js"></script>
+
+  <!-- núcleo -->
+  <script src="js/core/fmt.js"></script>
+  <script src="js/core/xlsx.js"></script>
+  <script src="js/calc/cargas.js"></script>
+  <script src="js/calc/rigging.js"></script>
+
+  <!-- interface -->
+  <script src="js/ui/figuras.js"></script>
+  <script src="js/ui/iso3d.js"></script>
+  <script src="js/ui/fbd.js"></script>
+  <script src="js/ui/app.js"></script>
+</body>
+</html>

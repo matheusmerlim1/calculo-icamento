@@ -1,0 +1,32 @@
+# Material de referência de projeto real — NÃO PUBLICAR.
+# A pasta Referencia/ tem folha de rosto e número de documento de cliente, memoriais SMath
+# do projeto original, fotos de içamento e planilhas de
+# fabricante. Foi dali que saíram os catálogos embutidos em site/data/, já limpos.
+# A ferramenta NÃO precisa desses arquivos para rodar.
+Referencia/
+referencia/
+
+# Documentos e planilhas soltas
+*.pdf
+*.docx
+*.xlsx
+*.pptx
+*.pptm
+*.sm
+
+# Credenciais
+.env
+*.env
+token.txt
+githubGuia.md
+
+# Dependências e build
+node_modules/
+dist/
+build/
+.cache/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini

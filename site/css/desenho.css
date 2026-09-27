@@ -1,0 +1,130 @@
+/* Traço dos desenhos (planta e diagrama de corpo livre), no papel claro. */
+.dw { font-family: var(--fonte); }
+.dw text { fill: #16233f; font-size: 12.5px; paint-order: stroke; stroke: #f7f9fc; stroke-width: 3px; stroke-linejoin: round; }
+.dw .titulo { font-size: 12px; font-weight: 700; letter-spacing: .8px; fill: #5a6b82; }
+.dw .rot { font-size: 12.5px; }
+.dw .rot-peq { font-size: 11.5px; fill: #5a6b82; }
+.dw .forca { font-size: 12.5px; font-weight: 700; fill: #17507e; }
+
+.dw .corpo { fill: #dfe7f1; stroke: #7d90a8; stroke-width: 1.2; }
+.dw .peca { stroke: #16233f; stroke-width: 1.4; fill: none; }
+.dw .perna { stroke: #17507e; stroke-width: 2; }
+.dw .eixo { stroke: #b76e00; stroke-width: 1; stroke-dasharray: 8 3 2 3; }
+.dw .cg { fill: #fff; stroke: #b76e00; stroke-width: 2; }
+.dw .ponto { fill: #17507e; stroke: none; }
+.dw .gancho { stroke: #16233f; stroke-width: 2.2; fill: none; }
+.dw .forca-linha { stroke: #16233f; stroke-width: 1.4; }
+.dw .seta-cheia { fill: #16233f; }
+.dw .seta { fill: #2f5fa8; }
+.dw .gancho-i { fill: #fff; stroke: #16233f; stroke-width: 2; }
+.dw .perna--tras { stroke: #6f88a8; stroke-dasharray: 5 3; }
+.dw .arco { fill: none; stroke: #17507e; stroke-width: 1.4; }
+.dw.fig text { font-size: 12px; }
+
+/* vista tridimensional */
+.dw .face-topo { fill: #e8eef7; stroke: none; }
+.dw .face-lado { fill: #d3dceb; stroke: none; }
+.dw .face-lado2 { fill: #c3cee1; stroke: none; }
+.dw .aresta { stroke: #7d90a8; stroke-width: 1.2; fill: none; }
+.dw .aresta.oculta { stroke-dasharray: 5 4; stroke: #a7b4c6; }
+.dw .prumo { stroke: #b76e00; stroke-width: 1; stroke-dasharray: 6 4; }
+.dw .chamada { stroke: #9aa7b8; stroke-width: .8; }
+.dw .rot-forte { font-weight: 700; fill: #16233f; }
+.dw .cotaL { stroke: #2f5fa8; stroke-width: 1.2; marker-start: url(#i3seta); marker-end: url(#i3seta); }
+.dw .cota-t { fill: #2f5fa8; font-size: 12.5px; font-weight: 600; }
+.dw .eixo-l { stroke: #4a5a70; stroke-width: 1.4; }
+.dw .eixo-t { fill: #4a5a70; font-size: 11px; font-weight: 700; }
+
+.dw .cota .ext { stroke: #9aa7b8; stroke-width: .8; }
+.dw .cota .dim { stroke: #2f5fa8; stroke-width: 1; }
+.dw .cota text { fill: #2f5fa8; font-size: 11.5px; }
+
+.capa { display: none; }
+
+@media print {
+  @page { size: A4 portrait; margin: 14mm 12mm 16mm; }
+
+  body {
+    background: #fff; color: #000;
+    display: block;                    /* o grid da tela não cabe numa folha */
+    font-size: 10pt;
+  }
+  .topo, .abas, .resumo, .rodape { display: none !important; }
+  .topo__acoes, .etapa__dobra, .bt { display: none !important; }
+
+  /* uma coluna só: na tela são blocos de 330px lado a lado, que estouram a largura da folha */
+  .folha { display: block; padding: 0; gap: 0; }
+  .etapas { display: block; }
+  .etapa, .etapa--larga { width: auto; margin: 0 0 5mm; }
+
+  .capa { display: block; margin-bottom: 8mm; }
+  .capa__titulo { font-size: 16pt; margin-bottom: 4mm; }
+  .capa__h { font-size: 11pt; margin: 5mm 0 2mm; }
+  .capa__id { max-width: 110mm; margin-bottom: 4mm; }
+  .capa__id td:first-child { color: #444; width: 34mm; }
+  .capa__nota { font-size: 8.5pt; color: #333; margin-top: 4mm; max-width: 165mm; }
+
+  /* cada caixa inteira na mesma folha, sempre que couber */
+  .etapa {
+    break-inside: avoid; page-break-inside: avoid;
+    background: #fff; border: 1px solid #999; box-shadow: none; border-radius: 0;
+  }
+  .etapa > h2 { background: #eceff3; color: #000; border-bottom: 1px solid #999; font-size: 11pt; }
+  .etapa__n { background: #444; color: #fff; }
+  .etapa__corpo { padding: 3mm 4mm; }
+  .olhal-bloco, .formulas, .aviso { break-inside: avoid; page-break-inside: avoid; }
+
+  /* caixa recolhida e memorial oculto são jeitos de ler na tela: no papel sai tudo */
+  .etapa.fechada > * { display: revert !important; }
+  body.sem-memorial .formulas { display: grid !important; }
+  body.sem-memorial tr.linha-formula { display: table-row !important; }
+
+  /* nada pode passar da margem da folha */
+  .folha, .etapa, .etapa__corpo, table, .tab, figure, svg, img { max-width: 100%; }
+  .figs, .desenhos { display: flex; flex-wrap: wrap; gap: 3mm; }
+  .fig-topo, .figs figure, .desenhos figure { background: #fff; border: 1px solid #ccc; width: auto; }
+  .fig-topo svg, .figs svg, .desenhos svg { height: auto; width: auto; max-height: 62mm; max-width: 84mm; }
+  .olhal-par { display: block; }
+  .olhal-par .fig-topo { position: static; max-width: 110mm; margin: 0 0 3mm; }
+  .olhal-par .fig-topo svg { max-width: 105mm; max-height: 90mm; }
+  .ficha-par { grid-template-columns: 62mm auto; }
+  .ficha-par .fig-topo svg { max-width: 58mm; }
+
+  .tab { font-size: 8.5pt; }
+  .tab th, .tab td { border-bottom: 1px solid #bbb; color: #000; padding: 1mm 1.5mm; }
+  .tab th { color: #333; }
+  .tab--material td.col-esp { min-width: 0; }
+  .passo, .mono, .item b { color: #000; }
+  .formulas { background: #f6f7f9; border: 1px solid #ccc; }
+  .dica, .som, .peq { color: #333; }
+
+  /* campos viram texto: caixa de input em documento impresso não diz nada */
+  input, select, textarea {
+    border: 0 !important; background: transparent !important; color: #000 !important;
+    padding: 0 !important; -webkit-appearance: none; appearance: none;
+  }
+  .campo span { color: #444; }
+  /* cinza de tela vira quase invisível no papel: tudo que é texto fica legível */
+  .tab td:first-child, .tab--ficha td:first-child, .tab th,
+  .passo__formula, .passo__sub, .passo__resultado,
+  .item span, .item b, .formulas__titulo, .capa__id td:first-child,
+  .tipo b, .tipo span, label, .campo span { color: #222 !important; }
+  .passo__sub { color: #444 !important; }
+
+  /* no documento só interessa o arranjo escolhido, não o menu de opções */
+  .tipos { display: block; }
+  .tipo { display: none; }
+  .tipo.on {
+    display: grid; background: #fff !important; border: 1px solid #999;
+    max-width: 90mm; break-inside: avoid;
+  }
+  .tipo.on .tipo__fig { background: #fff; }
+
+  /* o texto do select não pode ficar cortado dentro da caixa */
+  select { width: auto !important; max-width: 100%; text-overflow: clip; }
+
+  .selo--ok { color: #0a6b3d; background: none; }
+  .selo--erro { color: #a32b1a; background: none; }
+  .barra { border: 1px solid #999; }
+  .barra > i { background: #666; }
+}

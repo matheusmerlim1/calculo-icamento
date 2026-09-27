@@ -1,0 +1,270 @@
+/* Organização da página: cabeçalho, abas dos içamentos, etapas e resumo. */
+
+/* ---------------------------------------------------------- cabeçalho */
+.topo {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 8px 16px;
+  background: #123040;
+  border-bottom: 1px solid #0b2130;
+}
+.topo__marca { display: flex; align-items: center; gap: 10px; }
+.topo__logo {
+  display: grid; place-items: center; width: 30px; height: 30px;
+  border-radius: 6px; background: var(--c-acento); color: #fff; font-weight: 800;
+}
+.topo__nome { font-weight: 700; }
+.topo__sub { font-size: 12px; color: var(--c-texto-2); }
+.topo__acoes { display: flex; gap: 8px; margin-left: auto; }
+
+.campo { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--c-texto-2); min-width: 0; }
+.campo--inline { flex-direction: row; align-items: center; gap: 6px; }
+.campo--inline input { width: 190px; }
+.campo input, .campo select { width: 100%; }
+
+.bt {
+  border: 0; border-radius: 5px; padding: 7px 14px;
+  background: var(--c-acento); color: #fff; font-weight: 700; white-space: nowrap;
+}
+.bt:hover { filter: brightness(1.08); }
+.bt--fantasma { background: transparent; color: var(--c-acento); border: 1px solid var(--c-acento); }
+.bt--peq { padding: 4px 10px; font-weight: 600; font-size: 13px; }
+.bt--risco { background: transparent; color: var(--c-erro); border: 1px solid var(--c-erro); }
+
+/* ---------------------------------------------------------- abas dos içamentos */
+.abas {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 16px 0;
+  background: var(--c-superficie);
+  border-bottom: 1px solid var(--c-linha);
+  overflow-x: auto;
+}
+.aba {
+  border: 1px solid var(--c-linha); border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  padding: 6px 12px;
+  background: transparent; color: var(--c-texto-2); white-space: nowrap;
+}
+.aba.on { background: var(--c-fundo); color: var(--c-texto); border-color: var(--c-linha-forte); font-weight: 700; }
+.aba__peso { color: var(--c-texto-3); font-size: 12px; margin-left: 6px; }
+.aba--novo { border-style: dashed; color: var(--c-acento); }
+
+/* ---------------------------------------------------------- corpo */
+.folha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 10px;
+  padding: 10px 12px;
+  align-items: start;
+  min-height: 0;
+}
+/* Blocos lado a lado: cabe o que couber em colunas de ~330px — três numa tela grande,
+   duas numa média, uma no celular. */
+.etapas {
+  display: grid; gap: 8px; min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  align-items: start;
+  /* dense: uma caixa estreita sobe para o buraco ao lado de outra, em vez de deixar
+     meia tela vazia. Cada caixa leva o seu número no título, então a sequência do
+     roteiro continua visível — e no papel volta tudo para uma coluna, na ordem. */
+  grid-auto-flow: row dense;
+}
+/* etapa com tabela larga ou desenho: a linha inteira, senão fica ilegível */
+.etapa--larga { grid-column: 1 / -1; }
+
+.etapa {
+  background: var(--c-superficie);
+  border: 1px solid var(--c-linha);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  overflow: hidden;
+}
+.etapa > h2 {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 11px;
+  font-size: 14px;
+  background: var(--c-superficie-2);
+  border-bottom: 1px solid var(--c-linha);
+}
+.etapa__dobra {
+  margin-left: auto; width: 24px; height: 24px; line-height: 1;
+  border: 1px solid var(--c-linha-forte); border-radius: 5px;
+  background: transparent; color: var(--c-texto-2); font-weight: 700; font-size: 15px;
+  display: grid; place-items: center;
+}
+.etapa__dobra:hover { border-color: var(--c-acento); color: var(--c-acento); }
+.etapa > h2 { cursor: pointer; user-select: none; }
+.etapa.fechada > h2 { border-bottom: 0; }
+.etapa.fechada > :not(h2) { display: none; }
+
+.etapa__n {
+  display: grid; place-items: center; width: 22px; height: 22px;
+  border-radius: 50%; background: var(--c-acento); color: #fff; font-size: 12px;
+}
+.etapa__corpo { padding: 9px 11px; display: grid; gap: 8px; }
+.etapa--espera { opacity: .72; }
+.etapa--espera .etapa__n { background: var(--c-texto-3); }
+
+.grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.grade--4 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.linha-campos { display: flex; gap: 12px; flex-wrap: wrap; }
+.linha-campos .campo { min-width: 220px; }
+
+.dica { margin: 0; font-size: 12px; color: var(--c-texto-3); }
+.dica b { color: var(--c-texto-2); }
+
+/* ---------------------------------------------------------- tipo de içamento */
+.tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
+.tipo__fig svg { max-height: 120px; }
+.tipo {
+  display: grid; gap: 3px; text-align: left;
+  padding: 7px 9px;
+  border: 1px solid var(--c-linha-forte); border-radius: var(--raio);
+  background: var(--c-superficie-2); color: var(--c-texto);
+}
+.tipo:hover { border-color: var(--c-acento); }
+.tipo.on { border-color: var(--c-acento); background: var(--c-acento-suave); }
+.tipo b { font-size: 13px; }
+.tipo span { font-size: 12px; color: var(--c-texto-3); }
+
+/* ---------------------------------------------------------- tabelas */
+.tab { font-size: 13px; }
+.tab th, .tab td { padding: 3px 7px; border-bottom: 1px solid var(--c-linha); text-align: right; white-space: nowrap; }
+.tab th { color: var(--c-texto-3); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+.tab th:first-child, .tab td:first-child { text-align: left; }
+.tab tbody tr:hover td { background: var(--c-superficie-2); }
+.tab td.num { font-family: var(--fonte-mono); }
+.tab--pontos input { width: 96px; text-align: right; }
+/* a ficha tem duas colunas (rótulo e valor): esticada na largura da página, o valor ficava
+   a um palmo do rótulo e a leitura se perdia */
+.tab--ficha { margin-bottom: 6px; max-width: 460px; }
+.tab--ficha caption { text-align: left; font-size: 12px; color: var(--c-texto-3); text-transform: uppercase; letter-spacing: .4px; padding-bottom: 4px; }
+.tab--ficha td:first-child { color: var(--c-texto-2); }
+.tab--pontos td { padding: 4px 6px; }
+/* texto à esquerda, número à direita — a tabela base alinha tudo à direita */
+.tab--material th:nth-child(3), .tab--material td:nth-child(3),
+.tab--material th:nth-child(4), .tab--material td:nth-child(4),
+.tab--material th:nth-child(5), .tab--material td:nth-child(5) { text-align: left; }
+
+/* a especificação é o texto longo da linha: ela quebra, o resto não */
+.tab--material td.col-esp { white-space: normal; min-width: 260px; }
+.tab--material tfoot td { border-top: 1px solid var(--c-linha-forte); font-weight: 700; padding-top: 5px; }
+.tab--material tfoot td:first-child { color: var(--c-texto-2); font-weight: 400; }
+
+.tab .maior td { color: var(--c-texto); font-weight: 700; }
+.tab .maior td:first-child::after { content: " ← maior carga"; color: var(--c-alerta); font-weight: 400; font-size: 11px; }
+
+/* ---------------------------------------------------------- verificações (ok / falha) */
+.selo { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.selo--ok { color: var(--c-ok); background: rgba(47, 163, 107, .14); }
+.selo--erro { color: var(--c-erro); background: rgba(226, 96, 78, .14); }
+.tab td.selo-cel { text-align: center; }
+.barra { position: relative; height: 6px; border-radius: 3px; background: var(--c-superficie-2); overflow: hidden; min-width: 60px; }
+.barra > i { display: block; height: 100%; background: var(--c-ok); }
+.barra.estourou > i { background: var(--c-erro); }
+/* desenho do olhal ao lado dos campos: mexeu num número, o desenho muda */
+.olhal-par { display: grid; grid-template-columns: minmax(300px, 440px) minmax(0, 1fr); gap: 10px; align-items: start; margin-bottom: 8px; }
+.olhal-par .fig-topo { position: sticky; top: 8px; }
+.olhal-par .fig-topo svg { height: auto; width: 100%; max-height: 420px; }
+@media (max-width: 900px) { .olhal-par { grid-template-columns: 1fr; } }
+
+.olhal-geom { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.olhal-geom input { width: 100%; }
+.olhal-bloco { padding: 8px; border: 1px solid var(--c-linha); border-radius: var(--raio); margin-bottom: 10px; background: var(--c-superficie-2); }
+.olhal-bloco h4 { margin: 0 0 8px; font-size: 13px; }
+
+/* ---------------------------------------------------------- fórmulas passo a passo */
+/* memoriais ocultos: é o que faz a tela caber — cada perna e cada verificação traz um */
+body.sem-memorial .formulas,
+body.sem-memorial tr.linha-formula { display: none; }
+.bt--ligado { background: var(--c-acento); color: #fff; border-color: var(--c-acento); }
+
+.formulas {
+  display: grid; gap: 5px; margin: 0; padding: 6px 8px; border-radius: 6px;
+  border: 1px dashed var(--c-linha-forte); background: var(--c-superficie-2); text-align: left;
+}
+.formulas__titulo { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--c-texto-3); }
+.passo { font-family: var(--fonte-mono); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.passo__formula { color: var(--c-texto-3); }
+.passo__sub { color: var(--c-texto-2); }
+.passo__resultado { color: var(--c-texto); font-weight: 700; padding-top: 2px; margin-top: 2px; border-top: 1px dashed var(--c-linha); }
+.passo sub { font-size: .74em; }
+tr.linha-formula td { padding: 4px 8px 10px; border-bottom: 1px solid var(--c-linha); }
+
+/* ---------------------------------------------------------- ficha + desenho lado a lado */
+.ficha-par { display: grid; grid-template-columns: minmax(300px, 420px) max-content; gap: 12px; align-items: start; margin-bottom: 8px; justify-content: start; }
+.ficha-par > .fig-topo { padding: 4px; }
+@media (max-width: 640px) { .ficha-par { grid-template-columns: 1fr; } }
+
+/* ---------------------------------------------------------- avisos */
+.aviso {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 7px 10px; margin-bottom: 6px;
+  border-left: 3px solid var(--c-alerta);
+  background: rgba(216, 162, 58, .10);
+  font-size: 13px; color: var(--c-texto-2);
+}
+.aviso--erro { border-color: var(--c-erro); background: rgba(226, 96, 78, .12); }
+
+/* ---------------------------------------------------------- desenhos */
+.desenhos { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.desenhos figure { margin: 0; background: var(--c-papel); border-radius: var(--raio); padding: 4px; width: fit-content; }
+.desenhos svg { display: block; height: clamp(210px, 30vh, 330px); width: auto; max-width: 100%; }
+
+/* ---------------------------------------------------------- resumo */
+.resumo {
+  position: sticky; top: 12px;
+  display: grid; gap: 10px;
+  background: var(--c-superficie);
+  border: 1px solid var(--c-linha);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  padding: 12px 14px;
+}
+.resumo h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--c-texto-3); }
+.painel { display: grid; gap: 6px; }
+.item { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.item b { font-family: var(--fonte-mono); }
+.destaque {
+  padding: 8px 10px; border-radius: 6px;
+  background: var(--c-acento-suave); border: 1px solid var(--c-linha-forte);
+}
+.destaque .valor { font-size: 20px; font-weight: 700; font-family: var(--fonte-mono); }
+.destaque .rot { font-size: 12px; color: var(--c-texto-2); }
+.etiqueta { font-size: 11px; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--c-linha-forte); color: var(--c-texto-2); }
+
+/* ---------------------------------------------------------- rodapé */
+.rodape {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 6px 16px;
+  font-size: 12px; color: var(--c-texto-3);
+  background: var(--c-superficie);
+  border-top: 1px solid var(--c-linha);
+}
+
+@media (max-width: 980px) {
+  .folha { grid-template-columns: minmax(0, 1fr); }
+  .resumo { position: static; }
+  .topo__acoes { margin-left: 0; }
+}
+
+/* ---------------------------------------------------------- figuras */
+.tipo__fig { background: var(--c-papel); border-radius: 6px; padding: 4px; margin-bottom: 4px; }
+.tipo__fig svg { display: block; width: 100%; height: auto; }
+/* A folha branca tem a largura do desenho — antes ela esticava na largura da página e o
+   desenho ficava pequeno no meio do branco. A altura é limitada para a página não crescer. */
+.fig-topo, .figs figure {
+  margin: 0 auto; padding: 5px; background: var(--c-papel); border-radius: var(--raio);
+  display: grid; place-items: center; width: fit-content; max-width: 100%;
+}
+.fig-topo svg, .figs svg {
+  display: block; height: clamp(210px, 30vh, 330px); width: auto;
+  max-width: 100%; margin: 0 auto;
+}
+/* a figura ao lado da ficha mostra as letras da tabela: precisa ser lida, não só olhada */
+.ficha-par .fig-topo svg { height: auto; width: 100%; max-height: 340px; }
+#fig-encaixe { width: 100%; }
+#fig-encaixe svg { height: auto; width: 100%; max-width: 760px; }
+
+/* figuras que antes vinham empilhadas, uma por linha */
+.figs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: start; }
+.figs > figure { flex: 0 1 auto; min-width: 0; }

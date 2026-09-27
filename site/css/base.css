@@ -1,0 +1,62 @@
+/* Cores, tipos e reset. */
+:root {
+  --c-fundo: #0f1720;
+  --c-superficie: #16202b;
+  --c-superficie-2: #1d2937;
+  --c-linha: #26364a;
+  --c-linha-forte: #35485f;
+  --c-texto: #e8eef6;
+  --c-texto-2: #b3c2d4;
+  --c-texto-3: #7d8ea3;
+  --c-acento: #2f8fd6;
+  --c-acento-suave: #12314a;
+  --c-ok: #2fa36b;
+  --c-alerta: #d8a23a;
+  --c-erro: #e2604e;
+  --c-papel: #f7f9fc;
+  --raio: 8px;
+  --sombra: 0 1px 3px rgba(0, 0, 0, .35);
+  --fonte: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --fonte-mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { height: 100%; }
+
+body {
+  margin: 0;
+  /* min-height, nunca height: com height fixo o rodapé ficava na marca de uma tela e o
+     conteúdo passava por baixo dele */
+  font: 14px/1.45 var(--fonte);
+  color: var(--c-texto);
+  background: var(--c-fundo);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  min-height: 100vh;
+}
+
+h1, h2, h3 { margin: 0; font-weight: 700; }
+
+button { font: inherit; cursor: pointer; }
+
+input, select, textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--c-superficie-2);
+  border: 1px solid var(--c-linha-forte);
+  border-radius: 5px;
+  padding: 5px 7px;
+  min-width: 0;
+}
+input:focus-visible, select:focus-visible, button:focus-visible {
+  outline: 2px solid var(--c-acento);
+  outline-offset: 1px;
+}
+input[type="number"] { font-family: var(--fonte-mono); }
+
+table { border-collapse: collapse; width: 100%; }
+
+.mono { font-family: var(--fonte-mono); }
+.som  { color: var(--c-texto-3); }
+.peq  { font-size: 12px; }
