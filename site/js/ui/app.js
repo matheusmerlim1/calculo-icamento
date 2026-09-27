@@ -186,6 +186,8 @@
       ic.olhal.geom = RIG.geometriaOlhalPartida(manilha) ||
         { t: 25, tAnel: 0, base: 200, h: 200, R: 50, rAnel: 50, dFuro: 50 };
     }
+    // o reforço acompanha o raio do topo da chapa — não é escolha, é consequência
+    ic.olhal.geom.rAnel = Number(ic.olhal.geom.R) || 0;
     return ic.olhal.geom;
   }
 
@@ -680,13 +682,15 @@
   const ROTULOS_GEOM = {
     t: "t — espessura da chapa (mm)", tAnel: "t.anel — reforço, cada lado (mm)",
     base: "base — largura da chapa (mm)", h: "h — do pé ao centro do furo (mm)",
-    R: "R — raio do topo (mm)", rAnel: "R.anel — raio do reforço (mm)",
+    R: "R — raio do topo (mm)", rAnel: "R.anel — raio do reforço (calculado, mm)",
     dFuro: "Ø furo — recebe o pino (mm)"
   };
 
   // o que a pessoa escolhe e o que sai da manilha — a confusão era tudo aparecer junto
-  const GEOM_ESCOLHA = ["t", "base", "h", "tAnel", "rAnel"];
-  const GEOM_DA_MANILHA = ["dFuro", "R"];
+  const GEOM_ESCOLHA = ["base", "h"];          // t e t.anel têm lista própria, abaixo
+  const GEOM_ESPESSURA = ["t", "tAnel"];       // espessuras comerciais de chapa
+  const GEOM_DA_MANILHA = ["dFuro", "R"];      // vêm da manilha escolhida
+  const GEOM_CALCULADA = ["rAnel"];            // sai do cálculo, não se edita
 
   function pintarOlhal() {
     const ic = atual();
@@ -730,6 +734,26 @@
     const campo = k => `<label class="campo"><span>${ROTULOS_GEOM[k]}</span>
       <input type="number" step="any" min="0" data-olhal-campo="${k}" data-key="olhal-${k}" value="${cru(g[k])}"></label>`;
 
+    // espessura: só bitola que se compra. O valor atual entra na lista mesmo que não seja
+    // comercial (projeto antigo, chapa de sobra), marcado como fora de tabela.
+    const campoEspessura = k => {
+      const atual = Number(g[k]) || 0;
+      const naLista = IC.chapas.daEspessura(atual);
+      const opcoes = IC.chapas.lista.map(c =>
+        `<option value="${c.mm}"${Math.abs(c.mm - atual) < 0.01 ? " selected" : ""}>${F.esc(c.texto)}</option>`);
+      if (k === "tAnel") opcoes.unshift(`<option value="0"${atual === 0 ? " selected" : ""}>sem reforço</option>`);
+      if (!naLista && atual > 0) opcoes.push(
+        `<option value="${atual}" selected>${F.num(atual, 2)} mm — fora de tabela</option>`);
+      return `<label class="campo"><span>${ROTULOS_GEOM[k]}</span>
+        <select data-olhal-campo="${k}" data-key="olhal-${k}">${opcoes.join("")}</select></label>`;
+    };
+
+    // medida que sai do cálculo: mostra o valor, sem campo para editar
+    // leva o data-olhal-campo mesmo desabilitado: é como a medida é identificada na tela
+    const campoCalculado = (k, nota) => `<label class="campo"><span>${ROTULOS_GEOM[k]}</span>
+      <input type="number" data-olhal-campo="${k}" data-key="olhal-${k}"
+             value="${cru(g[k])}" disabled title="${F.esc(nota)}"></label>`;
+
     // a chapa, com o reforço, tem que entrar na boca da manilha
     const espTotal = (Number(g.t) || 0) + 2 * (Number(g.tAnel) || 0);
     const boca = mn ? mn.e : null;
@@ -750,20 +774,24 @@
         <div>
           <div class="olhal-bloco">
             <h4>Medidas que você escolhe</h4>
-            <div class="olhal-geom">${GEOM_ESCOLHA.map(campo).join("")}</div>
-            <p class="dica">A <b>espessura</b> é o que costuma mudar, e ela é limitada pela boca da
-              manilha. <b>Base</b> e <b>altura</b> definem o tamanho da chapa. O reforço (t.anel/R.anel)
-              é opcional: deixe zerado se o olhal não tiver anel.</p>
+            <div class="olhal-geom">${GEOM_ESPESSURA.map(campoEspessura).join("")}${GEOM_ESCOLHA.map(campo).join("")}</div>
+            <p class="dica">A <b>espessura</b> vem da lista de chapa comercial — é a bitola que se
+              compra — e é limitada pela boca da manilha. <b>Base</b> e <b>altura</b> definem o
+              tamanho da chapa. O <b>reforço</b> é opcional: escolha "sem reforço" se o olhal não
+              tiver anel.</p>
           </div>
           <div class="olhal-bloco">
             <h4>Medidas que vêm da manilha</h4>
-            <div class="olhal-geom">${GEOM_DA_MANILHA.map(campo).join("")}</div>
+            <div class="olhal-geom">${GEOM_DA_MANILHA.map(campo).join("")}
+              ${campoCalculado("rAnel", "O reforço acompanha o raio do topo da chapa: R.anel = R.")}</div>
             ${mn ? memorial({
               formula: "Ø furo = b(pino) + folga · R = f − g + b/2 + 5",
               sub: `Ø furo = ${F.num(mn.b, 1)} + 1,15 · R = ${F.num(mn.f, 1)} − ${F.num(mn.g, 1)} + ${F.num(mn.b / 2, 1)} + 5`,
               resultado: `Ø furo = ${F.num(mn.b + 1.15, 2)} mm · R = ${F.num(mn.f - mn.g + mn.b / 2 + 5, 1)} mm`
             }) : ""}
-            <p class="dica">Saem da manilha escolhida — mexa só se o desenho de fabricação pedir outra coisa.
+            <p class="dica">Ø furo e R saem da manilha escolhida — mexa só se o desenho de fabricação
+              pedir outra coisa. <b>R.anel</b> não se edita: o reforço acompanha o raio do topo da
+              chapa, então <b>R.anel = R</b>.
               <button type="button" class="bt bt--peq bt--fantasma" id="bt-olhal-manilha">Recalcular pela manilha</button></p>
           </div>
         </div>
@@ -1029,6 +1057,8 @@
         // um olhal só para o içamento inteiro
         if (!ic.olhal.geom) olhalDe(ic, riggingDe(ic));
         ic.olhal.geom[el.dataset.olhalCampo] = Number(el.value) || 0;
+        // R mudou: o reforço acompanha
+        if (el.dataset.olhalCampo === "R") ic.olhal.geom.rAnel = Number(el.value) || 0;
       }
       else if (el.dataset.medida) ic.medidas[el.dataset.medida] = compParaMm(el.value);
       else if (el.dataset.fator) ic.fatores = Object.assign(fatoresDe(ic), { [el.dataset.fator]: Number(el.value) || 0 });

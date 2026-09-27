@@ -362,3 +362,10 @@ e resumo dos içamentos, depois cada etapa com o que entrou, a fórmula, a subst
 resultado. Caixa recolhida e memorial oculto são recursos de leitura na tela — no papel sai
 tudo. A lista de material também sai em `.xlsx`, com as mesmas colunas da lista de corte
 (projeto 8): Item, Qtd., Título, Especificação, Material e Massa.
+
+**Espessura de chapa e reforço do olhal.** A espessura `t` (e a do reforço `t.anel`) é escolhida
+numa lista de espessuras comerciais de chapa grossa — as bitolas em polegada com o milímetro
+exato da fração, e a série métrica — porque chapa se compra na bitola que existe. O `R.anel`
+não é escolha: o reforço acompanha o raio do topo da chapa, então **R.anel = R**, calculado e
+mostrado sem campo de edição. `Ø furo` e `R` continuam vindo da manilha, com um botão para
+recalcular.

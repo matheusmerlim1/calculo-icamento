@@ -253,6 +253,31 @@ async function main() {
     return true;
   });
 
+  await passo("espessura vem da lista comercial e R.anel é calculado", async () => {
+    const r = JSON.parse(await rodar(`const ic = ICapp.atual();
+      ic.olhal.modo = "fabricado"; ICapp.pintar();
+      const t = document.querySelector('[data-olhal-campo="t"]');
+      const ra = document.querySelector('[data-olhal-campo="rAnel"]');
+      const R = document.querySelector('[data-olhal-campo="R"]');
+      return JSON.stringify({tipoT: t.tagName, opcoes: t.options ? t.options.length : 0,
+        anelDesabilitado: !!(ra && ra.disabled), rAnel: Number(ra.value), R: Number(R.value),
+        temPolegada: t.options ? [...t.options].some(o => o.textContent.includes('"')) : false});`));
+    if (r.tipoT !== "SELECT") throw new Error("a espessura continua campo livre: " + r.tipoT);
+    if (r.opcoes < 10) throw new Error("lista de chapas curta: " + r.opcoes);
+    if (!r.temPolegada) throw new Error("a lista não traz as bitolas em polegada");
+    if (!r.anelDesabilitado) throw new Error("R.anel ainda é editável");
+    if (r.rAnel !== r.R) throw new Error(`R.anel ${r.rAnel} não acompanha R ${r.R}`);
+    // mudar R tem que levar o R.anel junto
+    await rodar(`const e = document.querySelector('[data-olhal-campo="R"]');
+      e.value = String(Number(e.value) + 7); e.dispatchEvent(new Event("change",{bubbles:true}));`);
+    await esperar(400);
+    const d = JSON.parse(await rodar(`return JSON.stringify({
+      rAnel: Number(document.querySelector('[data-olhal-campo="rAnel"]').value),
+      R: Number(document.querySelector('[data-olhal-campo="R"]').value)});`));
+    if (d.rAnel !== d.R) throw new Error(`depois de mudar R: R.anel ${d.rAnel} × R ${d.R}`);
+    return true;
+  });
+
   await passo("figura da manilha e do encaixe aparecem", async () => {
     const r = JSON.parse(await rodar(`return JSON.stringify({
       manilha: (document.querySelector("#resultado-sapatilho-manilha svg")||{}).outerHTML ? true : false,
