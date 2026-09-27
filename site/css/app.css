@@ -3,7 +3,9 @@
 /* ---------------------------------------------------------- cabeçalho */
 .topo {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 8px 16px;
+  /* o espaço à direita é do botão fixo de portfólio: reservado aqui para ele nunca cair
+     em cima dos botões da barra (e para a barra não ter que se reorganizar sozinha) */
+  padding: 8px 140px 8px 16px;
   background: #123040;
   border-bottom: 1px solid #0b2130;
 }
@@ -240,6 +242,9 @@ tr.linha-formula td { padding: 4px 8px 10px; border-bottom: 1px solid var(--c-li
   background: var(--c-superficie);
   border-top: 1px solid var(--c-linha);
 }
+
+/* no celular o botão vira só o ícone */
+@media (max-width: 520px) { .topo { padding-right: 58px; } }
 
 @media (max-width: 980px) {
   .folha { grid-template-columns: minmax(0, 1fr); }

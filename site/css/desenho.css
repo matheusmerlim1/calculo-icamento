@@ -50,6 +50,7 @@
     font-size: 10pt;
   }
   .topo, .abas, .resumo, .rodape { display: none !important; }
+  #mr-portfolio-btn { display: none !important; }
   .topo__acoes, .etapa__dobra, .bt { display: none !important; }
 
   /* uma coluna só: na tela são blocos de 330px lado a lado, que estouram a largura da folha */

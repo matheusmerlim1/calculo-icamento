@@ -301,6 +301,22 @@ async function main() {
     return true;
   });
 
+  await passo("botão de portfólio não cobre nada da barra", async () => {
+    const r = JSON.parse(await rodar(`const b = document.getElementById("mr-portfolio-btn");
+      if (!b) return JSON.stringify({falta:true});
+      const c = b.getBoundingClientRect();
+      const bate = [...document.querySelectorAll(".topo *, .abas *")].filter(el => {
+        const e = el.getBoundingClientRect();
+        return e.width && e.height &&
+          !(e.right <= c.left || e.left >= c.right || e.bottom <= c.top || e.top >= c.bottom);
+      });
+      return JSON.stringify({falta:false, sobrepoe: bate.length,
+        quem: bate.slice(0,3).map(e => e.id || e.className || e.tagName)});`));
+    if (r.falta) throw new Error("o botão de portfólio não está na página");
+    if (r.sobrepoe) throw new Error("o botão cobre: " + r.quem.join(", "));
+    return true;
+  });
+
   ws.close(); chrome.kill();
   console.log("ok:", ok.length);
   ok.forEach(x => console.log("  ✓", x));
