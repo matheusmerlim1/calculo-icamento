@@ -526,15 +526,19 @@
   };
   const ROTULOS_MANILHA = {
     codigo: "Código", cmt: "CMT — carga máxima de trabalho (t)", peso: "Peso (kg)",
-    a: "a — diâmetro do corpo (mm)", b: "b — diâmetro do pino (mm)", c: "c — diâmetro do olhal (mm)",
-    d: "d — largura do olhal (mm)", e: "e — boca (mm)", f: "f — comprimento interno (mm)",
-    g: "g — largura do corpo (mm)", h: "h — comprimento (mm)", i: "i — comprimento do parafuso (mm)",
-    j: "j — largura da porca (mm)", k: "k — espessura da porca (mm)"
+    a: "a — diâmetro do corpo (mm)", b: "b — diâmetro do pino (mm)",
+    c: "c — largura do corpo, de lado (mm)", d: "d — largura da orelha (mm)",
+    e: "e — boca (mm)", f: "f — comprimento interno (mm)",
+    g: "g — diâmetro interno do arco (mm)", h: "h — comprimento total (mm)",
+    i: "i — largura total (mm)", j: "j — largura externa do arco (mm)",
+    k: "k — ver o catálogo (mm)"
   };
   const ROTULOS_SAPATILHO = {
     codigo: "Código", cabo: "Cabo (polegada)", diametroCabo: "Diâmetro do cabo (mm)",
-    a: "a (mm)", b: "b (mm)", c: "c — garganta (mm)", d: "d (mm)", e: "e — boca (mm)", f: "f — comprimento (mm)",
-    peso: "Peso (kg)"
+    peso: "Peso (kg)",
+    a: "a — comprimento total (mm)", b: "b — comprimento interno (mm)",
+    c: "c — altura total (mm)", d: "d — altura interna (mm)",
+    e: "e — largura total (mm)", f: "f — largura da ranhura (mm)"
   };
 
   /** bloco de fórmulas com os números já substituídos — como o memorial de referência mostra */
@@ -597,13 +601,17 @@
 
     const rig = riggingDe(ic);
     const s = rig.sapatilho, m = rig.manilha;
-    let html = "";
+    let html = `<div class="pecas-par">`;
     html += s.ok
-      ? `<div class="ficha-par">
-          <figure class="fig-topo">${FIG.sapatilho()}</figure>
+      ? `<div class="peca-bloco"><h4 class="peca-bloco__t">Sapatilho</h4>
+         <div class="ficha-par ficha-par--col">
+          <figure class="fig-topo">${FIG.sapatilho(s.sapatilho)}</figure>
           ${ficha("Sapatilho escolhido", s.sapatilho, ["codigo", "cabo", "diametroCabo", "a", "b", "c", "d", "e", "f", "peso"], ROTULOS_SAPATILHO)}
-        </div>`
-      : `<div class="aviso aviso--erro">Nenhum sapatilho cadastrado para Ø ${F.num(rig.linga.diametro, 1)} mm.</div>`;
+        </div></div>`
+      : `<div class="peca-bloco"><div class="aviso aviso--erro">Nenhum sapatilho cadastrado para Ø ${F.num(rig.linga.diametro, 1)} mm.</div></div>`;
+
+    // a manilha começa a sua coluna
+    html += `<div class="peca-bloco"><h4 class="peca-bloco__t">Manilha</h4>`;
 
     // seletor manual: automático (o programa já procura a menor manilha que passa em todos os
     // casos de encaixe) ou uma manilha específica, escolhida à mão
@@ -621,12 +629,13 @@
           <div class="item"><span>Utilização (carga / CMT)</span><b>${F.num(m.utilizacao * 100, 0)} %</b></div>
         </div>
         ${memorial([m.formula, m.formulaCmt])}
-        <div class="ficha-par">
+        <div class="ficha-par ficha-par--col">
           <figure class="fig-topo">${FIG.manilha(rig.manilha.ok ? rig.manilha.manilha : null)}</figure>
           ${ficha(`Manilha escolhida — ${IC.manilhas.tipos[m.tipo].nome}`, m.manilha,
             IC.manilhas.tipos[m.tipo].campos, ROTULOS_MANILHA)}
         </div>`
       : `<div class="aviso aviso--erro">Nenhuma manilha do tipo escolhido atende à carga de ${F.ton(m.cargaT)}.</div>`;
+    html += `</div></div>`;     // fecha a coluna da manilha e o par
     if (m.ok && !m.encaixeCompleto) html += `<div class="aviso aviso--erro">Nenhuma manilha ${F.esc(IC.manilhas.tipos[m.tipo].nome)}
       encaixa nos 4 casos ao mesmo tempo com este sapatilho — veja qual caso falha na tabela abaixo.
       Tente outro código na lista acima, o outro tipo de manilha, ou um sapatilho/linga de outra bitola.</div>`;
@@ -642,12 +651,32 @@
 
     // a mesma verificação, desenhada: o vão de que se dispõe e a peça que precisa passar
     const figEnc = $("fig-encaixe");
+    // caso 1 e 4 comparam medidas redondas (corpo/olhal da manilha em furo); 2 e 3 são a
+    // chapa do sapatilho entre duas faces
+    const FORMA = { 1: "furo", 2: "boca", 3: "boca", 4: "furo" };
+    const ROT = {
+      1: ["altura interna do sapatilho", "corpo da manilha"],
+      2: ["interno do arco", "largura do sapatilho"],
+      3: ["boca da manilha", "largura do sapatilho"],
+      4: ["interno do sapatilho", "corpo da manilha"]
+    };
     if (figEnc) figEnc.innerHTML = rig.casos.length
-      ? FIG.encaixe(rig.casos.map(c => ({ n: c.n, rotulo: c.nome, valor: c.a, limite: c.b, ok: c.ok })))
+      ? FIG.encaixe(rig.casos.map(c => ({
+          n: c.n, rotulo: c.nome, vao: c.a, peca: c.b, ok: c.ok,
+          forma: FORMA[c.n] || "boca",
+          rotVao: (ROT[c.n] || [])[0], rotPeca: (ROT[c.n] || [])[1]
+        })))
       : "";
   }
 
   /* ------------------------------------------------------------ olhal */
+  const ROTULOS_OLHAL = {
+    codigo: "Código", cmt: "CMT — carga máxima de trabalho (t)", rosca: "Rosca",
+    b: "b — diâmetro da base (mm)", c: "c — diâmetro externo do olho (mm)",
+    d: "d — diâmetro interno do olho (mm)", e: "e — comprimento total (mm)",
+    f: "f — espessura da base (mm)", g: "g — diâmetro da haste (mm)", peso: "Peso (kg)"
+  };
+
   const ROTULOS_GEOM = {
     t: "t — espessura da chapa (mm)", tAnel: "t.anel — reforço, cada lado (mm)",
     base: "base — largura da chapa (mm)", h: "h — do pé ao centro do furo (mm)",
@@ -676,14 +705,21 @@
       const r = o.resultado;
       $("resultado-olhal").innerHTML = !r.ok
         ? `<div class="aviso aviso--erro">Nenhum olhal comercial atende ${F.ton(r.cargaT)} com pino Ø ${F.num(r.pinoMm, 1)} mm.</div>`
-        : `<div class="olhal-bloco"><h4>${F.esc(quais)}</h4>
-            <div class="painel">
-              <div class="item"><span>Dimensionado pela perna</span><b>${F.esc(gov.nome)}</b></div>
-              <div class="item"><span>Carga</span><b>${F.kn(gov.tracao)} · ${F.ton(r.cargaT)}</b></div>
-              <div class="item"><span>Modelo</span><b>${F.esc(r.olhal.codigo)}</b></div>
-              <div class="item"><span>Utilização (carga / CMT)</span><b>${F.num(r.utilizacao * 100, 0)} %</b></div>
+        : `<div class="olhal-par">
+            <figure class="fig-topo" id="fig-olhal">${FIG.olhalComprado(r.olhal)}</figure>
+            <div class="olhal-bloco"><h4>${F.esc(quais)}</h4>
+              <div class="painel">
+                <div class="item"><span>Dimensionado pela perna</span><b>${F.esc(gov.nome)} — a mais carregada</b></div>
+                <div class="item"><span>Carga</span><b>${F.kn(gov.tracao)} · ${F.ton(r.cargaT)}</b></div>
+                <div class="item"><span>Modelo</span><b>${F.esc(r.olhal.codigo)}</b></div>
+                <div class="item"><span>Rosca</span><b>${F.esc(r.olhal.rosca || "—")}</b></div>
+                <div class="item"><span>Utilização (carga / CMT)</span><b>${F.num(r.utilizacao * 100, 0)} %</b></div>
+              </div>
+              ${memorial(`CMT ≥ carga → ${F.num(r.olhal.cmt, 2)} t ≥ ${F.num(r.cargaT, 2)} t`)}
+              ${ficha("Olhal escolhido", r.olhal,
+                 ["codigo", "cmt", "rosca", "b", "c", "d", "e", "f", "g", "peso"], ROTULOS_OLHAL)}
             </div>
-            ${memorial(`CMT ≥ carga → ${F.num(r.olhal.cmt, 2)} t ≥ ${F.num(r.cargaT, 2)} t`)}</div>`;
+          </div>`;
       return;
     }
 

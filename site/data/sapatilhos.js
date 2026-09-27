@@ -4,9 +4,15 @@
  *
  * Cada código cobre uma faixa de diâmetro de cabo (polegada); a coluna `g` é o diâmetro do
  * cabo em mm (a mesma medida da coluna "polegada", só que exata) e `h` é o peso em kg.
- * As demais (a-f) são dimensões do corpo do sapatilho em mm; a planilha de origem não
- * detalha o que cada uma mede fisicamente além do rótulo A-H — conferir com o catálogo do
- * fabricante (padrão equivalente à DIN 3091, serviço pesado) antes de usar em projeto.
+ *
+ * As letras a-f, pela folha de dimensões do fabricante (e os números batem: a > b, c > d,
+ * e > f em toda a tabela):
+ *
+ *   a  comprimento total     b  comprimento interno
+ *   c  altura total          d  altura interna (é ela que passa pelo corpo da manilha)
+ *   e  largura total         f  largura da ranhura, onde o cabo assenta
+ *
+ * Padrão equivalente à DIN 3091, serviço pesado — conferir com o catálogo do fabricante.
  *
  * As verificações de encaixe do memorial de referência (docs/METODO.md, item 6) usam:
  *   Caso 1  c (garganta) > d_manilha

@@ -164,9 +164,11 @@
 .barra > i { display: block; height: 100%; background: var(--c-ok); }
 .barra.estourou > i { background: var(--c-erro); }
 /* desenho do olhal ao lado dos campos: mexeu num número, o desenho muda */
-.olhal-par { display: grid; grid-template-columns: minmax(300px, 440px) minmax(0, 1fr); gap: 10px; align-items: start; margin-bottom: 8px; }
-.olhal-par .fig-topo { position: sticky; top: 8px; }
-.olhal-par .fig-topo svg { height: auto; width: 100%; max-height: 420px; }
+.olhal-par { display: grid; grid-template-columns: minmax(360px, 560px) minmax(0, 1fr); gap: 10px; align-items: start; margin-bottom: 8px; }
+/* sem width:100% a folha encolhe para o tamanho natural do desenho (fit-content herdado
+   de .fig-topo) e o desenho sai minusculo dentro de uma coluna larga */
+.olhal-par .fig-topo { position: sticky; top: 8px; width: 100%; }
+.olhal-par .fig-topo svg { height: auto; width: 100%; max-height: 520px; }
 @media (max-width: 900px) { .olhal-par { grid-template-columns: 1fr; } }
 
 .olhal-geom { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 8px; }
@@ -193,9 +195,21 @@ body.sem-memorial tr.linha-formula { display: none; }
 tr.linha-formula td { padding: 4px 8px 10px; border-bottom: 1px solid var(--c-linha); }
 
 /* ---------------------------------------------------------- ficha + desenho lado a lado */
+/* duas peças lado a lado; dentro de cada coluna a figura fica em cima da ficha, e é por
+   isso que o desenho finalmente tem largura para ser lido */
+.pecas-par { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 10px; align-items: start; }
+.peca-bloco { min-width: 0; border: 1px solid var(--c-linha); border-radius: var(--raio); padding: 8px 10px; background: var(--c-superficie-2); }
+.peca-bloco__t { margin: 0 0 6px; font-size: 13px; color: var(--c-texto-2); }
 .ficha-par { display: grid; grid-template-columns: minmax(300px, 420px) max-content; gap: 12px; align-items: start; margin-bottom: 8px; justify-content: start; }
 .ficha-par > .fig-topo { padding: 4px; }
 @media (max-width: 640px) { .ficha-par { grid-template-columns: 1fr; } }
+
+/* dentro de uma coluna estreita, a figura vai para cima da ficha e usa a largura toda */
+.ficha-par.ficha-par--col { grid-template-columns: minmax(0, 1fr); }
+.ficha-par.ficha-par--col .fig-topo { width: 100%; }
+/* estes desenhos são altos (a peça é vertical): limitar a 340px deixava tudo minúsculo */
+.ficha-par.ficha-par--col .fig-topo svg { height: auto; width: 100%; max-height: 560px; }
+.ficha-par.ficha-par--col .tab--ficha { max-width: none; }
 
 /* ---------------------------------------------------------- avisos */
 .aviso {
@@ -268,7 +282,7 @@ tr.linha-formula td { padding: 4px 8px 10px; border-bottom: 1px solid var(--c-li
 /* a figura ao lado da ficha mostra as letras da tabela: precisa ser lida, não só olhada */
 .ficha-par .fig-topo svg { height: auto; width: 100%; max-height: 340px; }
 #fig-encaixe { width: 100%; }
-#fig-encaixe svg { height: auto; width: 100%; max-width: 760px; }
+#fig-encaixe svg { height: auto; width: 100%; max-width: 980px; max-height: none; }
 
 /* figuras que antes vinham empilhadas, uma por linha */
 .figs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: start; }

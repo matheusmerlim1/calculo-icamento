@@ -113,10 +113,13 @@ IC.rigging = (function () {
   function casosEncaixe({ sapatilho, manilha, diametroCaboMm }) {
     if (!sapatilho || !manilha || !diametroCaboMm) return [];
     const casos = [
-      { n: 1, nome: "Sapatilho × diâmetro do corpo da manilha", a: sapatilho.d, b: manilha.a, formula: "d(sapatilho) > a(manilha)" },
-      { n: 2, nome: "Largura do corpo da manilha × sapatilho", a: manilha.g, b: sapatilho.e, formula: "g(manilha) > e(sapatilho)" },
-      { n: 3, nome: "Boca da manilha × sapatilho", a: manilha.e, b: sapatilho.e, formula: "e(manilha) > e(sapatilho)" },
-      { n: 4, nome: "Sapatilho × diâmetro do olhal da manilha", a: sapatilho.b, b: manilha.c, formula: "b(sapatilho) > c(manilha)" }
+      // nomes conforme a folha de dimensões de cada peça (ver figuras.js):
+      // sapatilho  a compr. total · b compr. interno · c altura total · d altura interna · e largura · f ranhura
+      // manilha    a corpo · b pino · c largura do corpo · d orelha · e boca · f compr. interno · g interno do arco
+      { n: 1, nome: "Altura interna do sapatilho × corpo da manilha", a: sapatilho.d, b: manilha.a, formula: "d(sapatilho) > a(manilha)" },
+      { n: 2, nome: "Interno do arco da manilha × largura do sapatilho", a: manilha.g, b: sapatilho.e, formula: "g(manilha) > e(sapatilho)" },
+      { n: 3, nome: "Boca da manilha × largura do sapatilho", a: manilha.e, b: sapatilho.e, formula: "e(manilha) > e(sapatilho)" },
+      { n: 4, nome: "Comprimento interno do sapatilho × corpo da manilha", a: sapatilho.b, b: manilha.c, formula: "b(sapatilho) > c(manilha)" }
     ];
     return casos.map(c => ({ ...c, ok: c.a > c.b }));
   }
