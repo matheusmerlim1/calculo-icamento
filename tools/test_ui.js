@@ -298,13 +298,20 @@ async function main() {
   });
 
   await passo("figura da manilha e do encaixe aparecem", async () => {
-    const r = JSON.parse(await rodar(`return JSON.stringify({
-      manilha: (document.querySelector("#resultado-sapatilho-manilha svg")||{}).outerHTML ? true : false,
-      encaixe: !!document.querySelector("#fig-encaixe svg"),
-      quadros: document.querySelectorAll("#fig-encaixe svg g").length,
-      casos: document.querySelectorAll("#tab-encaixe tbody tr").length});`));
+    const r = JSON.parse(await rodar(`const enc = document.querySelector("#fig-encaixe svg");
+      const txt = enc ? enc.textContent : "";
+      return JSON.stringify({
+
+        manilha: !!document.querySelector("#resultado-sapatilho-manilha svg"),
+        encaixe: !!enc,
+        vistas: ["1 —", "2 —", "3 —"].filter(t => txt.includes(t)).length,
+        casos: document.querySelectorAll("#tab-encaixe tbody tr:not(.linha-formula)").length,
+        temCabo: /cabo/i.test(txt)});`));
+    if (!r.manilha) throw new Error("faltou a figura da manilha");
     if (!r.encaixe) throw new Error("faltou a figura do encaixe");
-    if (r.quadros < r.casos) throw new Error(`figura com ${r.quadros} quadros para ${r.casos} casos`);
+    if (r.vistas !== 3) throw new Error("a figura do encaixe não tem as três vistas: " + r.vistas);
+    if (r.casos !== 4) throw new Error("casos na tabela: " + r.casos);
+    if (!r.temCabo) throw new Error("a figura não menciona o cabo");
     return true;
   });
 

@@ -146,6 +146,8 @@
 .tab th { color: var(--c-texto-3); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
 .tab th:first-child, .tab td:first-child { text-align: left; }
 .tab tbody tr:hover td { background: var(--c-superficie-2); }
+/* linha de verificação em destaque sobre o seu memorial */
+.tab tbody tr:has(+ tr.linha-formula) td { background: var(--c-superficie-2); font-weight: 600; }
 .tab td.num { font-family: var(--fonte-mono); }
 .tab--pontos input { width: 96px; text-align: right; }
 /* Ficha técnica: uma grade que se reparte em colunas conforme a largura, com o valor
@@ -196,7 +198,7 @@
 .olhal-par .fig-topo svg { height: auto; width: 100%; max-height: 520px; }
 /* o olhal comprado é uma peça alta e estreita: sem limite, o desenho estica a caixa muito
    além da ficha ao lado */
-.olhal-par #fig-olhal svg { max-height: 420px; }
+.olhal-par #fig-olhal svg { max-height: 300px; }
 @media (max-width: 900px) { .olhal-par { grid-template-columns: 1fr; } }
 
 .olhal-geom { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 8px; align-items: end; }
@@ -230,12 +232,30 @@ body.sem-memorial tr.linha-formula,
   border: 1px dashed var(--c-linha-forte); background: var(--c-superficie-2); text-align: left;
 }
 .formulas__titulo { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--c-texto-3); }
+
+/* as contas à esquerda e a legenda das letras à direita, onde antes sobrava espaço */
+.formulas--com-legenda { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 8px 16px; align-items: start; }
+.formulas__contas { display: grid; gap: 5px; min-width: 0; }
+.formulas__legenda { display: grid; gap: 2px; align-content: start; border-left: 1px dashed var(--c-linha-forte); padding: 0 6px 0 12px; }
+.simbolo { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 8px; font-size: 12px; align-items: baseline; }
+.simbolo__k { font-family: var(--fonte-mono); color: var(--c-texto); }
+.simbolo__d { color: var(--c-texto-2); }
+.simbolo__u { font-family: var(--fonte-mono); color: var(--c-texto-3); }
+@media (max-width: 760px) { .formulas--com-legenda { grid-template-columns: minmax(0, 1fr); }
+  .formulas__legenda { border-left: 0; padding-left: 0; border-top: 1px dashed var(--c-linha-forte); padding-top: 6px; } }
 .passo { font-family: var(--fonte-mono); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .passo__formula { color: var(--c-texto-3); }
 .passo__sub { color: var(--c-texto-2); }
 .passo__resultado { color: var(--c-texto); font-weight: 700; padding-top: 2px; margin-top: 2px; border-top: 1px dashed var(--c-linha); }
 .passo sub { font-size: .74em; }
-tr.linha-formula td { padding: 4px 8px 10px; border-bottom: 1px solid var(--c-linha); }
+/* A linha do memorial é a explicação da linha de cima: fica presa a ela por uma faixa na
+   lateral, e o texto dela quebra à vontade — a tabela é nowrap, e isso cortava a unidade
+   na ponta da legenda. */
+tr.linha-formula td {
+  padding: 2px 8px 10px 0; border-bottom: 1px solid var(--c-linha-forte);
+  white-space: normal;
+}
+tr.linha-formula .formulas { border-left: 3px solid var(--c-acento-suave); border-radius: 0 6px 6px 0; }
 
 /* ---------------------------------------------------------- ficha + desenho lado a lado */
 /* duas peças lado a lado; dentro de cada coluna a figura fica em cima da ficha, e é por

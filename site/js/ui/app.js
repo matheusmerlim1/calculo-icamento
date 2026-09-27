@@ -608,16 +608,39 @@
    * e o resultado, cada um em sua linha (do jeito que memoriais de cálculo mostram). Aceita
    * também string solta, tratada como o resultado de um passo sem fórmula/substituição.
    */
+  /**
+   * Memorial de cálculo: as contas à esquerda e, ao lado, o que cada letra quer dizer e em
+   * que unidade. A legenda sai do próprio texto das fórmulas (IC.simbolos), então acompanha
+   * o que está sendo mostrado — e ocupa o espaço que sobrava à direita.
+   */
   function memorial(passos) {
     const arr = (Array.isArray(passos) ? passos : [passos]).filter(Boolean)
       .map(p => (typeof p === "string" ? { resultado: p } : p));
     if (!arr.length) return "";
-    return `<div class="formulas"><div class="formulas__titulo">Memorial de cálculo</div>
-      ${arr.map(p => `<div class="passo">
-        ${p.formula ? `<div class="passo__formula">${F.mat(p.formula)}</div>` : ""}
-        ${p.sub ? `<div class="passo__sub">${F.mat(p.sub)}</div>` : ""}
-        ${p.resultado ? `<div class="passo__resultado">${F.mat(p.resultado)}</div>` : ""}
-      </div>`).join("")}</div>`;
+
+    const texto = arr.map(p => [p.formula, p.resultado].filter(Boolean).join(" ")).join(" ");
+    const simbolos = (window.IC && IC.simbolos) ? IC.simbolos.noTexto(texto) : [];
+    const legenda = simbolos.length ? `
+      <div class="formulas__legenda">
+        <div class="formulas__titulo">O que é cada letra</div>
+        ${simbolos.map(sb => `<div class="simbolo">
+          <span class="simbolo__k">${F.mat(sb.k)}</span>
+          <span class="simbolo__d">${F.esc(sb.desc)}</span>
+          <span class="simbolo__u">${F.esc(sb.un)}</span>
+        </div>`).join("")}
+      </div>` : "";
+
+    return `<div class="formulas${simbolos.length ? " formulas--com-legenda" : ""}">
+      <div class="formulas__contas">
+        <div class="formulas__titulo">Memorial de cálculo</div>
+        ${arr.map(p => `<div class="passo">
+          ${p.formula ? `<div class="passo__formula">${F.mat(p.formula)}</div>` : ""}
+          ${p.sub ? `<div class="passo__sub">${F.mat(p.sub)}</div>` : ""}
+          ${p.resultado ? `<div class="passo__resultado">${F.mat(p.resultado)}</div>` : ""}
+        </div>`).join("")}
+      </div>
+      ${legenda}
+    </div>`;
   }
 
   /** tabela de 2 colunas (campo, valor) — uma ficha técnica, campo a campo */
@@ -732,7 +755,7 @@
     // a mesma verificação, desenhada: o vão de que se dispõe e a peça que precisa passar
     const figEnc = $("fig-encaixe");
     if (figEnc) figEnc.innerHTML = rig.casos.length
-      ? FIG.encaixe(rig.casos, s.sapatilho, m.manilha)
+      ? FIG.encaixe(rig.casos, s.sapatilho, m.manilha, rig.linga.diametro)
       : "";
   }
 
