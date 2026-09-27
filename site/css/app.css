@@ -13,7 +13,7 @@
   border-radius: 6px; background: var(--c-acento); color: #fff; font-weight: 800;
 }
 .topo__nome { font-weight: 700; }
-.topo__sub { font-size: 12px; color: var(--c-texto-2); }
+.topo__sub { font-size: var(--t-xs); color: var(--c-texto-2); }
 .topo__acoes { display: flex; gap: 8px; margin-left: auto; align-items: center; }
 
 /* O botão de portfólio entra aqui dentro (o app move o elemento no início), em vez de ficar
@@ -23,7 +23,7 @@
   box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
 }
 
-.campo { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--c-texto-2); min-width: 0; }
+.campo { display: flex; flex-direction: column; gap: 3px; font-size: var(--t-xs); color: var(--c-texto-2); min-width: 0; }
 .campo--inline { flex-direction: row; align-items: center; gap: 6px; }
 .campo--inline input { width: 190px; }
 .campo input, .campo select { width: 100%; }
@@ -34,7 +34,7 @@
 }
 .bt:hover { filter: brightness(1.08); }
 .bt--fantasma { background: transparent; color: var(--c-acento); border: 1px solid var(--c-acento); }
-.bt--peq { padding: 4px 10px; font-weight: 600; font-size: 13px; }
+.bt--peq { padding: 4px 10px; font-weight: 600; font-size: var(--t-sm); }
 .bt--risco { background: transparent; color: var(--c-erro); border: 1px solid var(--c-erro); }
 
 /* ---------------------------------------------------------- abas dos içamentos */
@@ -52,22 +52,23 @@
   background: transparent; color: var(--c-texto-2); white-space: nowrap;
 }
 .aba.on { background: var(--c-fundo); color: var(--c-texto); border-color: var(--c-linha-forte); font-weight: 700; }
-.aba__peso { color: var(--c-texto-3); font-size: 12px; margin-left: 6px; }
+.aba__peso { color: var(--c-texto-3); font-size: var(--t-xs); margin-left: 6px; }
 .aba--novo { border-style: dashed; color: var(--c-acento); }
 
 /* ---------------------------------------------------------- corpo */
 .folha {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--e-4);
+  padding: var(--e-3) var(--e-4);
   align-items: start;
   min-height: 0;
 }
 /* Blocos lado a lado: cabe o que couber em colunas de ~330px — três numa tela grande,
    duas numa média, uma no celular. */
 .etapas {
-  display: grid; gap: 8px; min-width: 0;
+  display: grid; min-width: 0;
+  gap: var(--e-3);
   grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
   /* stretch: as caixas de uma mesma linha terminam na mesma altura. Com align-items:start
      cada uma parava onde o seu conteúdo acabava e a fileira ficava desalinhada. */
@@ -90,20 +91,20 @@
 }
 .etapa > h2 {
   display: flex; align-items: center; gap: 10px;
-  padding: 6px 11px;
-  font-size: 14px;
+  padding: var(--e-2) var(--e-3);
+  font-size: var(--t-md);
   background: var(--c-superficie-2);
   border-bottom: 1px solid var(--c-linha);
 }
 .etapa__dobra {
   margin-left: auto; width: 24px; height: 24px; line-height: 1;
   border: 1px solid var(--c-linha-forte); border-radius: 5px;
-  background: transparent; color: var(--c-texto-2); font-weight: 700; font-size: 15px;
+  background: transparent; color: var(--c-texto-2); font-weight: 700; font-size: var(--t-lg);
   display: grid; place-items: center;
 }
 .etapa__dobra:hover { border-color: var(--c-acento); color: var(--c-acento); }
 /* botão do cálculo: fica aceso quando o memorial está à vista */
-.etapa__dobra--mem { width: auto; padding: 0 7px; font-size: 12px; margin-left: auto; }
+.etapa__dobra--mem { width: auto; padding: 0 7px; font-size: var(--t-xs); margin-left: auto; }
 .etapa__dobra--mem.is-on { border-color: var(--c-acento); color: var(--c-acento); }
 .etapa > h2 .etapa__dobra--mem + .etapa__dobra { margin-left: 4px; }
 .etapa > h2 { cursor: pointer; user-select: none; }
@@ -112,9 +113,10 @@
 
 .etapa__n {
   display: grid; place-items: center; width: 22px; height: 22px;
-  border-radius: 50%; background: var(--c-acento); color: #fff; font-size: 12px;
+  border-radius: 50%; background: var(--c-acento); color: #fff; font-size: var(--t-xs);
 }
-.etapa__corpo { padding: 9px 11px; display: grid; gap: 8px; }
+/* dentro da caixa, o espaço é curto: o que está junto é junto. Entre caixas, --e-3. */
+.etapa__corpo { padding: var(--e-3); display: grid; gap: var(--e-2); }
 .etapa--espera { opacity: .72; }
 .etapa--espera .etapa__n { background: var(--c-texto-3); }
 
@@ -123,7 +125,7 @@
 .linha-campos { display: flex; gap: 12px; flex-wrap: wrap; }
 .linha-campos .campo { min-width: 220px; }
 
-.dica { margin: 0; font-size: 12px; color: var(--c-texto-3); }
+.dica { margin: 0; font-size: var(--t-xs); color: var(--c-texto-3); }
 .dica b { color: var(--c-texto-2); }
 
 /* ---------------------------------------------------------- tipo de içamento */
@@ -137,13 +139,13 @@
 }
 .tipo:hover { border-color: var(--c-acento); }
 .tipo.on { border-color: var(--c-acento); background: var(--c-acento-suave); }
-.tipo b { font-size: 13px; }
-.tipo span { font-size: 12px; color: var(--c-texto-3); }
+.tipo b { font-size: var(--t-sm); }
+.tipo span { font-size: var(--t-xs); color: var(--c-texto-3); }
 
 /* ---------------------------------------------------------- tabelas */
-.tab { font-size: 13px; }
+.tab { font-size: var(--t-sm); }
 .tab th, .tab td { padding: 3px 7px; border-bottom: 1px solid var(--c-linha); text-align: right; white-space: nowrap; }
-.tab th { color: var(--c-texto-3); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+.tab th { color: var(--c-texto-3); font-weight: 600; font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .4px; }
 .tab th:first-child, .tab td:first-child { text-align: left; }
 .tab tbody tr:hover td { background: var(--c-superficie-2); }
 /* linha de verificação em destaque sobre o seu memorial */
@@ -154,19 +156,19 @@
    colado no rótulo. Como tabela, o valor ia parar do outro lado da linha. */
 .ficha { margin-bottom: 6px; }
 .ficha__t {
-  font-size: 12px; color: var(--c-texto-3); text-transform: uppercase; letter-spacing: .4px;
+  font-size: var(--t-xs); color: var(--c-texto-3); text-transform: uppercase; letter-spacing: .4px;
   padding-bottom: 4px;
 }
 .ficha__grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 20px; }
 .ficha__item {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-  padding: 3px 0; border-bottom: 1px solid var(--c-linha); font-size: 13px; min-width: 0;
+  padding: 3px 0; border-bottom: 1px solid var(--c-linha); font-size: var(--t-sm); min-width: 0;
 }
 .ficha__item span { color: var(--c-texto-2); }
 .ficha__item b { font-family: var(--fonte-mono); white-space: nowrap; }
 
 .tab--ficha { margin-bottom: 6px; max-width: 460px; }
-.tab--ficha caption { text-align: left; font-size: 12px; color: var(--c-texto-3); text-transform: uppercase; letter-spacing: .4px; padding-bottom: 4px; }
+.tab--ficha caption { text-align: left; font-size: var(--t-xs); color: var(--c-texto-3); text-transform: uppercase; letter-spacing: .4px; padding-bottom: 4px; }
 .tab--ficha td:first-child { color: var(--c-texto-2); }
 .tab--pontos td { padding: 4px 6px; }
 /* texto à esquerda, número à direita — a tabela base alinha tudo à direita */
@@ -180,10 +182,10 @@
 .tab--material tfoot td:first-child { color: var(--c-texto-2); font-weight: 400; }
 
 .tab .maior td { color: var(--c-texto); font-weight: 700; }
-.tab .maior td:first-child::after { content: " ← maior carga"; color: var(--c-alerta); font-weight: 400; font-size: 11px; }
+.tab .maior td:first-child::after { content: " ← maior carga"; color: var(--c-alerta); font-weight: 400; font-size: var(--t-xs); }
 
 /* ---------------------------------------------------------- verificações (ok / falha) */
-.selo { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.selo { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-xs); font-weight: 700; padding: 2px 8px; border-radius: 10px; }
 .selo--ok { color: var(--c-ok); background: rgba(47, 163, 107, .14); }
 .selo--erro { color: var(--c-erro); background: rgba(226, 96, 78, .14); }
 .tab td.selo-cel { text-align: center; }
@@ -208,10 +210,10 @@
 .olhal-geom .campo > span { text-align: center; align-self: end; line-height: 1.25; }
 .olhal-geom input, .olhal-geom select { width: 100%; }
 .olhal-bloco { padding: 8px; border: 1px solid var(--c-linha); border-radius: var(--raio); margin-bottom: 10px; background: var(--c-superficie-2); }
-.olhal-bloco h4 { margin: 0 0 8px; font-size: 13px; }
+.olhal-bloco h4 { margin: 0 0 8px; font-size: var(--t-sm); }
 /* a tag diz de qual manilha saíram estas medidas, sem ter que voltar à etapa 7 */
 .olhal-bloco__tag {
-  font-family: var(--fonte-mono); font-size: 12px; font-weight: 700;
+  font-family: var(--fonte-mono); font-size: var(--t-xs); font-weight: 700;
   color: var(--c-acento); background: var(--c-acento-suave);
   border: 1px solid var(--c-linha-forte); border-radius: 10px; padding: 1px 8px; margin-left: 6px;
 }
@@ -231,19 +233,19 @@ body.sem-memorial tr.linha-formula,
   display: grid; gap: 5px; margin: 0; padding: 6px 8px; border-radius: 6px;
   border: 1px dashed var(--c-linha-forte); background: var(--c-superficie-2); text-align: left;
 }
-.formulas__titulo { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--c-texto-3); }
+.formulas__titulo { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .4px; color: var(--c-texto-3); }
 
 /* as contas à esquerda e a legenda das letras à direita, onde antes sobrava espaço */
 .formulas--com-legenda { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 8px 16px; align-items: start; }
 .formulas__contas { display: grid; gap: 5px; min-width: 0; }
 .formulas__legenda { display: grid; gap: 2px; align-content: start; border-left: 1px dashed var(--c-linha-forte); padding: 0 6px 0 12px; }
-.simbolo { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 8px; font-size: 12px; align-items: baseline; }
+.simbolo { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 8px; font-size: var(--t-xs); align-items: baseline; }
 .simbolo__k { font-family: var(--fonte-mono); color: var(--c-texto); }
 .simbolo__d { color: var(--c-texto-2); }
 .simbolo__u { font-family: var(--fonte-mono); color: var(--c-texto-3); }
 @media (max-width: 760px) { .formulas--com-legenda { grid-template-columns: minmax(0, 1fr); }
   .formulas__legenda { border-left: 0; padding-left: 0; border-top: 1px dashed var(--c-linha-forte); padding-top: 6px; } }
-.passo { font-family: var(--fonte-mono); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.passo { font-family: var(--fonte-mono); font-size: var(--t-xs); line-height: 1.5; overflow-wrap: anywhere; }
 .passo__formula { color: var(--c-texto-3); }
 .passo__sub { color: var(--c-texto-2); }
 .passo__resultado { color: var(--c-texto); font-weight: 700; padding-top: 2px; margin-top: 2px; border-top: 1px dashed var(--c-linha); }
@@ -255,14 +257,16 @@ tr.linha-formula td {
   padding: 2px 8px 10px 0; border-bottom: 1px solid var(--c-linha-forte);
   white-space: normal;
 }
-tr.linha-formula .formulas { border-left: 3px solid var(--c-acento-suave); border-radius: 0 6px 6px 0; }
+/* o memorial pertence à linha de cima: fica preso a ela pela borda inteira e pelo fundo,
+   não por uma tarja lateral */
+tr.linha-formula .formulas { border-color: var(--c-linha-forte); background: var(--c-fundo); }
 
 /* ---------------------------------------------------------- ficha + desenho lado a lado */
 /* duas peças lado a lado; dentro de cada coluna a figura fica em cima da ficha, e é por
    isso que o desenho finalmente tem largura para ser lido */
 .pecas-par { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 10px; align-items: start; }
 .peca-bloco { min-width: 0; border: 1px solid var(--c-linha); border-radius: var(--raio); padding: 8px 10px; background: var(--c-superficie-2); }
-.peca-bloco__t { margin: 0 0 6px; font-size: 13px; color: var(--c-texto-2); }
+.peca-bloco__t { margin: 0 0 6px; font-size: var(--t-sm); color: var(--c-texto-2); }
 .ficha-par { display: grid; grid-template-columns: minmax(300px, 420px) max-content; gap: 12px; align-items: start; margin-bottom: 8px; justify-content: start; }
 .ficha-par > .fig-topo { padding: 4px; }
 @media (max-width: 640px) { .ficha-par { grid-template-columns: 1fr; } }
@@ -275,14 +279,20 @@ tr.linha-formula .formulas { border-left: 3px solid var(--c-acento-suave); borde
 .ficha-par.ficha-par--col .tab--ficha { max-width: none; }
 
 /* ---------------------------------------------------------- avisos */
+/* aviso: borda inteira e fundo tingido. A tarja lateral colorida é o tique mais
+   reconhecível de interface gerada — e não diz nada que a cor do fundo já não diga. */
 .aviso {
-  display: flex; gap: 8px; align-items: flex-start;
-  padding: 7px 10px; margin-bottom: 6px;
-  border-left: 3px solid var(--c-alerta);
+  display: flex; gap: var(--e-2); align-items: flex-start;
+  padding: var(--e-2) var(--e-3); margin-bottom: var(--e-2);
+  border: 1px solid rgba(216, 162, 58, .45); border-radius: var(--raio);
   background: rgba(216, 162, 58, .10);
-  font-size: 13px; color: var(--c-texto-2);
+  font-size: var(--t-sm); color: var(--c-texto-2);
 }
-.aviso--erro { border-color: var(--c-erro); background: rgba(226, 96, 78, .12); }
+.aviso::before { content: "!"; font-weight: 700; color: var(--c-alerta); }
+.aviso--erro { border-color: rgba(226, 96, 78, .5); background: rgba(226, 96, 78, .12); }
+.aviso--erro::before { content: "\u00d7"; color: var(--c-erro); }
+/* o aviso que já traz o seu próprio selo não precisa do sinal */
+.aviso:has(.selo)::before { content: none; }
 
 /* ---------------------------------------------------------- desenhos */
 .desenhos { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -291,7 +301,7 @@ tr.linha-formula .formulas { border-left: 3px solid var(--c-acento-suave); borde
 
 /* ---------------------------------------------------------- resumo */
 /* a coluna deixa de ser uma caixa só: é uma pilha, com uma caixa por içamento */
-.resumo { position: sticky; top: 12px; display: grid; gap: 8px; align-content: start; }
+.resumo { position: sticky; top: var(--e-3); z-index: var(--z-grudado); display: grid; gap: 8px; align-content: start; }
 .resumo__ic, .resumo__estudo {
   display: grid; gap: 10px;
   background: var(--c-superficie);
@@ -305,23 +315,23 @@ tr.linha-formula .formulas { border-left: 3px solid var(--c-acento-suave); borde
 .resumo__ic:not(.is-atual) { cursor: pointer; opacity: .82; }
 .resumo__ic:not(.is-atual):hover { opacity: 1; border-color: var(--c-linha-forte); }
 .resumo__ver { float: right; text-transform: none; letter-spacing: 0; color: var(--c-acento); font-weight: 600; }
-.resumo h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--c-texto-3); }
+.resumo h3 { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .6px; color: var(--c-texto-3); }
 .painel { display: grid; gap: 6px; }
-.item { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.item { display: flex; justify-content: space-between; gap: 10px; font-size: var(--t-sm); }
 .item b { font-family: var(--fonte-mono); }
 .destaque {
   padding: 8px 10px; border-radius: 6px;
   background: var(--c-acento-suave); border: 1px solid var(--c-linha-forte);
 }
-.destaque .valor { font-size: 20px; font-weight: 700; font-family: var(--fonte-mono); }
-.destaque .rot { font-size: 12px; color: var(--c-texto-2); }
-.etiqueta { font-size: 11px; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--c-linha-forte); color: var(--c-texto-2); }
+.destaque .valor { font-size: var(--t-xl); font-weight: 700; font-family: var(--fonte-mono); }
+.destaque .rot { font-size: var(--t-xs); color: var(--c-texto-2); }
+.etiqueta { font-size: var(--t-xs); padding: 2px 7px; border-radius: 10px; border: 1px solid var(--c-linha-forte); color: var(--c-texto-2); }
 
 /* ---------------------------------------------------------- rodapé */
 .rodape {
   display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   padding: 6px 16px;
-  font-size: 12px; color: var(--c-texto-3);
+  font-size: var(--t-xs); color: var(--c-texto-3);
   background: var(--c-superficie);
   border-top: 1px solid var(--c-linha);
 }

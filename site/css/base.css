@@ -7,13 +7,35 @@
   --c-linha-forte: #35485f;
   --c-texto: #e8eef6;
   --c-texto-2: #b3c2d4;
-  --c-texto-3: #7d8ea3;
+  --c-texto-3: #8192a7;   /* 4,64:1 sobre a superfície 2 — o anterior dava 4,40 */
   --c-acento: #2f8fd6;
   --c-acento-suave: #12314a;
   --c-ok: #2fa36b;
   --c-alerta: #d8a23a;
   --c-erro: #e2604e;
   --c-papel: #f7f9fc;
+  /* ---- espaçamento: escala de 4pt. Antes eram 15 valores avulsos (3, 5, 7, 9, 11px…),
+     que é o mesmo que não ter escala. Ritmo: --e-2 dentro de um grupo, --e-4 entre blocos. */
+  --e-1: 4px;
+  --e-2: 8px;
+  --e-3: 12px;
+  --e-4: 16px;
+  --e-5: 24px;
+  --e-6: 32px;
+
+  /* ---- tipografia: 5 degraus, razão ~1,15. Antes eram 12 tamanhos, com 12 / 12,5 / 13px
+     ocupando o mesmo lugar sem diferença de leitura. */
+  --t-xs: 12px;     /* rótulo, legenda, unidade */
+  --t-sm: 13px;     /* corpo compacto: ficha, painel, tabela */
+  --t-md: 14px;     /* corpo e título de caixa */
+  --t-lg: 16px;     /* título de seção */
+  --t-xl: 20px;     /* o número que a etapa entrega */
+
+  /* ---- empilhamento: nomes, não números mágicos */
+  --z-base: 1;
+  --z-grudado: 10;   /* barra e coluna que acompanham a rolagem */
+  --z-flutuante: 20; /* botão sobre o conteúdo */
+
   --raio: 8px;
   --sombra: 0 1px 3px rgba(0, 0, 0, .35);
   --fonte: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
