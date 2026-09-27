@@ -613,72 +613,119 @@ IC.figuras = (function () {
     return linhas;
   }
 
+  /** contorno de gota (sapatilho) apontando para baixo, centrado em (cx, cyVolta) */
+  function gotaVertical(cx, cyVolta, r, comp, k) {
+    const rk = r * k, pontaY = cyVolta + comp * k;
+    return `M${cx},${pontaY}`
+      + ` C${cx - rk * 0.55},${pontaY - comp * k * 0.55} ${cx - rk},${cyVolta + rk * 0.55} ${cx - rk},${cyVolta}`
+      + ` A${rk},${rk} 0 1 1 ${cx + rk},${cyVolta}`
+      + ` C${cx + rk},${cyVolta + rk * 0.55} ${cx + rk * 0.55},${pontaY - comp * k * 0.55} ${cx},${pontaY} Z`;
+  }
+
   /**
-   * Um quadro por caso da verificação de encaixe, com as duas peças desenhadas em escala.
+   * O conjunto montado: o sapatilho pendurado na manilha, em duas vistas e em escala, com as
+   * medidas que a verificação compara desenhadas sobre as peças.
    *
-   *   forma "furo"  — o que precisa passar é redondo e entra num furo redondo
-   *   forma "boca"  — o que precisa passar é a chapa do sapatilho, entre duas faces
-   *
-   * `casos`: {n, rotulo, vao, peca, rotVao, rotPeca, forma, ok}
-   *   vao  = a medida disponível · peca = a medida que precisa caber
+   * `casos` traz os quatro casos ({n, nome, a, b, ok}); `sp` e `mn` são as linhas de catálogo.
    */
-  function encaixe(casos) {
-    if (!casos || !casos.length) return "";
-    const LARG = 196, ALT = 208, COLS = 4;
-    const n = casos.length;
-    const cols = Math.min(COLS, n), linhas = Math.ceil(n / cols);
-    const W = cols * LARG, H = linhas * ALT + 30;
+  function encaixe(casos, sp, mn) {
+    if (!casos || !casos.length || !sp || !mn) return "";
+    const G = geomManilha(mn);
+    const v = (x, alt) => (Number(x) > 0 ? Number(x) : alt);
+    const sA = v(sp.a, 92), sB = v(sp.b, 70), sC = v(sp.c, 68), sD = v(sp.d, 38), sE = v(sp.e, 22);
     const mm = x => IC.fmt.num(x, x < 10 ? 1 : 0);
+    const por = n => casos.find(c => c.n === n) || { ok: true, a: 0, b: 0 };
+    const cor = c => (c.ok ? "#2fa36b" : "#e2604e");
 
-    const quadro = (c, idx) => {
-      const cx = (idx % cols) * LARG + LARG / 2;
-      const cy = Math.floor(idx / cols) * ALT + 112;
-      const vao = Math.max(Number(c.vao) || 0, 0.1);
-      const peca = Math.max(Number(c.peca) || 0, 0.1);
-      const maior = Math.max(vao, peca);
-      const k = 62 / maior;                       // 62 px para a maior das duas medidas
-      const cor = c.ok ? "#2fa36b" : "#e2604e";
-      const folga = vao - peca;
+    /* ------------------------------------------------- escala comum às duas vistas
+       O sapatilho fica pendurado DENTRO do arco, então a cena não é a soma das duas alturas:
+       vai do topo da manilha ao que descer mais, a orelha dela ou a ponta do sapatilho. */
+    const yBarraMm = G.yc + (G.Ri + G.Ro) / 2;
+    const pontaSap = yBarraMm - (sA - sC / 2);
+    const baixoCena = Math.min(G.base, pontaSap);
+    const ALT = 268;
+    const k = ALT / (G.topo - baixoCena);
 
-      let desenho;
-      if (c.forma === "furo") {
-        const rv = vao / 2 * k, rp = peca / 2 * k;
-        desenho = `
-          <circle cx="${cx}" cy="${cy}" r="${rv}" style="fill:#e8eef7" stroke="${cor}" stroke-width="1.8"/>
-          <circle cx="${cx}" cy="${cy}" r="${rp}" style="fill:#17507e" stroke="none"/>
-          <line x1="${cx - rv}" y1="${cy}" x2="${cx + rv}" y2="${cy}" class="eixo"/>`;
-      } else {
-        // duas faces (o vão) com a chapa do sapatilho no meio
-        const hv = vao * k, hp = peca * k, alt = 74;
-        desenho = `
-          <rect x="${cx - hv / 2 - 9}" y="${cy - alt / 2}" width="9" height="${alt}" class="corpo"/>
-          <rect x="${cx + hv / 2}" y="${cy - alt / 2}" width="9" height="${alt}" class="corpo"/>
-          <line x1="${cx - hv / 2}" y1="${cy - alt / 2}" x2="${cx - hv / 2}" y2="${cy + alt / 2}" stroke="${cor}" stroke-width="1.8"/>
-          <line x1="${cx + hv / 2}" y1="${cy - alt / 2}" x2="${cx + hv / 2}" y2="${cy + alt / 2}" stroke="${cor}" stroke-width="1.8"/>
-          <rect x="${cx - hp / 2}" y="${cy - alt / 2 + 8}" width="${hp}" height="${alt - 16}" rx="2" style="fill:#17507e"/>`;
-      }
+    const esq = 150, entre = 132, dir = 150, cima = 92, baixo = 92;
+    const meiaF = Math.max(G.Ro, G.i / 2, sC / 2);
+    const LF = 2 * meiaF * k;
+    const LL = Math.max(G.c, sE) * k + 40;
+    const W = Math.round(esq + LF + entre + LL + dir), H = Math.round(ALT + cima + baixo);
+    const cxF = esq + LF / 2, cxL = esq + LF + entre + LL / 2;
+    const X = x => cxF + x * k, Y = y => cima + (G.topo - y) * k;
 
-      const meia = c.forma === "furo" ? vao / 2 * k : vao * k / 2;
+    const cotaH = (yy, x1, x2, txt, c) => `<g class="cota">
+      <line x1="${x1}" y1="${yy}" x2="${x2}" y2="${yy}" class="dim" style="stroke:${c}"
+            marker-start="url(#fseta)" marker-end="url(#fseta)"/>
+      <text x="${(x1 + x2) / 2}" y="${yy - 5}" text-anchor="middle" style="fill:${c}">${txt}</text></g>`;
+    const cotaV = (xx, y1, y2, txt, c, anc = "start") => `<g class="cota">
+      <line x1="${xx}" y1="${y1}" x2="${xx}" y2="${y2}" class="dim" style="stroke:${c}"
+            marker-start="url(#fseta)" marker-end="url(#fseta)"/>
+      <text x="${xx + (anc === "start" ? 6 : -6)}" y="${(y1 + y2) / 2 + 4}" text-anchor="${anc}"
+            style="fill:${c}">${txt}</text></g>`;
+    const ext = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="ext"/>`;
+
+    /* ------------------------------------------------- vista de frente: enfiado no arco */
+    // a barra do arco passa pelo olho do sapatilho, que fica pendurado apontando para baixo
+    const yBarra = G.yc + (G.Ri + G.Ro) / 2;          // meio da barra do arco, em mm
+    const yVolta = Y(yBarra);
+    const rIntSap = sD / 2, rExtSap = sC / 2;
+    const c1 = por(1), c4 = por(4);
+
+    const frente = `
+      <path d="${pathManilha(G, X, Y, k)}" class="corpo"/>
+      <rect x="${X(-G.xOut)}" y="${Y(0) - G.b / 2 * k}" width="${X(G.xOut) - X(-G.xOut)}"
+            height="${G.b * k}" class="peca" style="fill:#c3cee1"/>
+      <!-- sapatilho pendurado: contorno externo e olho interno -->
+      <path d="${gotaVertical(X(0), yVolta, rExtSap, sA - rExtSap, k)}" class="corpo" style="fill:#e3e9f2;fill-opacity:.88"/>
+      <path d="${gotaVertical(X(0), yVolta, rIntSap, sB - rIntSap, k)}" style="fill:#f7f9fc" stroke="#7d90a8" stroke-width="1"/>
+      <!-- a barra do arco por dentro do olho -->
+      <circle cx="${X(0)}" cy="${yVolta}" r="${G.a / 2 * k}" style="fill:#c3cee1" stroke="#7d90a8" stroke-width="1"/>
+
+      ${cotaH(yVolta + rIntSap * k * 0.66, X(0) - rIntSap * k * 0.74, X(0) + rIntSap * k * 0.74,
+              `d.sap = ${mm(sD)}`, cor(c1))}
+      ${cotaV(X(0) + rExtSap * k + 30, yVolta - G.a / 2 * k, yVolta + G.a / 2 * k, `a.man = ${mm(G.a)}`, cor(c1))}
+      ${ext(X(0), yVolta, X(-meiaF) - 30, yVolta)}
+      ${ext(X(0), yVolta + (sB - rIntSap) * k, X(-meiaF) - 30, yVolta + (sB - rIntSap) * k)}
+      ${cotaV(X(-meiaF) - 22, yVolta, yVolta + (sB - rIntSap) * k, `b.sap = ${mm(sB)}`, cor(c4), "end")}
+      <text x="${cxF}" y="${cima - 22}" class="rot-peq" text-anchor="middle">vista de frente — o sapatilho enfiado no arco</text>`;
+
+    /* ------------------------------------------------- vista de lado: entre as orelhas */
+    const c2 = por(2), c3 = por(3);
+    const yTopoL = Y(G.topo), yBaseL = Y(G.base), yPinoL = Y(0);
+    const orelha = (G.c - G.e) / 2;                   // espessura de cada orelha, de lado
+    const xE0 = cxL - G.c / 2 * k, xE1 = cxL + G.c / 2 * k;
+    const lado = `
+      <rect x="${xE0}" y="${yTopoL}" width="${orelha * k}" height="${yBaseL - yTopoL}" rx="3" class="corpo"/>
+      <rect x="${xE1 - orelha * k}" y="${yTopoL}" width="${orelha * k}" height="${yBaseL - yTopoL}" rx="3" class="corpo"/>
+      <!-- o sapatilho, de lado, entre as orelhas -->
+      <rect x="${cxL - sE / 2 * k}" y="${yTopoL + 10}" width="${sE * k}" height="${yPinoL - yTopoL - 10}"
+            rx="4" class="peca" style="fill:#e3e9f2"/>
+      <line x1="${xE0 - 14}" y1="${yPinoL}" x2="${xE1 + 14}" y2="${yPinoL}" class="eixo"/>
+
+      ${cotaH(yPinoL + 34, cxL - G.e / 2 * k, cxL + G.e / 2 * k, `e.man = ${mm(G.e)}`, cor(c3))}
+      ${cotaH(yPinoL + 60, cxL - sE / 2 * k, cxL + sE / 2 * k, `e.sap = ${mm(sE)}`, cor(c2))}
+      <text x="${cxL}" y="${cima - 22}" class="rot-peq" text-anchor="middle">de lado — entre as orelhas</text>`;
+
+    /* ------------------------------------------------- lista dos casos, embaixo */
+    const larguraCaso = (W - 40) / casos.length;
+    const lista = casos.map((c, i) => {
+      const x = 20 + larguraCaso * (i + 0.5);
+      const y = cima + ALT + 34;
       return `<g>
-        ${quebrar(c.rotulo || ("caso " + c.n), 24).map((t, li) =>
-          `<text x="${cx}" y="${cy - 74 + li * 13}" class="rot-peq" text-anchor="middle">${IC.fmt.esc(t)}</text>`).join("")}
-        ${desenho}
-        <g class="cota">
-          <line x1="${cx - meia}" y1="${cy + 50}" x2="${cx + meia}" y2="${cy + 50}" class="dim"
-                marker-start="url(#fseta)" marker-end="url(#fseta)"/>
-          <text x="${cx}" y="${cy + 64}" text-anchor="middle">${IC.fmt.esc(c.rotVao || "vão")} = ${mm(vao)}</text>
-        </g>
-        <text x="${cx}" y="${cy + 78}" class="rot-peq" text-anchor="middle" style="fill:#17507e">
-          ${IC.fmt.esc(c.rotPeca || "peça")} = ${mm(peca)}</text>
-        <text x="${cx}" y="${cy + 93}" class="rot-peq" text-anchor="middle" style="fill:${cor};font-weight:700">
-          ${c.ok ? `folga ${mm(folga)} mm` : `falta ${mm(-folga)} mm`}</text>
+        ${quebrar(`${c.n}. ${c.nome}`, 30).map((t, li) =>
+          `<text x="${x}" y="${y + li * 12}" class="rot-peq" text-anchor="middle">${IC.fmt.esc(t)}</text>`).join("")}
+        <text x="${x}" y="${y + 28}" class="rot-peq" text-anchor="middle">${mm(c.a)} / ${mm(c.b)} mm</text>
+        <text x="${x}" y="${y + 42}" class="rot-peq" text-anchor="middle"
+              style="fill:${cor(c)};font-weight:700">${c.ok ? `folga ${mm(c.a - c.b)} mm` : `faltam ${mm(c.b - c.a)} mm`}</text>
       </g>`;
-    };
+    }).join("");
 
     return `${cabeca(W, H)}
-      <text x="${W / 2}" y="16" class="titulo" text-anchor="middle">ENCAIXE — O QUE PASSA POR ONDE</text>
-      ${casos.map(quadro).join("")}
-      <text x="${W / 2}" y="${H - 6}" class="rot-peq" text-anchor="middle">peças em escala · claro: o vão · escuro: o que precisa passar</text>
+      <text x="${W / 2}" y="20" class="titulo" text-anchor="middle">ENCAIXE — SAPATILHO NA MANILHA</text>
+      ${frente}
+      ${lado}
+      ${lista}
     </svg>`;
   }
 

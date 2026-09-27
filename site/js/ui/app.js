@@ -731,21 +731,8 @@
 
     // a mesma verificação, desenhada: o vão de que se dispõe e a peça que precisa passar
     const figEnc = $("fig-encaixe");
-    // caso 1 e 4 comparam medidas redondas (corpo/olhal da manilha em furo); 2 e 3 são a
-    // chapa do sapatilho entre duas faces
-    const FORMA = { 1: "furo", 2: "boca", 3: "boca", 4: "furo" };
-    const ROT = {
-      1: ["altura interna do sapatilho", "corpo da manilha"],
-      2: ["interno do arco", "largura do sapatilho"],
-      3: ["boca da manilha", "largura do sapatilho"],
-      4: ["interno do sapatilho", "corpo da manilha"]
-    };
     if (figEnc) figEnc.innerHTML = rig.casos.length
-      ? FIG.encaixe(rig.casos.map(c => ({
-          n: c.n, rotulo: c.nome, vao: c.a, peca: c.b, ok: c.ok,
-          forma: FORMA[c.n] || "boca",
-          rotVao: (ROT[c.n] || [])[0], rotPeca: (ROT[c.n] || [])[1]
-        })))
+      ? FIG.encaixe(rig.casos, s.sapatilho, m.manilha)
       : "";
   }
 
