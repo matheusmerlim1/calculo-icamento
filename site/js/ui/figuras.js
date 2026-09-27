@@ -24,34 +24,81 @@ IC.figuras = (function () {
   }
 
   /* ---------------------------------------------------------- ícones dos tipos */
+  /**
+   * Esquema de cada arranjo, no cartão de escolha. Isométrico, como a vista 3D da página:
+   * o corpo tem volume, as pernas de trás são tracejadas, e o centro de massa aparece.
+   */
   function icone(tipo) {
-    const g = cabeca(120, 72);
+    const W = 200, H = 136;
+    const COS30 = Math.cos(Math.PI / 6);
+
+    // projeção isométrica: (x, y, z) em unidades de desenho -> plano
+    const P = (x, y, z) => [(x - y) * COS30, -((x + y) * 0.5 + z)];
+    const esc = 1.0;
+    const cx = W / 2, cy = H - 30;
+    const S = (x, y, z) => { const q = P(x, y, z); return [cx + q[0] * esc, cy + q[1] * esc]; };
+    const pt = p => `${Math.round(p[0] * 10) / 10},${Math.round(p[1] * 10) / 10}`;
+
+    /** corpo: caixa de meia-altura `alt` sobre os cantos dados em planta */
+    function caixa(cantos, alt) {
+      const topo = cantos.map(c => S(c[0], c[1], alt));
+      const base = cantos.map(c => S(c[0], c[1], 0));
+      return `
+        <polygon points="${topo.map(pt).join(" ")}" class="face-topo"/>
+        <polygon points="${[topo[0], topo[1], base[1], base[0]].map(pt).join(" ")}" class="face-lado"/>
+        <polygon points="${[topo[1], topo[2], base[2], base[1]].map(pt).join(" ")}" class="face-lado2"/>
+        <polygon points="${topo.map(pt).join(" ")}" class="aresta" style="fill:none"/>
+        <line x1="${topo[0][0]}" y1="${topo[0][1]}" x2="${base[0][0]}" y2="${base[0][1]}" class="aresta"/>
+        <line x1="${topo[1][0]}" y1="${topo[1][1]}" x2="${base[1][0]}" y2="${base[1][1]}" class="aresta"/>
+        <line x1="${topo[2][0]}" y1="${topo[2][1]}" x2="${base[2][0]}" y2="${base[2][1]}" class="aresta"/>
+        <polyline points="${[base[0], base[1], base[2]].map(pt).join(" ")}" class="aresta" style="fill:none"/>`;
+    }
+
+    /** gancho, pernas e pontos */
+    function amarracao(pontos, alt, hGancho, tras) {
+      const g = S(0, 0, hGancho);
+      const linhas = pontos.map((c, i) => {
+        const a = S(c[0], c[1], alt);
+        const cls = tras.includes(i) ? "perna perna--tras" : "perna";
+        return `<line x1="${g[0]}" y1="${g[1]}" x2="${a[0]}" y2="${a[1]}" class="${cls}"/>`;
+      }).join("");
+      const bolas = pontos.map(c => {
+        const a = S(c[0], c[1], alt);
+        return `<circle cx="${a[0]}" cy="${a[1]}" r="3.4" class="ponto"/>`;
+      }).join("");
+      return `${linhas}${bolas}
+        <path d="M${g[0]},${g[1] - 18} v9" class="peca"/>
+        <circle cx="${g[0]}" cy="${g[1] - 5}" r="5.4" class="gancho-i"/>`;
+    }
+
+    /** marca do centro de massa, sobre a face de cima */
+    const cg = (x, y, alt) => {
+      const c = S(x, y, alt);
+      return `<circle cx="${c[0]}" cy="${c[1]}" r="4.2" class="cg"/>`;
+    };
+
+    /** sombra no chão, para a peça não flutuar */
+    const sombra = cantos => `<polygon points="${cantos.map(c => pt(S(c[0], c[1], -2))).join(" ")}"
+      style="fill:#c8d2e0;opacity:.55"/>`;
+
     if (tipo === "duas") {
-      return `${g}
-        <path d="M60,8 v6" class="peca"/><circle cx="60" cy="16" r="5" class="gancho-i"/>
-        <line x1="60" y1="20" x2="24" y2="46" class="perna"/><line x1="60" y1="20" x2="96" y2="46" class="perna"/>
-        <rect x="18" y="46" width="84" height="16" class="corpo"/>
-        <circle cx="24" cy="46" r="3" class="ponto"/><circle cx="96" cy="46" r="3" class="ponto"/>
-        <circle cx="60" cy="54" r="4" class="cg"/></svg>`;
+      // corpo alongado: as duas pernas vão às pontas
+      const c = [[-46, -13], [46, -13], [46, 13], [-46, 13]];
+      const p = [[-46, 0], [46, 0]];
+      return `${cabeca(W, H)}${sombra(c)}${caixa(c, 13)}${amarracao(p, 13, 62, [])}${cg(0, 0, 13)}</svg>`;
     }
+
     if (tipo === "quatroSim") {
-      return `${g}
-        <path d="M60,6 v6" class="peca"/><circle cx="60" cy="14" r="5" class="gancho-i"/>
-        <line x1="60" y1="18" x2="20" y2="44" class="perna"/><line x1="60" y1="18" x2="100" y2="44" class="perna"/>
-        <line x1="60" y1="18" x2="36" y2="52" class="perna perna--tras"/><line x1="60" y1="18" x2="84" y2="52" class="perna perna--tras"/>
-        <polygon points="20,44 100,44 84,60 36,60" class="corpo"/>
-        <circle cx="20" cy="44" r="3" class="ponto"/><circle cx="100" cy="44" r="3" class="ponto"/>
-        <circle cx="36" cy="60" r="3" class="ponto"/><circle cx="84" cy="60" r="3" class="ponto"/>
-        <circle cx="60" cy="52" r="4" class="cg"/></svg>`;
+      const c = [[-38, -26], [38, -26], [38, 26], [-38, 26]];
+      // as duas de trás (y negativo no fundo da vista) saem tracejadas
+      const p = [[38, 26], [-38, 26], [-38, -26], [38, -26]];
+      return `${cabeca(W, H)}${sombra(c)}${caixa(c, 11)}${amarracao(p, 11, 60, [2, 3])}${cg(0, 0, 11)}</svg>`;
     }
-    return `${g}
-      <path d="M64,6 v6" class="peca"/><circle cx="64" cy="14" r="5" class="gancho-i"/>
-      <line x1="64" y1="18" x2="14" y2="40" class="perna"/><line x1="64" y1="18" x2="104" y2="46" class="perna"/>
-      <line x1="64" y1="18" x2="30" y2="58" class="perna perna--tras"/><line x1="64" y1="18" x2="92" y2="62" class="perna perna--tras"/>
-      <polygon points="14,40 104,46 92,62 30,58" class="corpo"/>
-      <circle cx="14" cy="40" r="3" class="ponto"/><circle cx="104" cy="46" r="3" class="ponto"/>
-      <circle cx="30" cy="58" r="3" class="ponto"/><circle cx="92" cy="62" r="3" class="ponto"/>
-      <circle cx="58" cy="50" r="4" class="cg"/></svg>`;
+
+    // quatro pernas, cada ponto na sua coordenada: corpo irregular e CG fora do centro
+    const c = [[-44, -20], [34, -30], [42, 24], [-30, 28]];
+    const p = [[42, 24], [-30, 28], [-44, -20], [34, -30]];
+    return `${cabeca(W, H)}${sombra(c)}${caixa(c, 10)}${amarracao(p, 10, 58, [2, 3])}${cg(6, 4, 10)}</svg>`;
   }
 
   /* ---------------------------------------------------------- medidas a informar */
@@ -487,10 +534,10 @@ IC.figuras = (function () {
     const haste = Math.max(e - f - alturaOlho, e * 0.25);
     const total = alturaOlho + f + haste;
 
-    const ALT = 250;
+    const ALT = 176;                       // peça menor, texto do mesmo tamanho: sobra leitura
     const k = ALT / total;
     const meia = Math.max(rOut, b / 2);
-    const esq = 128, dir = 128, cima = 62, baixo = 106;
+    const esq = 118, dir = 118, cima = 66, baixo = 92;
     const W = Math.round(2 * meia * k + esq + dir), H = Math.round(ALT + cima + baixo);
     const cx = esq + meia * k;
     const Y = v => cima + (total - v) * k;      // v medido de baixo para cima
@@ -531,7 +578,9 @@ IC.figuras = (function () {
 
       <!-- d e c no olho -->
       ${cotaH(yCentroOlho, cx - rIn * k, cx + rIn * k, `d = ${mm(d)}`)}
-      ${seta(cx - rOut * k * 0.71, yCentroOlho - rOut * k * 0.71, esq - 16, cima + 18, `c = ${mm(c)}`, "end")}
+      ${ext(cx - rOut * k, yCentroOlho, cx - rOut * k, cima - 6)}
+      ${ext(cx + rOut * k, yCentroOlho, cx + rOut * k, cima - 6)}
+      ${cotaH(cima - 10, cx - rOut * k, cx + rOut * k, `c = ${mm(c)}`)}
 
       <!-- b e f na base; as cotas de baixo ficam abaixo da ponta, para não cair sobre a haste -->
       ${ext(cx - b / 2 * k, yBaseBaixo, cx - b / 2 * k, yPonta + 30)}

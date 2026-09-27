@@ -50,6 +50,42 @@
   const txtComp = mm => `${F.num(compParaTela(mm), decComp())} ${uComp()}`;
   const paraCampo = (v, dec) => F.num(v, dec).replace(",", ".");
 
+  /* ---------------------------------------------------------- valor com unidade digitada
+   * O campo aceita "5000", "5 t", "5t", "12,5 kN". Quando vem unidade junto, é ela que vale
+   * — e não a escolhida no topo. É o jeito natural de corrigir a unidade sem ter que trocar
+   * o seletor e recalcular de cabeça.
+   */
+  const FATOR_MASSA = {                       // para kg
+    kg: 1, kgf: 1, g: 0.001, t: 1000, ton: 1000, tf: 1000,
+    n: 1 / G, kn: 1000 / G
+  };
+  const FATOR_COMP = { mm: 1, cm: 10, m: 1000 };   // para mm
+
+  /** separa o número da unidade; devolve null na unidade quando não veio nenhuma */
+  function partesDoCampo(texto) {
+    const t = String(texto == null ? "" : texto).trim().toLowerCase().replace(/\s+/g, "");
+    const m = t.match(/^([-+]?[\d.,]+)([a-zçãéê]*)$/i);
+    if (!m) return { num: NaN, unid: null };
+    const num = Number(m[1].replace(/\.(?=\d{3}\b)/g, "").replace(",", "."));
+    return { num, unid: m[2] || null };
+  }
+
+  /** texto do campo -> kg */
+  function lerMassa(texto) {
+    const { num, unid } = partesDoCampo(texto);
+    if (!isFinite(num)) return 0;
+    const f = unid ? FATOR_MASSA[unid] : null;
+    return f ? num * f : massaParaKg(num);
+  }
+
+  /** texto do campo -> mm */
+  function lerComp(texto) {
+    const { num, unid } = partesDoCampo(texto);
+    if (!isFinite(num)) return 0;
+    const f = unid ? FATOR_COMP[unid] : null;
+    return f ? num * f : compParaMm(num);
+  }
+
   /* ------------------------------------------------------------ tipos de arranjo
    * Cada tipo diz quais medidas o usuário informa (sempre DISTÂNCIAS do CG até o ponto)
    * e como elas viram coordenadas — o sentido de cada uma está na figura das medidas.
@@ -186,7 +222,13 @@
       ic.olhal.geom = RIG.geometriaOlhalPartida(manilha) ||
         { t: 25, tAnel: 0, base: 200, h: 200, R: 50, rAnel: 50, dFuro: 50 };
     }
-    // o reforço acompanha o raio do topo da chapa — não é escolha, é consequência
+    // Furo, raio do topo e raio do reforço saem da manilha e do próprio raio — são
+    // consequência, não escolha. Recalculados a cada vez, para acompanharem a manilha.
+    const daManilha = RIG.geometriaOlhalPartida(manilha);
+    if (daManilha) {
+      ic.olhal.geom.dFuro = daManilha.dFuro;
+      ic.olhal.geom.R = daManilha.R;
+    }
     ic.olhal.geom.rAnel = Number(ic.olhal.geom.R) || 0;
     return ic.olhal.geom;
   }
@@ -209,7 +251,7 @@
     }
     const geom = olhalGeomDe(ic, rig.manilha.manilha);
     const verif = RIG.verificarOlhalFabricado({
-      Fpino: gov.tracao, thetaGraus: gov.angulo, geom, Fy: Number(ic.olhal.fy) || 355
+      Fpino: gov.tracao, thetaGraus: gov.angulo, geom, Fy: fyDoOlhal(ic)
     });
     return { nomes, qtd: pernas.length, governante: gov, modo: "fabricado", geom, verif };
   }
@@ -288,7 +330,7 @@
         qtd: o.qtd,
         especificacao: `${o.nomes.join(", ")} — chapa t=${F.num(g.t, 0)} mm, base=${F.num(g.base, 0)} mm, `
           + `h=${F.num(g.h, 0)} mm, furo Ø${F.num(g.dFuro, 1)} mm`,
-        material: `Aço estrutural fy ${F.num(Number(ic.olhal.fy) || 355, 0)} MPa`,
+        material: `${acoDoOlhal(ic).nome} — Fy ${F.num(fyDoOlhal(ic), 0)} MPa`,
         massa: unit == null ? null : unit * o.qtd,
         estimada: true
       });
@@ -355,7 +397,7 @@
 
     $("ic-nome").value = ic.nome;
     $("ic-massa").value = paraCampo(massaParaTela(ic.massa), UNID.massa[uMassa()].dec);
-    $("ic-massa").step = passoMassa();
+    $("ic-massa").title = `Dá para digitar a unidade junto: "5 t", "800 kg", "50 kN".`;
     $("rot-massa").textContent = `Massa (${uMassa()})`;
     $("ic-origem").value = ic.origem;
     $("ic-local").value = ic.local;
@@ -381,7 +423,9 @@
     $("fig-3d-medidas").innerHTML = IC.iso3d.desenhar(resolver(ic), { modo: "medidas", comp: txtComp });
     $("fig-medidas").innerHTML = FIG.medidas(ic.tipo);
 
-    const numCampo = k => `<input type="number" step="${passoComp()}" data-medida="${k}" data-key="medida-${k}" value="${paraCampo(compParaTela(ic.medidas[k]), decComp())}">`;
+    const numCampo = k => `<input type="text" inputmode="decimal" data-medida="${k}"
+      data-key="medida-${k}" title="Dá para digitar a unidade junto: &quot;2,5 m&quot;, &quot;2500 mm&quot;."
+      value="${paraCampo(compParaTela(ic.medidas[k]), decComp())}">`;
     if (t.porPonto) {
       $("campos-medidas").innerHTML = `<table class="tab tab--pontos"><thead><tr>
           <th>Ponto</th><th>x (${uComp()})</th><th>y (${uComp()})</th>
@@ -483,37 +527,52 @@
 
     const f = r.fatores;
     const maiorEstudo = Math.max(...E.icamentos.map(x => resolver(x).maiorTracaoT));
-    $("resumo").innerHTML = `
-      <h3>Resumo — ${F.esc(ic.nome)}</h3>
-      <div class="destaque">
-        <div class="rot">Maior tração por perna</div>
-        <div class="valor">${F.num(r.maiorTracaoT, 2)} t</div>
-        <div class="rot">${F.kn(r.maiorTracaoKN)} · ${F.esc(r.hipotese)}</div>
-      </div>
-      <div class="painel">
-        <div class="item"><span>Massa</span><b>${F.num(massaParaTela(ic.massa), 2)} ${uMassa()}</b></div>
-        <div class="item"><span>Peso do corpo</span><b>${F.kn(r.pesoKN)}</b></div>
-        <div class="item"><span>Peso de projeto</span><b>${F.kn(r.pesoProjKN)}</b></div>
-        <div class="item"><span>Ângulo da perna</span><b>${F.grau(ic.angulo)} c/ a estrutura</b></div>
-        <div class="item"><span>Altura do gancho</span><b>${txtComp(alturaGancho(ic))}</b></div>
-        <div class="item"><span>γ peso × DAF × γc</span><b>${F.num(f.peso, 2)} × ${F.num(f.daf, 2)} × ${F.num(f.consequencia, 2)}</b></div>
-        <div class="item"><span>SKL</span><b>${F.num(f.skl, 2)}</b></div>
-      </div>
-      <h3>Estudo</h3>
-      <div class="painel">
-        <div class="item"><span>Içamentos</span><b>${E.icamentos.length}</b></div>
-        <div class="item"><span>Maior carga de perna</span><b>${F.num(maiorEstudo, 2)} t</b></div>
-      </div>
-      <label class="campo"><span>Linga</span>
-        <select id="ic-linga">
-          <option value="propria"${ic.lingaPropria ? " selected" : ""}>dimensionar para este içamento</option>
-          <option value="padrao"${ic.lingaPropria ? "" : " selected"}>usar a maior carga do estudo (${F.num(maiorEstudo, 2)} t)</option>
-        </select></label>
-      <div class="linha-campos">
-        <button type="button" class="bt bt--peq bt--fantasma" id="bt-duplicar">Duplicar</button>
-        <button type="button" class="bt bt--peq bt--risco" id="bt-remover">Remover</button>
-      </div>
-      <span class="etiqueta">${F.esc((FAT.bases[ic.base] || {}).referencia || "")}</span>`;
+    // uma caixa por içamento; a do que está aberto fica realçada e traz os controles
+    const caixaResumo = (x, i) => {
+      const rx = resolver(x);
+      const fx = rx.fatores;
+      const aberto = i === E.atual;
+      return `<section class="resumo__ic${aberto ? " is-atual" : ""}" data-resumo="${i}"
+                 ${aberto ? 'aria-current="true"' : ""}>
+        <h3>${F.esc(x.nome)}${aberto ? "" : ` <span class="resumo__ver">ver</span>`}</h3>
+        <div class="destaque">
+          <div class="rot">Maior tração por perna</div>
+          <div class="valor">${F.num(rx.maiorTracaoT, 2)} t</div>
+          <div class="rot">${F.kn(rx.maiorTracaoKN)} · ${F.esc(rx.hipotese)}</div>
+        </div>
+        <div class="painel">
+          <div class="item"><span>Massa</span><b>${F.num(massaParaTela(x.massa), 2)} ${uMassa()}</b></div>
+          <div class="item"><span>Arranjo</span><b>${F.esc(TIPOS[x.tipo].nome)}</b></div>
+          ${aberto ? `
+            <div class="item"><span>Peso do corpo</span><b>${F.kn(rx.pesoKN)}</b></div>
+            <div class="item"><span>Peso de projeto</span><b>${F.kn(rx.pesoProjKN)}</b></div>
+            <div class="item"><span>Ângulo da perna</span><b>${F.grau(x.angulo)} c/ a estrutura</b></div>
+            <div class="item"><span>Altura do gancho</span><b>${txtComp(alturaGancho(x))}</b></div>
+            <div class="item"><span>γ peso × DAF × γc</span><b>${F.num(fx.peso, 2)} × ${F.num(fx.daf, 2)} × ${F.num(fx.consequencia, 2)}</b></div>
+            <div class="item"><span>SKL</span><b>${F.num(fx.skl, 2)}</b></div>` : ""}
+        </div>
+        ${aberto ? `
+          <label class="campo"><span>Linga</span>
+            <select id="ic-linga">
+              <option value="propria"${x.lingaPropria ? " selected" : ""}>dimensionar para este içamento</option>
+              <option value="padrao"${x.lingaPropria ? "" : " selected"}>usar a maior carga do estudo (${F.num(maiorEstudo, 2)} t)</option>
+            </select></label>
+          <div class="linha-campos">
+            <button type="button" class="bt bt--peq bt--fantasma" id="bt-duplicar">Duplicar</button>
+            <button type="button" class="bt bt--peq bt--risco" id="bt-remover">Remover</button>
+          </div>
+          <span class="etiqueta">${F.esc((FAT.bases[x.base] || {}).referencia || "")}</span>` : ""}
+      </section>`;
+    };
+
+    $("resumo").innerHTML = E.icamentos.map(caixaResumo).join("")
+      + `<section class="resumo__estudo">
+          <h3>Estudo</h3>
+          <div class="painel">
+            <div class="item"><span>Içamentos</span><b>${E.icamentos.length}</b></div>
+            <div class="item"><span>Maior carga de perna</span><b>${F.num(maiorEstudo, 2)} t</b></div>
+          </div>
+        </section>`;
 
     $("rodape-dir").textContent = `${E.icamentos.length} içamento(s) · ${F.hoje()}`;
     $("topo-sub").textContent = E.nome || "memorial de cálculo e lista de material";
@@ -562,12 +621,20 @@
   }
 
   /** tabela de 2 colunas (campo, valor) — uma ficha técnica, campo a campo */
+  /**
+   * Ficha técnica de uma peça. Deixou de ser tabela: numa tabela larga o valor ia parar do
+   * outro lado da linha, longe do rótulo. Agora é uma grade que se reparte em duas (ou mais)
+   * colunas quando há largura, com o valor sempre ao lado do seu rótulo.
+   */
   function ficha(titulo, obj, campos, rotulos) {
     if (!obj) return "";
     const val = v => typeof v === "number" ? F.num(v, 2) : F.esc(String(v));
-    return `<table class="tab tab--ficha"><caption>${F.esc(titulo)}</caption><tbody>
-      ${campos.filter(c => c in obj).map(c => `<tr><td>${F.esc(rotulos[c] || c)}</td><td class="num">${val(obj[c])}</td></tr>`).join("")}
-    </tbody></table>`;
+    const itens = campos.filter(c => c in obj).map(c =>
+      `<div class="ficha__item"><span>${F.esc(rotulos[c] || c)}</span><b>${val(obj[c])}</b></div>`).join("");
+    return `<div class="ficha">
+      <div class="ficha__t">${F.esc(titulo)}</div>
+      <div class="ficha__grade">${itens}</div>
+    </div>`;
   }
 
   /* ------------------------------------------------------------ linga */
@@ -598,7 +665,9 @@
   /* ------------------------------------------------------------ sapatilho e manilha */
   function pintarSapatilhoManilha() {
     const ic = atual();
-    $("ic-manilha-tipo").innerHTML = Object.entries(IC.manilhas.tipos)
+    // o tipo de manilha é escolha da manilha: o seletor mora na caixa dela, não no alto da
+    // etapa, que é de sapatilho E manilha
+    const opcoesTipo = Object.entries(IC.manilhas.tipos)
       .map(([k, t]) => `<option value="${k}"${k === ic.manilhaTipo ? " selected" : ""}>${F.esc(t.nome)}</option>`).join("");
 
     const rig = riggingDe(ic);
@@ -612,8 +681,10 @@
         </div></div>`
       : `<div class="peca-bloco"><div class="aviso aviso--erro">Nenhum sapatilho cadastrado para Ø ${F.num(rig.linga.diametro, 1)} mm.</div></div>`;
 
-    // a manilha começa a sua coluna
-    html += `<div class="peca-bloco"><h4 class="peca-bloco__t">Manilha</h4>`;
+    // a manilha começa a sua coluna, com a escolha do tipo dentro dela
+    html += `<div class="peca-bloco"><h4 class="peca-bloco__t">Manilha</h4>
+      <label class="campo"><span>Tipo de manilha</span>
+        <select id="ic-manilha-tipo">${opcoesTipo}</select></label>`;
 
     // seletor manual: automático (o programa já procura a menor manilha que passa em todos os
     // casos de encaixe) ou uma manilha específica, escolhida à mão
@@ -649,7 +720,14 @@
         <td>${c.n}</td><td>${F.esc(c.nome)}</td><td class="som">${F.esc(c.formula)}</td>
         <td class="num">${F.num(c.a, 1)} / ${F.num(c.b, 1)} mm</td>
         <td class="selo-cel"><span class="selo ${c.ok ? "selo--ok" : "selo--erro"}">${c.ok ? "OK" : "falha"}</span></td>
-      </tr>`).join("")}</tbody>` : "";
+      </tr>
+      <tr class="linha-formula"><td colspan="5">${memorial({
+        formula: c.formula,
+        sub: `${F.num(c.a, 1)} mm ${c.ok ? ">" : "≤"} ${F.num(c.b, 1)} mm`,
+        resultado: c.ok
+          ? `passa, com folga de ${F.num(c.a - c.b, 1)} mm`
+          : `não passa — faltam ${F.num(c.b - c.a, 1)} mm`
+      })}</td></tr>`).join("")}</tbody>` : "";
 
     // a mesma verificação, desenhada: o vão de que se dispõe e a peça que precisa passar
     const figEnc = $("fig-encaixe");
@@ -689,8 +767,18 @@
   // o que a pessoa escolhe e o que sai da manilha — a confusão era tudo aparecer junto
   const GEOM_ESCOLHA = ["base", "h"];          // t e t.anel têm lista própria, abaixo
   const GEOM_ESPESSURA = ["t", "tAnel"];       // espessuras comerciais de chapa
-  const GEOM_DA_MANILHA = ["dFuro", "R"];      // vêm da manilha escolhida
-  const GEOM_CALCULADA = ["rAnel"];            // sai do cálculo, não se edita
+  // dFuro, R e rAnel não têm campo: saem da manilha e aparecem como resultado
+
+  /** Fy do olhal: vem do aço escolhido; só é digitado quando o aço é "outro" */
+  function acoDoOlhal(ic) {
+    if (!ic.olhal.aco) ic.olhal.aco = "A131AH36";       // o do memorial de referência
+    return IC.acos.de(ic.olhal.aco);
+  }
+  function fyDoOlhal(ic) {
+    const a = acoDoOlhal(ic);
+    if (a.fy) return a.fy;
+    return Number(ic.olhal.fy) || 355;                   // aço fora da lista
+  }
 
   function pintarOlhal() {
     const ic = atual();
@@ -698,7 +786,18 @@
     $("campo-olhal-comprado").style.display = ic.olhal.modo === "comprado" ? "" : "none";
     $("ic-olhal-tipo").innerHTML = Object.entries(IC.olhais.tipos)
       .map(([k, t]) => `<option value="${k}"${k === ic.olhal.tipoComprado ? " selected" : ""}>${F.esc(t.nome)}</option>`).join("");
-    $("ic-olhal-fy").value = ic.olhal.fy;
+    const aco = acoDoOlhal(ic);
+    $("ic-olhal-aco").innerHTML = IC.acos.lista.map(a =>
+      `<option value="${a.id}"${a.id === aco.id ? " selected" : ""}>${F.esc(a.nome)}${a.fy ? ` — Fy ${a.fy} MPa` : ""}</option>`).join("");
+    // o Fy só é campo quando o aço é "outro"; nos demais ele é o valor do aço
+    const fyLivre = !aco.fy;
+    $("ic-olhal-fy").value = fyDoOlhal(ic);
+    $("ic-olhal-fy").disabled = !fyLivre;
+    $("ic-olhal-fy").title = fyLivre
+      ? "Aço fora da lista: informe o Fy do certificado do material."
+      : `Vem do aço escolhido (${aco.nome}).`;
+    $("campo-olhal-fy").style.display = ic.olhal.modo === "comprado" ? "none" : "";
+    $("ic-olhal-aco").parentElement.style.display = ic.olhal.modo === "comprado" ? "none" : "";
 
     const rig = riggingDe(ic);
     const o = olhalDe(ic, rig);
@@ -749,10 +848,6 @@
     };
 
     // medida que sai do cálculo: mostra o valor, sem campo para editar
-    // leva o data-olhal-campo mesmo desabilitado: é como a medida é identificada na tela
-    const campoCalculado = (k, nota) => `<label class="campo"><span>${ROTULOS_GEOM[k]}</span>
-      <input type="number" data-olhal-campo="${k}" data-key="olhal-${k}"
-             value="${cru(g[k])}" disabled title="${F.esc(nota)}"></label>`;
 
     // a chapa, com o reforço, tem que entrar na boca da manilha
     const espTotal = (Number(g.t) || 0) + 2 * (Number(g.tAnel) || 0);
@@ -781,20 +876,22 @@
               tiver anel.</p>
           </div>
           <div class="olhal-bloco">
-            <h4>Medidas que vêm da manilha</h4>
-            <div class="olhal-geom">${GEOM_DA_MANILHA.map(campo).join("")}
-              ${campoCalculado("rAnel", "O reforço acompanha o raio do topo da chapa: R.anel = R.")}</div>
+            <h4>Medidas que vêm da manilha${mn ? ` <span class="olhal-bloco__tag">${F.esc(mn.codigo)}</span>` : ""}</h4>
+            ${mn ? `<p class="dica" style="margin:-2px 0 6px;">${F.esc(IC.manilhas.tipos[rig.manilha.tipo].nome)} —
+              CMT ${F.num(mn.cmt, 2)} t · pino Ø ${F.num(mn.b, 1)} mm · boca ${F.num(mn.e, 1)} mm (etapa 7)</p>` : ""}
+            <div class="painel">
+              <div class="item"><span>Ø furo — recebe o pino</span><b>${F.num(g.dFuro, 2)} mm</b></div>
+              <div class="item"><span>R — raio do topo</span><b>${F.num(g.R, 1)} mm</b></div>
+              <div class="item"><span>R.anel — raio do reforço</span><b>${F.num(g.rAnel, 1)} mm</b></div>
+            </div>
             ${mn ? memorial({
-              formula: "Ø furo = b(pino) + folga · R = f − g + b/2 + 5",
+              formula: "Ø furo = b(pino) + folga · R = f − g + b/2 + 5 · R.anel = R",
               sub: `Ø furo = ${F.num(mn.b, 1)} + 1,15 · R = ${F.num(mn.f, 1)} − ${F.num(mn.g, 1)} + ${F.num(mn.b / 2, 1)} + 5`,
-              resultado: `Ø furo = ${F.num(mn.b + 1.15, 2)} mm · R = ${F.num(mn.f - mn.g + mn.b / 2 + 5, 1)} mm`
+              resultado: `Ø furo = ${F.num(g.dFuro, 2)} mm · R = R.anel = ${F.num(g.R, 1)} mm`
             }) : ""}
-            <p class="dica">Ø furo e R saem da manilha escolhida — mexa só se o desenho de fabricação
-              pedir outra coisa. <b>R.anel</b> não se edita: o reforço acompanha o raio do topo da
-              chapa, então <b>R.anel = R</b>.
-              <button type="button" class="bt bt--peq bt--fantasma" id="bt-olhal-manilha">Recalcular pela manilha</button></p>
+            <p class="dica">São calculadas a partir da manilha — mudou a manilha na etapa 7,
+              mudam aqui e no desenho.</p>
           </div>
-        </div>
       </div>
 
       ${boca == null ? "" : `<div class="${cabeNaBoca ? "aviso" : "aviso aviso--erro"}">
@@ -815,14 +912,7 @@
       </table>
       <p class="dica">Solda não é verificada automaticamente — conferir à parte pela NBR 8800.</p>`;
 
-    const btRecalc = $("bt-olhal-manilha");
-    if (btRecalc) btRecalc.addEventListener("click", () => {
-      const partida = RIG.geometriaOlhalPartida(mn);
-      if (!partida) return;
-      ic.olhal.geom.dFuro = partida.dFuro;
-      ic.olhal.geom.R = partida.R;
-      pintar();
-    });
+
   }
 
   /* ------------------------------------------------------------ lista de material */
@@ -942,19 +1032,26 @@
   function gravarFechadas(conj) {
     try { localStorage.setItem(CHAVE_DOBRA, JSON.stringify([...conj])); } catch (e) {}
   }
-  // caixas com o memorial escondido, uma a uma (o botão do topo esconde todas de uma vez)
+  // Escolha de cada caixa sobre o seu memorial: true = mostrar, false = esconder. A caixa que
+  // não tem escolha segue o botão geral do topo.
   const CHAVE_MEM_CAIXA = "ic-memorial-caixas";
-  function memOcultos() {
-    try { return new Set(JSON.parse(localStorage.getItem(CHAVE_MEM_CAIXA) || "[]")); }
-    catch (e) { return new Set(); }
+  function memEscolhas() {
+    try { return JSON.parse(localStorage.getItem(CHAVE_MEM_CAIXA) || "{}") || {}; }
+    catch (e) { return {}; }
   }
-  function gravarMemOcultos(conj) {
-    try { localStorage.setItem(CHAVE_MEM_CAIXA, JSON.stringify([...conj])); } catch (e) {}
+  function gravarMemEscolhas(obj) {
+    try { localStorage.setItem(CHAVE_MEM_CAIXA, JSON.stringify(obj)); } catch (e) {}
+  }
+  /** o memorial desta caixa está à vista? */
+  function memVisivel(id, escolhas) {
+    const e = escolhas || memEscolhas();
+    if (Object.prototype.hasOwnProperty.call(e, id)) return !!e[id];
+    return !document.body.classList.contains("sem-memorial");
   }
 
   function pintarDobra() {
     const fech = fechadas();
-    const semMem = memOcultos();
+    const escolhas = memEscolhas();
     const caixas = [...document.querySelectorAll(".etapa[data-etapa]")];
     caixas.forEach(sec => {
       const fechada = fech.has(sec.dataset.etapa);
@@ -976,12 +1073,15 @@
         b.parentElement.insertBefore(bm, b);
       }
       if (bm) {
-        const oculto = semMem.has(sec.dataset.etapa);
-        sec.classList.toggle("sem-calculo", oculto);
+        const visivel = memVisivel(sec.dataset.etapa, escolhas);
+        // as duas classes são explícitas: uma vence o "esconder tudo" do topo, a outra o
+        // "mostrar tudo" — é isso que faz o botão funcionar nos dois estados gerais
+        sec.classList.toggle("com-calculo", visivel);
+        sec.classList.toggle("sem-calculo", !visivel);
         bm.textContent = "\u0192x";
-        bm.classList.toggle("is-on", !oculto);
-        bm.setAttribute("aria-pressed", oculto ? "false" : "true");
-        bm.title = oculto ? "Mostrar o cálculo desta caixa" : "Esconder o cálculo desta caixa";
+        bm.classList.toggle("is-on", visivel);
+        bm.setAttribute("aria-pressed", visivel ? "true" : "false");
+        bm.title = visivel ? "Esconder o cálculo desta caixa" : "Mostrar o cálculo desta caixa";
       }
     });
     const tudo = $("bt-dobrar-tudo");
@@ -995,7 +1095,9 @@
     document.body.classList.toggle("sem-memorial", !mostrar);
     // ligar/desligar tudo zera as escolhas por caixa, senão o estado fica contraditório
     try { localStorage.removeItem(CHAVE_MEM_CAIXA); } catch (e) {}
-    document.querySelectorAll(".etapa.sem-calculo").forEach(el => el.classList.remove("sem-calculo"));
+    document.querySelectorAll(".etapa.sem-calculo, .etapa.com-calculo")
+      .forEach(el => el.classList.remove("sem-calculo", "com-calculo"));
+    if (typeof pintarDobra === "function") pintarDobra();
     const b = $("bt-memorial");
     if (b) {
       b.classList.toggle("bt--ligado", mostrar);
@@ -1020,10 +1122,10 @@
       if (bm) {
         e.stopPropagation();
         const sec = bm.closest(".etapa[data-etapa]");
-        const conj = memOcultos();
         const id = sec.dataset.etapa;
-        if (conj.has(id)) conj.delete(id); else conj.add(id);
-        gravarMemOcultos(conj);
+        const escolhas = memEscolhas();
+        escolhas[id] = !memVisivel(id, escolhas);     // inverte o que está valendo agora
+        gravarMemEscolhas(escolhas);
         return pintarDobra();
       }
       const h = e.target.closest(".etapa > h2");
@@ -1082,7 +1184,7 @@
       if (el.id === "un-comp") E.unid.comp = el.value;
       else if (el.id === "un-massa") E.unid.massa = el.value;
       else if (el.id === "ic-nome") ic.nome = el.value || ic.nome;
-      else if (el.id === "ic-massa") ic.massa = massaParaKg(el.value);
+      else if (el.id === "ic-massa") ic.massa = lerMassa(el.value);
       else if (el.id === "ic-origem") { ic.origem = el.value; ic.fatores = null; }
       else if (el.id === "ic-local") { ic.local = el.value; ic.fatores = null; }
       else if (el.id === "ic-base") { ic.base = el.value; ic.fatores = null; }
@@ -1097,6 +1199,7 @@
       else if (el.id === "ic-manilha-codigo") ic.manilhaCodigo = el.value || null;
       else if (el.id === "ic-olhal-modo") ic.olhal.modo = el.value;
       else if (el.id === "ic-olhal-tipo") ic.olhal.tipoComprado = el.value;
+      else if (el.id === "ic-olhal-aco") ic.olhal.aco = el.value;
       else if (el.id === "ic-olhal-fy") ic.olhal.fy = Number(el.value) || 355;
       else if (el.id === "ic-material-modo") { pintarMaterial(); return; }
       else if (el.dataset.olhalCampo) {
@@ -1106,7 +1209,7 @@
         // R mudou: o reforço acompanha
         if (el.dataset.olhalCampo === "R") ic.olhal.geom.rAnel = Number(el.value) || 0;
       }
-      else if (el.dataset.medida) ic.medidas[el.dataset.medida] = compParaMm(el.value);
+      else if (el.dataset.medida) ic.medidas[el.dataset.medida] = lerComp(el.value);
       else if (el.dataset.fator) ic.fatores = Object.assign(fatoresDe(ic), { [el.dataset.fator]: Number(el.value) || 0 });
       else return;
       comFocoPreservado(pintar);
@@ -1129,6 +1232,12 @@
     });
 
     $("resumo").addEventListener("click", e => {
+      // clicar na caixa de outro içamento abre ele (os botões seguem adiante)
+      const cx = e.target.closest("[data-resumo]");
+      if (cx && !e.target.closest("button, select, input")) {
+        const i = Number(cx.dataset.resumo);
+        if (i !== E.atual) { E.atual = i; return pintar(); }
+      }
       if (e.target.id === "bt-duplicar") {
         const copia = JSON.parse(JSON.stringify(atual()));
         copia.nome += " (cópia)";

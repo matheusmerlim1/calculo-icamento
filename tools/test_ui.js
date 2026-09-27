@@ -236,7 +236,8 @@ async function main() {
         blocos: document.querySelectorAll("#resultado-olhal .olhal-bloco").length});`));
     if (r.qtd !== r.pernas) throw new Error("quantidade de olhais: " + r.qtd);
     if (Math.abs(r.maior - r.tracaoGov) > 0.01) throw new Error("não pegou a perna mais carregada");
-    if (r.campos !== 7) throw new Error("campos de geometria: " + r.campos + " (esperado 7, um jogo só)");
+    // só as medidas de escolha têm campo: t, t.anel, base e h. Furo, R e R.anel são calculados.
+    if (r.campos !== 4) throw new Error("campos de geometria: " + r.campos + " (esperado 4)");
     return true;
   });
 
@@ -253,28 +254,46 @@ async function main() {
     return true;
   });
 
-  await passo("espessura vem da lista comercial e R.anel é calculado", async () => {
+  await passo("espessura vem da lista, e furo/R/R.anel saem da manilha", async () => {
     const r = JSON.parse(await rodar(`const ic = ICapp.atual();
       ic.olhal.modo = "fabricado"; ICapp.pintar();
       const t = document.querySelector('[data-olhal-campo="t"]');
-      const ra = document.querySelector('[data-olhal-campo="rAnel"]');
-      const R = document.querySelector('[data-olhal-campo="R"]');
+      const g = ICapp.olhalDe(ic, ICapp.riggingDe(ic)).geom;
+      const mn = ICapp.riggingDe(ic).manilha.manilha;
       return JSON.stringify({tipoT: t.tagName, opcoes: t.options ? t.options.length : 0,
-        anelDesabilitado: !!(ra && ra.disabled), rAnel: Number(ra.value), R: Number(R.value),
-        temPolegada: t.options ? [...t.options].some(o => o.textContent.includes('"')) : false});`));
+        temPolegada: t.options ? [...t.options].some(o => o.textContent.includes('"')) : false,
+        semCampoFuro: !document.querySelector('[data-olhal-campo="dFuro"]'),
+        semCampoR: !document.querySelector('[data-olhal-campo="R"]'),
+        semCampoAnel: !document.querySelector('[data-olhal-campo="rAnel"]'),
+        dFuro: g.dFuro, R: g.R, rAnel: g.rAnel,
+        esperadoFuro: Math.round((mn.b + 1.15) * 100) / 100,
+        esperadoR: Math.round((mn.f - mn.g + mn.b / 2 + 5) * 10) / 10});`));
     if (r.tipoT !== "SELECT") throw new Error("a espessura continua campo livre: " + r.tipoT);
     if (r.opcoes < 10) throw new Error("lista de chapas curta: " + r.opcoes);
     if (!r.temPolegada) throw new Error("a lista não traz as bitolas em polegada");
-    if (!r.anelDesabilitado) throw new Error("R.anel ainda é editável");
+    if (!r.semCampoFuro || !r.semCampoR || !r.semCampoAnel)
+      throw new Error("furo, R ou R.anel ainda têm campo para digitar");
+    if (Math.abs(r.dFuro - r.esperadoFuro) > 0.02) throw new Error(`Ø furo ${r.dFuro} × ${r.esperadoFuro}`);
+    if (Math.abs(r.R - r.esperadoR) > 0.2) throw new Error(`R ${r.R} × ${r.esperadoR}`);
     if (r.rAnel !== r.R) throw new Error(`R.anel ${r.rAnel} não acompanha R ${r.R}`);
-    // mudar R tem que levar o R.anel junto
-    await rodar(`const e = document.querySelector('[data-olhal-campo="R"]');
-      e.value = String(Number(e.value) + 7); e.dispatchEvent(new Event("change",{bubbles:true}));`);
+    return true;
+  });
+
+  await passo("Fy vem do aço escolhido", async () => {
+    const r = JSON.parse(await rodar(`const sel = document.getElementById("ic-olhal-aco");
+      const fy = document.getElementById("ic-olhal-fy");
+      const antes = {aco: sel.value, fy: Number(fy.value), travado: fy.disabled};
+      sel.value = "A36"; sel.dispatchEvent(new Event("change",{bubbles:true}));
+      return JSON.stringify(antes);`));
+    if (!r.travado) throw new Error("o Fy continua aceitando digitação com aço da lista");
     await esperar(400);
-    const d = JSON.parse(await rodar(`return JSON.stringify({
-      rAnel: Number(document.querySelector('[data-olhal-campo="rAnel"]').value),
-      R: Number(document.querySelector('[data-olhal-campo="R"]').value)});`));
-    if (d.rAnel !== d.R) throw new Error(`depois de mudar R: R.anel ${d.rAnel} × R ${d.R}`);
+    const d = JSON.parse(await rodar(`const ic = ICapp.atual();
+      const v = ICapp.olhalDe(ic, ICapp.riggingDe(ic)).verif;
+      return JSON.stringify({fyCampo: Number(document.getElementById("ic-olhal-fy").value),
+        admissivel: v.checks[0].admissivel});`));
+    if (d.fyCampo !== 250) throw new Error("trocar para A36 não trouxe Fy 250: " + d.fyCampo);
+    if (Math.abs(d.admissivel - 0.9 * 250) > 0.5)
+      throw new Error("a verificação não usou o Fy do aço: " + d.admissivel);
     return true;
   });
 
@@ -326,9 +345,41 @@ async function main() {
     return true;
   });
 
+  await passo("digitar a unidade junto converte o valor", async () => {
+    const por = async (campo, texto) => {
+      await rodar(`const e = document.getElementById("ic-massa"); e.value = ${JSON.stringify(texto)};
+        e.dispatchEvent(new Event("change",{bubbles:true}));`);
+      await esperar(350);
+      return Number(await rodar(`return ICapp.atual().massa`));
+    };
+    await rodar(`document.getElementById("un-massa").value = "kg";
+      document.getElementById("un-massa").dispatchEvent(new Event("change",{bubbles:true}));`);
+    await esperar(300);
+    const t5 = await por("massa", "5t");
+    if (Math.abs(t5 - 5000) > 0.5) throw new Error(`"5t" com kg selecionado virou ${t5} kg`);
+    const kg800 = await por("massa", "800");
+    if (Math.abs(kg800 - 800) > 0.5) throw new Error(`"800" sem unidade virou ${kg800} kg`);
+    const kn = await por("massa", "49,03 kN");
+    if (Math.abs(kn - 5000) > 20) throw new Error(`"49,03 kN" virou ${kn} kg`);
+    // o campo é reescrito na unidade escolhida
+    const naTela = await rodar(`return document.getElementById("ic-massa").value`);
+    if (!/^5\d{3}/.test(String(naTela).replace(/\D/g, "").slice(0, 4)))
+      throw new Error("o campo não voltou em kg: " + naTela);
+    // medida: 2,5 m num campo em mm
+    await rodar(`const e = document.querySelector('[data-medida]'); e.value = "2,5 m";
+      e.dispatchEvent(new Event("change",{bubbles:true}));`);
+    await esperar(350);
+    const med = JSON.parse(await rodar(`const ic = ICapp.atual();
+      const k = document.querySelector('[data-medida]').dataset.medida;
+      return JSON.stringify({k, v: ic.medidas[k]});`));
+    if (Math.abs(med.v - 2500) > 1) throw new Error(`"2,5 m" virou ${med.v} mm`);
+    await por("massa", "5000");
+    return true;
+  });
+
   await passo("cada caixa esconde o seu próprio cálculo", async () => {
-    // o botão do topo deixa os memoriais à vista, para o teste mexer só no da caixa
-    await rodar(`if (document.body.classList.contains("sem-memorial")) document.getElementById("bt-memorial").click();`);
+    // com o botão geral escondendo tudo (o padrão), o fx ainda tem que mostrar o cálculo
+    await rodar(`if (!document.body.classList.contains("sem-memorial")) document.getElementById("bt-memorial").click();`);
     await esperar(300);
     const est = async () => JSON.parse(await rodar(`const sec = document.querySelector('.etapa[data-etapa="8"]');
       const bm = sec.querySelector("[data-dobra-mem]");
@@ -338,16 +389,18 @@ async function main() {
         outra: (() => { const o = document.querySelector('.etapa[data-etapa="5"] .formulas');
           return o ? getComputedStyle(o).display !== "none" : null; })()});`));
     const a = await est();
-    if (!a.temBotao) throw new Error("a caixa do olhal não ganhou o botão de esconder o cálculo");
-    if (!a.visivel) throw new Error("o cálculo já começou escondido");
+    if (!a.temBotao) throw new Error("a caixa do olhal não ganhou o botão do cálculo");
+    if (a.visivel) throw new Error("com o botão geral desligado, o cálculo deveria estar oculto");
+    // primeiro clique: mostra só o desta caixa
     await rodar(`document.querySelector('.etapa[data-etapa="8"] [data-dobra-mem]').click();`);
     await esperar(300);
     const b = await est();
-    if (b.visivel) throw new Error("o cálculo não sumiu");
-    if (!b.outra) throw new Error("escondeu o cálculo das outras caixas também");
+    if (!b.visivel) throw new Error("o fx não mostrou o cálculo (era o defeito relatado)");
+    if (b.outra) throw new Error("mostrou o cálculo das outras caixas também");
+    // segundo clique: esconde de novo
     await rodar(`document.querySelector('.etapa[data-etapa="8"] [data-dobra-mem]').click();`);
     await esperar(300);
-    if (!(await est()).visivel) throw new Error("o cálculo não voltou");
+    if ((await est()).visivel) throw new Error("o cálculo não voltou a sumir");
     return true;
   });
 

@@ -69,7 +69,9 @@
 .etapas {
   display: grid; gap: 8px; min-width: 0;
   grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
-  align-items: start;
+  /* stretch: as caixas de uma mesma linha terminam na mesma altura. Com align-items:start
+     cada uma parava onde o seu conteúdo acabava e a fileira ficava desalinhada. */
+  align-items: stretch;
   /* dense: uma caixa estreita sobe para o buraco ao lado de outra, em vez de deixar
      meia tela vazia. Cada caixa leva o seu número no título, então a sequência do
      roteiro continua visível — e no papel volta tudo para uma coluna, na ordem. */
@@ -79,6 +81,7 @@
 .etapa--larga { grid-column: 1 / -1; }
 
 .etapa {
+  display: flex; flex-direction: column;     /* o corpo ocupa a altura que sobrar */
   background: var(--c-superficie);
   border: 1px solid var(--c-linha);
   border-radius: var(--raio);
@@ -145,8 +148,21 @@
 .tab tbody tr:hover td { background: var(--c-superficie-2); }
 .tab td.num { font-family: var(--fonte-mono); }
 .tab--pontos input { width: 96px; text-align: right; }
-/* a ficha tem duas colunas (rótulo e valor): esticada na largura da página, o valor ficava
-   a um palmo do rótulo e a leitura se perdia */
+/* Ficha técnica: uma grade que se reparte em colunas conforme a largura, com o valor
+   colado no rótulo. Como tabela, o valor ia parar do outro lado da linha. */
+.ficha { margin-bottom: 6px; }
+.ficha__t {
+  font-size: 12px; color: var(--c-texto-3); text-transform: uppercase; letter-spacing: .4px;
+  padding-bottom: 4px;
+}
+.ficha__grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 20px; }
+.ficha__item {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 3px 0; border-bottom: 1px solid var(--c-linha); font-size: 13px; min-width: 0;
+}
+.ficha__item span { color: var(--c-texto-2); }
+.ficha__item b { font-family: var(--fonte-mono); white-space: nowrap; }
+
 .tab--ficha { margin-bottom: 6px; max-width: 460px; }
 .tab--ficha caption { text-align: left; font-size: 12px; color: var(--c-texto-3); text-transform: uppercase; letter-spacing: .4px; padding-bottom: 4px; }
 .tab--ficha td:first-child { color: var(--c-texto-2); }
@@ -178,12 +194,25 @@
    de .fig-topo) e o desenho sai minusculo dentro de uma coluna larga */
 .olhal-par .fig-topo { position: sticky; top: 8px; width: 100%; }
 .olhal-par .fig-topo svg { height: auto; width: 100%; max-height: 520px; }
+/* o olhal comprado é uma peça alta e estreita: sem limite, o desenho estica a caixa muito
+   além da ficha ao lado */
+.olhal-par #fig-olhal svg { max-height: 420px; }
 @media (max-width: 900px) { .olhal-par { grid-template-columns: 1fr; } }
 
-.olhal-geom { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 8px; }
-.olhal-geom input { width: 100%; }
+.olhal-geom { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 8px; align-items: end; }
+/* rótulo em cima, campo embaixo: com o rótulo quebrando em duas linhas, o campo descia
+   junto e a fileira ficava torta. Agora todos os campos começam na mesma altura. */
+.olhal-geom .campo { display: grid; grid-template-rows: 1fr auto; gap: 3px; height: 100%; }
+.olhal-geom .campo > span { text-align: center; align-self: end; line-height: 1.25; }
+.olhal-geom input, .olhal-geom select { width: 100%; }
 .olhal-bloco { padding: 8px; border: 1px solid var(--c-linha); border-radius: var(--raio); margin-bottom: 10px; background: var(--c-superficie-2); }
 .olhal-bloco h4 { margin: 0 0 8px; font-size: 13px; }
+/* a tag diz de qual manilha saíram estas medidas, sem ter que voltar à etapa 7 */
+.olhal-bloco__tag {
+  font-family: var(--fonte-mono); font-size: 12px; font-weight: 700;
+  color: var(--c-acento); background: var(--c-acento-suave);
+  border: 1px solid var(--c-linha-forte); border-radius: 10px; padding: 1px 8px; margin-left: 6px;
+}
 
 /* ---------------------------------------------------------- fórmulas passo a passo */
 /* memoriais ocultos: é o que faz a tela caber — cada perna e cada verificação traz um */
@@ -191,6 +220,9 @@ body.sem-memorial .formulas,
 body.sem-memorial tr.linha-formula,
 .etapa.sem-calculo .formulas,
 .etapa.sem-calculo tr.linha-formula { display: none; }
+/* a escolha da caixa vence o botão geral do topo, nos dois sentidos */
+.etapa.com-calculo .formulas { display: grid; }
+.etapa.com-calculo tr.linha-formula { display: table-row; }
 .bt--ligado { background: var(--c-acento); color: #fff; border-color: var(--c-acento); }
 
 .formulas {
@@ -238,8 +270,9 @@ tr.linha-formula td { padding: 4px 8px 10px; border-bottom: 1px solid var(--c-li
 .desenhos svg { display: block; height: clamp(210px, 30vh, 330px); width: auto; max-width: 100%; }
 
 /* ---------------------------------------------------------- resumo */
-.resumo {
-  position: sticky; top: 12px;
+/* a coluna deixa de ser uma caixa só: é uma pilha, com uma caixa por içamento */
+.resumo { position: sticky; top: 12px; display: grid; gap: 8px; align-content: start; }
+.resumo__ic, .resumo__estudo {
   display: grid; gap: 10px;
   background: var(--c-superficie);
   border: 1px solid var(--c-linha);
@@ -247,6 +280,11 @@ tr.linha-formula td { padding: 4px 8px 10px; border-bottom: 1px solid var(--c-li
   box-shadow: var(--sombra);
   padding: 12px 14px;
 }
+/* o içamento que está sendo analisado */
+.resumo__ic.is-atual { border-color: var(--c-acento); box-shadow: 0 0 0 1px var(--c-acento), var(--sombra); }
+.resumo__ic:not(.is-atual) { cursor: pointer; opacity: .82; }
+.resumo__ic:not(.is-atual):hover { opacity: 1; border-color: var(--c-linha-forte); }
+.resumo__ver { float: right; text-transform: none; letter-spacing: 0; color: var(--c-acento); font-weight: 600; }
 .resumo h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--c-texto-3); }
 .painel { display: grid; gap: 6px; }
 .item { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }

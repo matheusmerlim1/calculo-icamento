@@ -61,7 +61,7 @@
         <h2><span class="etapa__n">1</span> Corpo a içar<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
         <div class="etapa__corpo grade">
           <label class="campo"><span>Identificação</span><input id="ic-nome" placeholder="ex.: Skid de bombas"></label>
-          <label class="campo"><span id="rot-massa">Massa (kg)</span><input type="number" id="ic-massa" min="0" step="10"></label>
+          <label class="campo"><span id="rot-massa">Massa (kg)</span><input type="text" inputmode="decimal" id="ic-massa"></label>
           <label class="campo"><span>Origem do peso</span>
             <select id="ic-origem">
               <option value="pesado">pesado em balança</option>
@@ -154,7 +154,6 @@
       <section class="etapa etapa--larga" data-etapa="7">
         <h2><span class="etapa__n">7</span> Sapatilho e manilha<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
         <div class="etapa__corpo">
-          <label class="campo"><span>Tipo de manilha</span><select id="ic-manilha-tipo"></select></label>
           <div id="resultado-sapatilho-manilha"></div>
           <p class="dica">Verificações de encaixe (sapatilho × manilha × cabo) — item 6 do método.
             Colunas conforme o catálogo de cada tabela; conferir fisicamente antes de comprar.</p>
@@ -174,7 +173,10 @@
               </select></label>
             <label class="campo" id="campo-olhal-comprado" style="display:none">
               <span>Modelo comercial</span><select id="ic-olhal-tipo"></select></label>
-            <label class="campo"><span>Fy da chapa do olhal (MPa)</span>
+            <label class="campo"><span>Material da chapa</span>
+              <select id="ic-olhal-aco"></select></label>
+            <label class="campo" id="campo-olhal-fy">
+              <span>Fy da chapa (MPa)</span>
               <input type="number" id="ic-olhal-fy" step="5" min="0"></label>
           </div>
           <div id="resultado-olhal"></div>
@@ -212,6 +214,7 @@
   <script src="data/manilhas.js"></script>
   <script src="data/olhais.js"></script>
   <script src="data/chapas.js"></script>
+  <script src="data/acos.js"></script>
   <script src="data/lingas.js"></script>
   <script src="data/sapatilhos.js"></script>
 

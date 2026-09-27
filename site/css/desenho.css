@@ -89,6 +89,10 @@
   .olhal-par .fig-topo { position: static; max-width: 110mm; margin: 0 0 3mm; }
   .olhal-par .fig-topo svg { max-width: 105mm; max-height: 90mm; }
   .ficha-par { grid-template-columns: 62mm auto; }
+  .ficha__grade { grid-template-columns: repeat(auto-fit, minmax(58mm, 1fr)); gap: 0 6mm; }
+  .ficha__item { border-bottom: 1px solid #ccc; font-size: 8.5pt; padding: .6mm 0; }
+  .ficha__item span, .ficha__t { color: #333 !important; }
+  .ficha__item b { color: #000 !important; }
   .ficha-par .fig-topo svg { max-width: 58mm; }
 
   .tab { font-size: 8.5pt; }
@@ -141,6 +145,6 @@
   /* os dois botões da caixa não vão para o papel */
   .etapa__dobra, .etapa__dobra--mem { display: none !important; }
   /* cálculo escondido na tela volta a aparecer no papel */
-  .etapa.sem-calculo .formulas { display: grid !important; }
-  .etapa.sem-calculo tr.linha-formula { display: table-row !important; }
+  .etapa.sem-calculo .formulas, .etapa.com-calculo .formulas { display: grid !important; }
+  .etapa.sem-calculo tr.linha-formula, .etapa.com-calculo tr.linha-formula { display: table-row !important; }
 }
