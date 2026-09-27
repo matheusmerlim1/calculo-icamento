@@ -191,7 +191,12 @@
 .tab td.selo-cel { text-align: center; }
 .barra { position: relative; height: 6px; border-radius: 3px; background: var(--c-superficie-2); overflow: hidden; min-width: 60px; }
 .barra > i { display: block; height: 100%; background: var(--c-ok); }
-.barra.estourou > i { background: var(--c-erro); }
+/* quem não distingue verde de vermelho precisa de um segundo sinal: a barra que estoura
+   ganha hachura, a mesma que sai na impressão */
+.barra.estourou > i {
+  background: repeating-linear-gradient(45deg,
+    var(--c-erro) 0 3px, color-mix(in srgb, var(--c-erro) 55%, #000) 3px 6px);
+}
 /* desenho do olhal ao lado dos campos: mexeu num número, o desenho muda */
 .olhal-par { display: grid; grid-template-columns: minmax(360px, 560px) minmax(0, 1fr); gap: 10px; align-items: start; margin-bottom: 8px; }
 /* sem width:100% a folha encolhe para o tamanho natural do desenho (fit-content herdado

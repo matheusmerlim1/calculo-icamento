@@ -30,3 +30,6 @@ build/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# configuração local da skill de design
+.impeccable/
