@@ -326,19 +326,54 @@ async function main() {
     return true;
   });
 
-  await passo("botão de portfólio não cobre nada da barra", async () => {
+  await passo("cada caixa esconde o seu próprio cálculo", async () => {
+    // o botão do topo deixa os memoriais à vista, para o teste mexer só no da caixa
+    await rodar(`if (document.body.classList.contains("sem-memorial")) document.getElementById("bt-memorial").click();`);
+    await esperar(300);
+    const est = async () => JSON.parse(await rodar(`const sec = document.querySelector('.etapa[data-etapa="8"]');
+      const bm = sec.querySelector("[data-dobra-mem]");
+      const f = sec.querySelector(".formulas");
+      return JSON.stringify({temBotao: !!bm, oculto: sec.classList.contains("sem-calculo"),
+        visivel: f ? getComputedStyle(f).display !== "none" : null,
+        outra: (() => { const o = document.querySelector('.etapa[data-etapa="5"] .formulas');
+          return o ? getComputedStyle(o).display !== "none" : null; })()});`));
+    const a = await est();
+    if (!a.temBotao) throw new Error("a caixa do olhal não ganhou o botão de esconder o cálculo");
+    if (!a.visivel) throw new Error("o cálculo já começou escondido");
+    await rodar(`document.querySelector('.etapa[data-etapa="8"] [data-dobra-mem]').click();`);
+    await esperar(300);
+    const b = await est();
+    if (b.visivel) throw new Error("o cálculo não sumiu");
+    if (!b.outra) throw new Error("escondeu o cálculo das outras caixas também");
+    await rodar(`document.querySelector('.etapa[data-etapa="8"] [data-dobra-mem]').click();`);
+    await esperar(300);
+    if (!(await est()).visivel) throw new Error("o cálculo não voltou");
+    return true;
+  });
+
+  await passo("botão de portfólio fica na barra, sem faixa reservada", async () => {
     const r = JSON.parse(await rodar(`const b = document.getElementById("mr-portfolio-btn");
       if (!b) return JSON.stringify({falta:true});
       const c = b.getBoundingClientRect();
+      // o botão agora mora dentro da barra: ele e o que está dentro dele não contam
       const bate = [...document.querySelectorAll(".topo *, .abas *")].filter(el => {
+        // fora da conta: o próprio botão, o que está dentro dele e quem o contém
+        if (el === b || b.contains(el) || el.contains(b)) return false;
+        return true;
+      }).filter(el => {
         const e = el.getBoundingClientRect();
         return e.width && e.height &&
           !(e.right <= c.left || e.left >= c.right || e.bottom <= c.top || e.top >= c.bottom);
       });
+      const topo = document.querySelector(".topo").getBoundingClientRect();
       return JSON.stringify({falta:false, sobrepoe: bate.length,
+        naBarra: !!b.closest(".topo__acoes"),
+        folgaDireita: Math.round(topo.right - c.right),
         quem: bate.slice(0,3).map(e => e.id || e.className || e.tagName)});`));
     if (r.falta) throw new Error("o botão de portfólio não está na página");
     if (r.sobrepoe) throw new Error("o botão cobre: " + r.quem.join(", "));
+    if (!r.naBarra) throw new Error("o botão não está dentro da barra de ações");
+    if (r.folgaDireita > 40) throw new Error("sobrou faixa vazia à direita: " + r.folgaDireita + "px");
     return true;
   });
 

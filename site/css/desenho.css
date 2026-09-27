@@ -126,6 +126,21 @@
 
   .selo--ok { color: #0a6b3d; background: none; }
   .selo--erro { color: #a32b1a; background: none; }
-  .barra { border: 1px solid #999; }
-  .barra > i { background: #666; }
+  /* A barrinha é um fundo colorido, e fundo é a primeira coisa que a impressão descarta —
+     no papel ela saía vazia ou não saía. Vira uma barra de borda com hachura, que imprime
+     sempre, e o número ao lado continua sendo o valor exato. */
+  .barra {
+    border: 1px solid #555; height: 8px; min-width: 52px; background: #fff;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .barra > i {
+    background: repeating-linear-gradient(45deg, #444 0 2px, #fff 2px 4px);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .barra.estourou > i { background: repeating-linear-gradient(45deg, #000 0 3px, #fff 3px 5px); }
+  /* os dois botões da caixa não vão para o papel */
+  .etapa__dobra, .etapa__dobra--mem { display: none !important; }
+  /* cálculo escondido na tela volta a aparecer no papel */
+  .etapa.sem-calculo .formulas { display: grid !important; }
+  .etapa.sem-calculo tr.linha-formula { display: table-row !important; }
 }

@@ -3,9 +3,7 @@
 /* ---------------------------------------------------------- cabeçalho */
 .topo {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  /* o espaço à direita é do botão fixo de portfólio: reservado aqui para ele nunca cair
-     em cima dos botões da barra (e para a barra não ter que se reorganizar sozinha) */
-  padding: 8px 140px 8px 16px;
+  padding: 8px 16px;
   background: #123040;
   border-bottom: 1px solid #0b2130;
 }
@@ -16,7 +14,14 @@
 }
 .topo__nome { font-weight: 700; }
 .topo__sub { font-size: 12px; color: var(--c-texto-2); }
-.topo__acoes { display: flex; gap: 8px; margin-left: auto; }
+.topo__acoes { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+
+/* O botão de portfólio entra aqui dentro (o app move o elemento no início), em vez de ficar
+   fixo no canto com uma faixa reservada só para ele. */
+.topo__acoes #mr-portfolio-btn {
+  position: static; top: auto; right: auto; margin: 0;
+  box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
 
 .campo { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--c-texto-2); min-width: 0; }
 .campo--inline { flex-direction: row; align-items: center; gap: 6px; }
@@ -94,6 +99,10 @@
   display: grid; place-items: center;
 }
 .etapa__dobra:hover { border-color: var(--c-acento); color: var(--c-acento); }
+/* botão do cálculo: fica aceso quando o memorial está à vista */
+.etapa__dobra--mem { width: auto; padding: 0 7px; font-size: 12px; margin-left: auto; }
+.etapa__dobra--mem.is-on { border-color: var(--c-acento); color: var(--c-acento); }
+.etapa > h2 .etapa__dobra--mem + .etapa__dobra { margin-left: 4px; }
 .etapa > h2 { cursor: pointer; user-select: none; }
 .etapa.fechada > h2 { border-bottom: 0; }
 .etapa.fechada > :not(h2) { display: none; }
@@ -179,7 +188,9 @@
 /* ---------------------------------------------------------- fórmulas passo a passo */
 /* memoriais ocultos: é o que faz a tela caber — cada perna e cada verificação traz um */
 body.sem-memorial .formulas,
-body.sem-memorial tr.linha-formula { display: none; }
+body.sem-memorial tr.linha-formula,
+.etapa.sem-calculo .formulas,
+.etapa.sem-calculo tr.linha-formula { display: none; }
 .bt--ligado { background: var(--c-acento); color: #fff; border-color: var(--c-acento); }
 
 .formulas {
@@ -256,9 +267,6 @@ tr.linha-formula td { padding: 4px 8px 10px; border-bottom: 1px solid var(--c-li
   background: var(--c-superficie);
   border-top: 1px solid var(--c-linha);
 }
-
-/* no celular o botão vira só o ícone */
-@media (max-width: 520px) { .topo { padding-right: 58px; } }
 
 @media (max-width: 980px) {
   .folha { grid-template-columns: minmax(0, 1fr); }

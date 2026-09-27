@@ -889,6 +889,9 @@
   const pintar = () => {
     pintarAbas(); pintarEntrada(); pintarResultado();
     pintarLinga(); pintarSapatilhoManilha(); pintarOlhal(); pintarMaterial(); pintarCapa();
+    // o conteúdo acabou de ser refeito: os botões de recolher e de esconder o cálculo
+    // precisam ser recolocados (o do cálculo só existe onde há cálculo)
+    if (typeof pintarDobra === "function") pintarDobra();
     gravar();
   };
 
@@ -939,8 +942,19 @@
   function gravarFechadas(conj) {
     try { localStorage.setItem(CHAVE_DOBRA, JSON.stringify([...conj])); } catch (e) {}
   }
+  // caixas com o memorial escondido, uma a uma (o botão do topo esconde todas de uma vez)
+  const CHAVE_MEM_CAIXA = "ic-memorial-caixas";
+  function memOcultos() {
+    try { return new Set(JSON.parse(localStorage.getItem(CHAVE_MEM_CAIXA) || "[]")); }
+    catch (e) { return new Set(); }
+  }
+  function gravarMemOcultos(conj) {
+    try { localStorage.setItem(CHAVE_MEM_CAIXA, JSON.stringify([...conj])); } catch (e) {}
+  }
+
   function pintarDobra() {
     const fech = fechadas();
+    const semMem = memOcultos();
     const caixas = [...document.querySelectorAll(".etapa[data-etapa]")];
     caixas.forEach(sec => {
       const fechada = fech.has(sec.dataset.etapa);
@@ -950,6 +964,24 @@
         b.textContent = fechada ? "+" : "\u2212";
         b.setAttribute("aria-expanded", fechada ? "false" : "true");
         b.title = fechada ? "Abrir esta caixa" : "Recolher esta caixa";
+      }
+      // botão do memorial: só existe onde há cálculo para esconder
+      const temCalculo = !!sec.querySelector(".formulas");
+      let bm = sec.querySelector("[data-dobra-mem]");
+      if (temCalculo && !bm && b) {
+        bm = document.createElement("button");
+        bm.type = "button";
+        bm.className = "etapa__dobra etapa__dobra--mem";
+        bm.dataset.dobraMem = "";
+        b.parentElement.insertBefore(bm, b);
+      }
+      if (bm) {
+        const oculto = semMem.has(sec.dataset.etapa);
+        sec.classList.toggle("sem-calculo", oculto);
+        bm.textContent = "\u0192x";
+        bm.classList.toggle("is-on", !oculto);
+        bm.setAttribute("aria-pressed", oculto ? "false" : "true");
+        bm.title = oculto ? "Mostrar o cálculo desta caixa" : "Esconder o cálculo desta caixa";
       }
     });
     const tudo = $("bt-dobrar-tudo");
@@ -961,6 +993,9 @@
     let mostrar = false;
     try { mostrar = localStorage.getItem(CHAVE_MEM) === "1"; } catch (e) {}
     document.body.classList.toggle("sem-memorial", !mostrar);
+    // ligar/desligar tudo zera as escolhas por caixa, senão o estado fica contraditório
+    try { localStorage.removeItem(CHAVE_MEM_CAIXA); } catch (e) {}
+    document.querySelectorAll(".etapa.sem-calculo").forEach(el => el.classList.remove("sem-calculo"));
     const b = $("bt-memorial");
     if (b) {
       b.classList.toggle("bt--ligado", mostrar);
@@ -980,6 +1015,17 @@
 
   function ligarDobra() {
     document.getElementById("etapas").addEventListener("click", e => {
+      // o botão do memorial não recolhe a caixa
+      const bm = e.target.closest("[data-dobra-mem]");
+      if (bm) {
+        e.stopPropagation();
+        const sec = bm.closest(".etapa[data-etapa]");
+        const conj = memOcultos();
+        const id = sec.dataset.etapa;
+        if (conj.has(id)) conj.delete(id); else conj.add(id);
+        gravarMemOcultos(conj);
+        return pintarDobra();
+      }
       const h = e.target.closest(".etapa > h2");
       if (!h) return;
       // não recolhe ao clicar em algo dentro do título que não seja o botão
@@ -1168,6 +1214,19 @@
   }
   E.icamentos.forEach(migrar);
   ligar();
+  // O botão de portfólio (bloco padrão dos projetos publicados) entra na barra de ações, em
+  // vez de flutuar no canto — assim a barra não precisa reservar uma faixa vazia para ele.
+  // O bloco fica no fim do <body>, depois destes scripts, então na primeira passada ele ainda
+  // não existe: a mudança se repete quando o documento termina de carregar.
+  function botaoNaBarra() {
+    const btn = document.getElementById("mr-portfolio-btn");
+    const acoes = document.querySelector(".topo__acoes");
+    if (btn && acoes && btn.parentElement !== acoes) acoes.appendChild(btn);
+  }
+  botaoNaBarra();
+  document.addEventListener("DOMContentLoaded", botaoNaBarra);
+  addEventListener("load", botaoNaBarra);
+
   ligarDobra();
   ligarMemorial();
   pintar();
