@@ -10,6 +10,7 @@ const fs = require("fs"), os = require("os"), path = require("path");
 const PAGINA = path.join(__dirname, "..", "site", "index.html");
 const CHROME = ["C:/Program Files/Google/Chrome/Application/chrome.exe",
   "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+  "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
   "/usr/bin/google-chrome"].find(p => fs.existsSync(p));
 const iShots = process.argv.indexOf("--shots");
 const SHOTS = iShots > 0 ? process.argv[iShots + 1] : null;
@@ -436,6 +437,34 @@ async function main() {
     if (r.folgaDireita > 40) throw new Error("sobrou faixa vazia à direita: " + r.folgaDireita + "px");
     return true;
   });
+
+  await passo("relatório leva estudo, documento e responsável do cabeçalho", async () => {
+    // digitando: a capa acompanha na hora
+    await rodar(`[["est-nome","Estudo X"],["est-doc","DOC-001"],["est-resp","Eng. Fulano"]].forEach(([id,v]) => {
+      const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("input", {bubbles:true})); });`);
+    let capa = await rodar(`return document.getElementById("capa").innerText`);
+    for (const v of ["Estudo X", "DOC-001", "Eng. Fulano"])
+      if (!capa.includes(v)) throw new Error(`a capa não trouxe "${v}" depois de digitar`);
+    // valor preenchido sem evento (autopreenchimento do navegador): a impressão relê o cabeçalho
+    await rodar(`document.getElementById("est-resp").value = "Eng. Beltrano"; window.dispatchEvent(new Event("beforeprint"));`);
+    capa = await rodar(`return document.getElementById("capa").innerText`);
+    if (!capa.includes("Eng. Beltrano")) throw new Error("a impressão não releu o responsável");
+    return true;
+  });
+
+  await passo("quatro pernas mostram as duas hipóteses e a elástica × SKL é o padrão", async () => {
+    const r = JSON.parse(await rodar(`return JSON.stringify({
+      hip: document.getElementById("ic-hipotese").value,
+      tab: document.getElementById("comparacao-hipoteses").innerText })`));
+    if (r.hip !== "elastica") throw new Error("padrão devia ser elastica, veio " + r.hip);
+    if (!/Elástica × SKL/.test(r.tab) || !/Pares diagonais/.test(r.tab)) throw new Error("faltou a comparação");
+    return true;
+  });
+
+  if (SHOTS) {
+    const pdf = await send("Page.printToPDF", { printBackground: true, preferCSSPageSize: true });
+    fs.writeFileSync(path.join(SHOTS, "relatorio.pdf"), Buffer.from(pdf.result.data, "base64"));
+  }
 
   ws.close(); chrome.kill();
   console.log("ok:", ok.length);

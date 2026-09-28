@@ -41,98 +41,147 @@
 
 .capa { display: none; }
 
+/* texto que substitui cada campo no papel (preenchido por espelharCampos, em app.js) */
+.valor-impresso { display: none; }
+
 @media print {
-  @page { size: A4 portrait; margin: 14mm 12mm 16mm; }
+  @page { size: A4 portrait; margin: 18mm 16mm 18mm 20mm; }
 
+  /* ---- papel: o tema escuro da tela vira preto no branco. Trocar os tokens (e não cada
+     regra) pega também o que usa var(--c-...) — era isso que deixava o memorial escuro. */
+  :root {
+    --c-fundo: #fff; --c-superficie: #fff; --c-superficie-2: #fff; --c-papel: #fff;
+    --c-linha: #bbb; --c-linha-forte: #888;
+    --c-texto: #000; --c-texto-2: #222; --c-texto-3: #444;
+    --c-acento: #1d4f80; --c-acento-suave: #fff; --c-alerta: #7a4d00;
+    --sombra: none;
+  }
   body {
-    background: #fff; color: #000;
-    display: block;                    /* o grid da tela não cabe numa folha */
-    font-size: 10pt;
+    background: #fff; color: #000; display: block;
+    font: 10pt/1.45 var(--fonte);
   }
-  .topo, .abas, .resumo, .rodape { display: none !important; }
-  #mr-portfolio-btn { display: none !important; }
-  .topo__acoes, .etapa__dobra, .bt { display: none !important; }
+  .topo, .abas, .resumo, .rodape, #mr-portfolio-btn,
+  .topo__acoes, .etapa__dobra, .etapa__dobra--mem, .bt { display: none !important; }
 
-  /* uma coluna só: na tela são blocos de 330px lado a lado, que estouram a largura da folha */
-  .folha { display: block; padding: 0; gap: 0; }
-  .etapas { display: block; }
-  .etapa, .etapa--larga { width: auto; margin: 0 0 5mm; }
-
-  .capa { display: block; margin-bottom: 8mm; }
-  .capa__titulo { font-size: 16pt; margin-bottom: 4mm; }
-  .capa__h { font-size: 11pt; margin: 5mm 0 2mm; }
-  .capa__id { max-width: 110mm; margin-bottom: 4mm; }
-  .capa__id td:first-child { color: #444; width: 34mm; }
-  .capa__nota { font-size: 8.5pt; color: #333; margin-top: 4mm; max-width: 165mm; }
-
-  /* cada caixa inteira na mesma folha, sempre que couber */
-  .etapa {
-    break-inside: avoid; page-break-inside: avoid;
-    background: #fff; border: 1px solid #999; box-shadow: none; border-radius: 0;
+  /* ---- documento corrido: sem caixas, sem fundo, sem "não quebrar a caixa" (que empurrava
+     etapas inteiras para a folha seguinte e deixava meia folha em branco) */
+  .folha, .etapas { display: block; padding: 0; margin: 0; gap: 0; }
+  .etapa, .etapa--larga {
+    display: block; width: auto; margin: 0 0 7mm; padding: 0;
+    background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible;
   }
-  .etapa > h2 { background: #eceff3; color: #000; border-bottom: 1px solid #999; font-size: 11pt; }
-  .etapa__n { background: #444; color: #fff; }
-  .etapa__corpo { padding: 3mm 4mm; }
-  .olhal-bloco, .formulas, .aviso { break-inside: avoid; page-break-inside: avoid; }
+  .etapa > h2 {
+    display: block; padding: 0 0 1.5mm; margin: 0 0 3mm;
+    background: none; border: 0; border-bottom: .6pt solid #000;
+    font-size: 12.5pt; color: #000; cursor: auto;
+    break-after: avoid; page-break-after: avoid;
+  }
+  .etapa__n {
+    display: inline; width: auto; height: auto; border-radius: 0;
+    background: none; color: #000; font-size: inherit;
+  }
+  .etapa__n::after { content: "."; }
+  .etapa__corpo { display: block; padding: 0; }
+  .etapa__corpo > * + *, .etapa > * + * { margin-top: 2.5mm; }
+  h3, .capa__h { font-size: 11pt; margin: 5mm 0 2mm; break-after: avoid; page-break-after: avoid; }
+  p, .dica { font-size: 10pt; color: #222; orphans: 3; widows: 3; }
+  .dica b { color: #000; }
 
   /* caixa recolhida e memorial oculto são jeitos de ler na tela: no papel sai tudo */
   .etapa.fechada > * { display: revert !important; }
-  body.sem-memorial .formulas { display: grid !important; }
-  body.sem-memorial tr.linha-formula { display: table-row !important; }
+  body.sem-memorial .formulas, .etapa.sem-calculo .formulas, .etapa.com-calculo .formulas { display: grid !important; }
+  body.sem-memorial tr.linha-formula, .etapa.sem-calculo tr.linha-formula,
+  .etapa.com-calculo tr.linha-formula { display: table-row !important; }
 
-  /* nada pode passar da margem da folha */
-  .folha, .etapa, .etapa__corpo, table, .tab, figure, svg, img { max-width: 100%; }
-  .figs, .desenhos { display: flex; flex-wrap: wrap; gap: 3mm; }
-  .fig-topo, .figs figure, .desenhos figure { background: #fff; border: 1px solid #ccc; width: auto; }
-  .fig-topo svg, .figs svg, .desenhos svg { height: auto; width: auto; max-height: 62mm; max-width: 84mm; }
-  .olhal-par { display: block; }
-  .olhal-par .fig-topo { position: static; max-width: 110mm; margin: 0 0 3mm; }
-  .olhal-par .fig-topo svg { max-width: 105mm; max-height: 90mm; }
-  .ficha-par { grid-template-columns: 62mm auto; }
-  .ficha__grade { grid-template-columns: repeat(auto-fit, minmax(58mm, 1fr)); gap: 0 6mm; }
-  .ficha__item { border-bottom: 1px solid #ccc; font-size: 8.5pt; padding: .6mm 0; }
-  .ficha__item span, .ficha__t { color: #333 !important; }
-  .ficha__item b { color: #000 !important; }
-  .ficha-par .fig-topo svg { max-width: 58mm; }
+  /* ---- capa */
+  .capa { display: block; margin-bottom: 9mm; }
+  .capa__titulo { font-size: 17pt; margin-bottom: 5mm; }
+  .capa__id { max-width: 120mm; margin-bottom: 4mm; }
+  .capa__id td:first-child { color: #444; width: 34mm; }
+  .capa__nota { font-size: 9pt; color: #333; margin-top: 4mm; }
 
-  .tab { font-size: 8.5pt; }
-  .tab th, .tab td { border-bottom: 1px solid #bbb; color: #000; padding: 1mm 1.5mm; }
-  .tab th { color: #333; }
-  .tab--material td.col-esp { min-width: 0; }
-  .passo, .mono, .item b { color: #000; }
-  .formulas { background: #f6f7f9; border: 1px solid #ccc; }
-  .dica, .som, .peq { color: #333; }
-
-  /* campos viram texto: caixa de input em documento impresso não diz nada */
-  input, select, textarea {
-    border: 0 !important; background: transparent !important; color: #000 !important;
-    padding: 0 !important; -webkit-appearance: none; appearance: none;
+  /* ---- dados informados: "Rótulo: valor", em duas colunas, como texto */
+  .grade, .grade--4, .linha-campos {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 8mm; justify-content: start;
   }
-  .campo span { color: #444; }
-  /* cinza de tela vira quase invisível no papel: tudo que é texto fica legível */
-  .tab td:first-child, .tab--ficha td:first-child, .tab th,
-  .passo__formula, .passo__sub, .passo__resultado,
-  .item span, .item b, .formulas__titulo, .capa__id td:first-child,
-  .tipo b, .tipo span, label, .campo span { color: #222 !important; }
-  .passo__sub { color: #444 !important; }
+  .linha-campos .campo { min-width: 0; }
+  .campo, .campo--inline { display: block; font-size: 10pt; color: #000; }
+  .campo > span:first-child { color: #444 !important; }
+  .campo > span:first-child::after { content: ": "; }
+  /* campo de digitar não vai para o papel, em lugar nenhum (nem dentro de tabela):
+     sai o texto espelhado ao lado dele */
+  .etapas input:not([type=checkbox]):not([type=radio]), .etapas select, .etapas textarea { display: none !important; }
+  td > .valor-impresso { display: inline; font-weight: 400; font-family: var(--fonte-mono); }
+  td:has(> .valor-impresso) { text-align: right; }
+  .valor-impresso { display: inline; color: #000; font-weight: 600; }
+  .campo[style*="display: none"], .campo[style*="display:none"] { display: none !important; }
 
-  /* no documento só interessa o arranjo escolhido, não o menu de opções */
+  /* ---- arranjo escolhido: só ele, sem o cartão */
   .tipos { display: block; }
   .tipo { display: none; }
   .tipo.on {
-    display: grid; background: #fff !important; border: 1px solid #999;
-    max-width: 90mm; break-inside: avoid;
+    display: flex; align-items: center; gap: 5mm; text-align: left;
+    background: none !important; border: 0; padding: 0; color: #000; break-inside: avoid;
   }
-  .tipo.on .tipo__fig { background: #fff; }
+  .tipo.on .tipo__fig { background: none; width: 38mm; margin: 0; padding: 0; }
+  .tipo.on b, .tipo.on span { display: block; color: #000 !important; }
 
-  /* o texto do select não pode ficar cortado dentro da caixa */
-  select { width: auto !important; max-width: 100%; text-overflow: clip; }
+  /* ---- figuras: largura explícita. Com width/height auto o SVG (só viewBox) encolhia a
+     um ponto — saía uma bolinha no lugar do desenho. */
+  .figs { display: flex; flex-wrap: wrap; gap: 4mm; justify-content: flex-start; align-items: flex-start; }
+  .figs > figure, .fig-topo { flex: 1 1 70mm; background: none; border: 0; padding: 0; margin: 0; width: auto; max-width: 100%; }
+  .fig-topo svg, .figs svg, .desenhos svg { width: 100%; height: auto; max-height: 72mm; }
+  figure { break-inside: avoid; page-break-inside: avoid; }
+  #fig-encaixe svg { max-height: 110mm; }
+  .olhal-par { display: block; }
+  .olhal-par .fig-topo { position: static; max-width: 110mm; margin: 0 0 3mm; }
+  .olhal-par .fig-topo svg { max-height: 95mm; }
+  .ficha-par { display: grid; grid-template-columns: 60mm minmax(0, 1fr); gap: 5mm; }
+  .ficha-par .fig-topo svg { max-height: 80mm; }
+  .ficha__grade { grid-template-columns: repeat(auto-fit, minmax(58mm, 1fr)); gap: 0 6mm; }
+  .ficha__item { border-bottom: .4pt solid #ccc; font-size: 9pt; padding: .6mm 0; }
+  .pecas-par { display: block; }
+  .peca-bloco { border: 0; padding: 0; background: none; margin-bottom: 4mm; }
 
+  /* ---- tabelas: cabem na folha e quebram texto; o cabeçalho se repete em cada folha,
+     o rodapé não (repetido, ele era desenhado por cima do texto seguinte) */
+  table, .tab { width: 100%; max-width: 100%; table-layout: auto; font-size: 9pt; }
+  .tab th, .tab td { white-space: normal; overflow-wrap: anywhere; color: #000; padding: 1mm 1.5mm; border-bottom: .4pt solid #bbb; }
+  .tab th { color: #333; font-weight: 700; border-bottom: .8pt solid #000; }
+  thead { display: table-header-group; }
+  tfoot { display: table-row-group; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+  tr.linha-formula { break-inside: auto; page-break-inside: auto; }
+  tr.linha-formula td { padding: 0 0 3mm 4mm; border-bottom: .4pt solid #bbb; }
+  .tab--material td.col-esp { min-width: 0; }
+  .tab .maior td:first-child::after { content: " (maior)"; color: #000; }
+
+  /* ---- memorial: fórmulas como texto recuado, sem moldura */
+  .formulas, tr.linha-formula .formulas {
+    background: none; border: 0; border-left: .8pt solid #999; border-radius: 0;
+    padding: .5mm 0 .5mm 3mm; margin: 1.5mm 0;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .formulas--com-legenda { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 1mm 6mm; }
+  .formulas__legenda { border-left: .4pt dotted #999; }
+  .passo, .passo__formula, .passo__sub, .passo__resultado, .simbolo__k, .simbolo__d, .simbolo__u,
+  .formulas__titulo, .item span, .item b, .mono { color: #000 !important; }
+  .passo { font-size: 8.5pt; }
+  .passo__sub { color: #333 !important; }
+  .passo__resultado { border-top: 0; }
+  .simbolo { font-size: 8pt; }
+  .som, .peq { color: #333; }
+
+  /* ---- avisos: parágrafo marcado, sem caixa tingida */
+  .aviso {
+    background: none; border: 0; border-left: 1.5pt solid #000; border-radius: 0;
+    padding: 0 0 0 2.5mm; color: #000; font-size: 9.5pt; break-inside: avoid;
+  }
   .selo--ok { color: #0a6b3d; background: none; }
   .selo--erro { color: #a32b1a; background: none; }
+
   /* A barrinha é um fundo colorido, e fundo é a primeira coisa que a impressão descarta —
-     no papel ela saía vazia ou não saía. Vira uma barra de borda com hachura, que imprime
-     sempre, e o número ao lado continua sendo o valor exato. */
+     vira uma barra de borda com hachura, que imprime sempre. */
   .barra {
     border: 1px solid #555; height: 8px; min-width: 52px; background: #fff;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
@@ -142,9 +191,49 @@
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .barra.estourou > i { background: repeating-linear-gradient(45deg, #000 0 3px, #fff 3px 5px); }
-  /* os dois botões da caixa não vão para o papel */
-  .etapa__dobra, .etapa__dobra--mem { display: none !important; }
-  /* cálculo escondido na tela volta a aparecer no papel */
-  .etapa.sem-calculo .formulas, .etapa.com-calculo .formulas { display: grid !important; }
-  .etapa.sem-calculo tr.linha-formula, .etapa.com-calculo tr.linha-formula { display: table-row !important; }
+
+  /* ---- ajustes finos do texto corrido */
+  /* os pares "rótulo: valor" alinham pelo topo (a margem de bloco não vale dentro da grade) */
+  .grade > *, .linha-campos > *, .olhal-geom > * { margin: 0 !important; align-self: start; }
+  /* cabeçalho de tabela não parte palavra no meio ("COMPRIM ENTO", "CAS O") */
+  .tab th {
+    overflow-wrap: normal; word-break: normal; hyphens: manual;
+    text-transform: none; letter-spacing: 0; font-size: 8.5pt; vertical-align: bottom;
+  }
+  .tab td.num { white-space: nowrap; }
+  /* a legenda das letras sai uma vez por tabela, não repetida em cada linha */
+  tr.linha-formula ~ tr.linha-formula .formulas__legenda { display: none; }
+  tr.linha-formula ~ tr.linha-formula .formulas--com-legenda { grid-template-columns: minmax(0, 1fr); }
+  /* blocos do olhal: subtítulo e texto, sem moldura */
+  .olhal-bloco { border: 0; border-radius: 0; background: none; padding: 0; margin: 4mm 0 2mm; }
+  .olhal-bloco h4 { font-size: 10.5pt; margin: 0 0 1.5mm; break-after: avoid; }
+  .olhal-bloco__tag { border: 0; background: none; padding: 0; color: #000; }
+  .olhal-geom { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 8mm; align-items: start; }
+  .olhal-geom .campo { display: block; height: auto; }
+  .olhal-geom .campo > span { text-align: left; }
+  .desenhos figure { background: none; padding: 0; }
+  .destaque, .etiqueta { border: 0; background: none; padding: 0; }
+  .tab .adotada td { font-weight: 700; }
+
+  /* ---- legenda das letras: no papel é o "onde:" de memorial, em texto corrido abaixo das
+     contas — não uma lista ao lado com título em caixa alta */
+  .formulas--com-legenda { grid-template-columns: minmax(0, 1fr) !important; }
+  .formulas__titulo { text-transform: none; letter-spacing: 0; font-size: 8.5pt; font-weight: 700; }
+  /* font-size 0 no contêiner some com os espaços em branco do HTML entre os itens
+     (saía "kN ;" e "= ," com espaço sobrando); cada peça volta ao tamanho do texto */
+  .formulas__legenda {
+    display: block !important; border: 0 !important; padding: 0 !important; margin-top: .5mm;
+    font-size: 0; line-height: 1.5; color: #222;
+  }
+  .formulas__legenda .formulas__titulo { display: none; }
+  .formulas__legenda::before { content: "onde: "; font-style: italic; font-size: 8.5pt; }
+  .simbolo { display: inline; font-size: 0; }
+  .simbolo > span, .simbolo::after { font-size: 8.5pt; }
+  .simbolo__u { white-space: nowrap; }
+  .simbolo__k { font-weight: 700; }
+  .simbolo__k::after { content: " = "; font-weight: 400; }
+  .simbolo__u::before { content: ", em "; font-family: var(--fonte); }
+  .simbolo__u--vazio { display: none; }
+  .simbolo:not(:last-child)::after { content: "; "; }
+  .simbolo:last-child::after { content: "."; }
 }

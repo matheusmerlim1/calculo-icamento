@@ -105,10 +105,11 @@
             <label class="campo"><span>Medido na perna</span><select id="ic-perna-ang"></select></label>
             <label class="campo"><span>Hipótese nas quatro pernas</span>
               <select id="ic-hipotese">
-                <option value="diagonais" selected>pares diagonais (projeto)</option>
-                <option value="elastica">distribuição elástica (comparação)</option>
+                <option value="elastica" selected>elástica × SKL — DNV-ST-N001 (recomendada)</option>
+                <option value="diagonais">pares diagonais — envoltória conservadora</option>
               </select></label>
           </div>
+          <p class="dica" id="dica-hipotese"></p>
           <p class="dica" id="saida-altura"></p>
         </div>
       </section>
@@ -125,6 +126,7 @@
           <div id="avisos"></div>
           <div id="memorial-peso"></div>
           <table class="tab" id="tab-cargas"></table>
+          <div id="comparacao-hipoteses"></div>
           <div class="figs">
             <figure class="fig-topo" id="fig-3d-cargas"></figure>
             <figure id="fig-planta"></figure>

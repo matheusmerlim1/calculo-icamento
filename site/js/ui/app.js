@@ -134,7 +134,7 @@
       massa: 5000, origem: "calculado", local: "onshore", base: "N001", consequencia: "normal",
       tipo: "quatroSim", medidas: Object.assign({}, TIPOS.quatroSim.padrao),
       angulo: 60, pernaAngulo: 0,          // ângulo da perna com a estrutura, medido nesta perna
-      hipotese4: "diagonais", fatores: null, lingaPropria: true,
+      hipotese4: "elastica", fatores: null, lingaPropria: true,
       linga: { tipo: "6x19-aco", categoria: "1960" },
       manilhaTipo: "G-4163", manilhaCodigo: null,   // null = escolha automática (menor manilha que encaixa em tudo)
       olhal: { modo: "fabricado", tipoComprado: "GPAL-UNC", fy: 355, porPerna: [] }
@@ -404,6 +404,15 @@
     $("ic-cons").value = ic.consequencia;
     $("ic-hipotese").value = ic.hipotese4;
     $("ic-hipotese").closest(".campo").style.display = t.pernas > 2 ? "" : "none";
+    $("dica-hipotese").style.display = t.pernas > 2 ? "" : "none";
+    $("dica-hipotese").innerHTML = ic.hipotese4 === "diagonais"
+      ? "<b>Pares diagonais:</b> admite que as lingas não ficam iguais e um par diagonal fica frouxo — "
+        + "o outro par sustenta sozinho o peso inteiro. É o pior caso estático possível, por isso "
+        + "<b>não leva SKL</b>. Conservador (≈ 2× a carga nominal por perna com o CG no centro)."
+      : "<b>Elástica × SKL (DNV-ST-N001):</b> o corpo é rígido e as quatro lingas são molas "
+        + "(rigidez vertical EA·cos²β/L). O equilíbrio (ΣV = W, ΣM = 0) mais a compatibilidade de "
+        + "deslocamentos dá a carga de cada perna; o SKL (1,25) cobre a diferença de comprimento "
+        + "entre as lingas — equivale a um par diagonal pegar 62,5 % do peso em vez de 50 %.";
     $("un-comp").value = uComp();
     $("un-massa").value = uMassa();
 
@@ -458,6 +467,32 @@
       `<label class="campo"><span>${rot}</span><input type="number" step="0.05" data-fator="${k}" data-key="fator-${k}" value="${f[k]}"></label>`).join("");
   }
 
+  /** quatro pernas: as duas hipóteses lado a lado, para o memorial mostrar a diferença */
+  function comparacaoHipoteses(r) {
+    const c = r.comparacao, el = c.elastica.maiorTracaoKN, dg = c.diagonais.maiorTracaoKN;
+    const usada = r.hipotese === "pares diagonais" ? "diagonais" : "elastica";
+    const linha = (k, nome, modelo, T, skl) => `<tr class="${k === usada ? "adotada" : ""}">
+      <td>${nome}${k === usada ? " <b>(adotada)</b>" : ""}</td><td>${modelo}</td>
+      <td class="num">${F.num(skl, 2)}</td><td class="num">${F.kn(T)}</td><td class="num">${F.ton(T / G)}</td></tr>`;
+    return `
+      <h3 class="capa__h">Comparação das hipóteses nas quatro pernas</h3>
+      <table class="tab">
+        <thead><tr><th>Hipótese</th><th>Modelo</th><th class="num">SKL</th>
+          <th class="num">Maior tração</th><th class="num">Maior tração</th></tr></thead>
+        <tbody>
+          ${linha("elastica", "Elástica × SKL (DNV-ST-N001)",
+            "corpo rígido sobre 4 molas, k = EA·cos²β/L; ΣV = W, ΣMx = ΣMy = 0 + compatibilidade", el, c.elastica.skl)}
+          ${linha("diagonais", "Pares diagonais (envoltória)",
+            "um par diagonal sustenta 100 % do peso, o outro frouxo; sem SKL", dg, 1)}
+        </tbody>
+      </table>
+      <p class="dica">Razão diagonais / elástica × SKL = <b>${F.num(dg / el, 2)}</b>.
+        A elástica × SKL é o modelo da norma para lingas de comprimento controlado (conjunto
+        casado, tolerância de fabricação conhecida). Use pares diagonais quando as lingas não
+        forem casadas, o corpo for muito rígido e não houver controle do comprimento, ou quando
+        o cliente/certificadora exigir a envoltória.</p>`;
+  }
+
   /* ------------------------------------------------------------ resultado */
   function pintarResultado() {
     const ic = atual();
@@ -506,7 +541,7 @@
           resultado: `β_${p.nome} = ${F.grau(p.angulo)}`
         },
         {
-          formula: `T_${p.nome} = V_${p.nome} / cos(β_${p.nome})   — V_${p.nome} do equilíbrio do sistema (hipótese: ${r.hipotese})`,
+          formula: `T_${p.nome} = V_${p.nome} / cos(β_${p.nome})   — V_${p.nome} do equilíbrio do sistema (hipótese: ${r.hipotese}${r.fatores.skl !== 1 ? `, já com SKL ${F.num(r.fatores.skl, 2)}` : ""})`,
           sub: `T_${p.nome} = ${F.kn(p.vertical)} / ${F.num(Math.cos(p.angulo * Math.PI / 180), 3)}`,
           resultado: `T_${p.nome} = ${F.kn(p.tracao)}`
         }
@@ -514,12 +549,15 @@
       <tfoot>
         <tr><td>Soma das verticais de projeto</td><td colspan="3"></td>
           <td class="num">${F.kn(r.somaVerticaisProjKN)}</td>
-          <td colspan="3" class="som">${r.pernas.length > 2 && r.hipotese === "pares diagonais"
-            ? "na hipótese de pares diagonais cada par sustenta a carga inteira" : ""}</td></tr>
+          <td colspan="3" class="som">${r.pernas.length <= 2 ? ""
+            : r.hipotese === "pares diagonais" ? "na hipótese de pares diagonais cada par sustenta a carga inteira"
+            : `o SKL ${F.num(r.fatores.skl, 2)} faz a soma passar do peso de projeto`}</td></tr>
         <tr><td>Carga no gancho</td><td colspan="3"></td>
           <td class="num">${F.kn(r.cargaGanchoKN)}</td>
           <td class="num">${F.ton(r.cargaGanchoKN / G)}</td><td colspan="2" class="som">peso de projeto</td></tr>
       </tfoot>`;
+
+    $("comparacao-hipoteses").innerHTML = r.comparacao ? comparacaoHipoteses(r) : "";
 
     $("fig-3d-cargas").innerHTML = IC.iso3d.desenhar(r, { modo: "cargas", comp: txtComp });
     $("fig-planta").innerHTML = IC.fbd.planta(r);
@@ -626,7 +664,7 @@
         ${simbolos.map(sb => `<div class="simbolo">
           <span class="simbolo__k">${F.mat(sb.k)}</span>
           <span class="simbolo__d">${F.esc(sb.desc)}</span>
-          <span class="simbolo__u">${F.esc(sb.un)}</span>
+          <span class="simbolo__u${/^[\s\-–—]*$/.test(sb.un || "") ? " simbolo__u--vazio" : ""}">${F.esc(sb.un)}</span>
         </div>`).join("")}
       </div>` : "";
 
@@ -986,9 +1024,26 @@
         devem ser conferidos com a edição contratada antes da emissão.</p>`;
   }
 
+  /** no papel, campo de digitar não diz nada (e o select corta o texto): cada um ganha ao lado
+   *  um texto com o valor que mostra, e só esse texto é impresso (desenho.css) */
+  function espelharCampos() {
+    // todos os campos do documento, inclusive os que ficam dentro de tabelas (coordenadas etc.)
+    document.querySelectorAll(".etapas input:not([type=checkbox]):not([type=radio]):not([type=file]), .etapas select, .etapas textarea").forEach(el => {
+      let sp = el.nextElementSibling;
+      if (!sp || !sp.classList.contains("valor-impresso")) {
+        sp = document.createElement("span");
+        sp.className = "valor-impresso";
+        el.after(sp);
+      }
+      const txt = el.tagName === "SELECT" ? (el.selectedOptions[0] ? el.selectedOptions[0].text : "") : el.value;
+      sp.textContent = txt === "" ? "—" : txt;
+    });
+  }
+
   const pintar = () => {
     pintarAbas(); pintarEntrada(); pintarResultado();
     pintarLinga(); pintarSapatilhoManilha(); pintarOlhal(); pintarMaterial(); pintarCapa();
+    espelharCampos();
     // o conteúdo acabou de ser refeito: os botões de recolher e de esconder o cálculo
     // precisam ser recolocados (o do cálculo só existe onde há cálculo)
     if (typeof pintarDobra === "function") pintarDobra();
@@ -1166,6 +1221,7 @@
       $(id).addEventListener("input", () => {
         E[k] = $(id).value; gravar();
         $("topo-sub").textContent = E.nome || "memorial de cálculo e lista de material";
+        pintarCapa();       // a capa só sai no papel: sem isto o relatório levava o valor antigo
       });
     });
 
@@ -1288,7 +1344,13 @@
       inp.click();
     });
 
-    $("bt-relatorio").addEventListener("click", () => window.print());
+    // a capa é refeita na hora de imprimir (botão ou Ctrl+P), com o que está no cabeçalho agora
+    const lerCabecalho = () => {
+      [["est-nome", "nome"], ["est-doc", "doc"], ["est-resp", "resp"]].forEach(([id, k]) => { E[k] = $(id).value; });
+      gravar(); pintarCapa(); espelharCampos();
+    };
+    window.addEventListener("beforeprint", lerCabecalho);
+    $("bt-relatorio").addEventListener("click", () => { lerCabecalho(); window.print(); });
     const btXlsx = $("bt-material-xlsx");
     if (btXlsx) btXlsx.addEventListener("click", baixarMaterialXlsx);
   }

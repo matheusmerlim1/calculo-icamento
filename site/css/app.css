@@ -182,6 +182,7 @@
 .tab--material tfoot td:first-child { color: var(--c-texto-2); font-weight: 400; }
 
 .tab .maior td { color: var(--c-texto); font-weight: 700; }
+.tab .adotada td { color: var(--c-texto); font-weight: 700; }
 .tab .maior td:first-child::after { content: " ← maior carga"; color: var(--c-alerta); font-weight: 400; font-size: var(--t-xs); }
 
 /* ---------------------------------------------------------- verificações (ok / falha) */

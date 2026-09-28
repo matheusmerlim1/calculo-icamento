@@ -115,13 +115,40 @@ de cada par de pernas com a vertical. Isso é exatamente a hipótese **"pares di
 prevista no programa, só que calculada par a par (não 50/50) — e o fator de desbalanceamento
 `γ_skew = 1,05` é aplicado de forma genérica sobre o resultado, bem mais brando que o SKL de
 catálogo de 1,25 citado na literatura genérica de içamento offshore. As duas hipóteses seguem
-previstas no programa:
+previstas no programa — as duas são calculadas sempre e o memorial mostra a comparação; a
+escolhida governa o dimensionamento:
 
-1. **Pares diagonais**, com a geometria exata acima (recomendada — é o que o memorial de
-   referência faz) ou, de forma simplificada, com um SKL fixo por perna quando não se quer
-   montar a geometria completa dos pares.
-2. **Distribuição elástica** — reparte a carga pelas quatro pernas conforme a rigidez
-   (`k ∝ 1/L`), útil para comparação. Não substitui a hipótese 1 na verificação.
+1. **Elástica × SKL (padrão, recomendada — DNV-ST-N001).** O corpo é tratado como rígido e
+   as quatro lingas como molas. A rigidez vertical de cada perna é `k_i = EA·cos²β_i / L_i`
+   (EA igual nas quatro). As três equações de equilíbrio (`ΣV = W`, `ΣMx = 0`, `ΣMy = 0`)
+   mais a compatibilidade (o corpo rígido só translada e gira: `w_i = w0 + θx·y_i − θy·x_i`)
+   dão `V_i = k_i·(λ0 + λ1·x_i + λ2·y_i)`. Sobre esse resultado nominal entra o
+   `SKL = 1,25`, que cobre a diferença de comprimento entre as lingas (tolerância de
+   fabricação): equivale a admitir que um par diagonal receba 62,5 % do peso em vez de 50 %.
+
+2. **Pares diagonais (envoltória conservadora).** Admite que um par diagonal fica frouxo e o
+   outro sustenta sozinho o peso inteiro (`V_i` pelo equilíbrio de dois pontos). É o pior
+   caso estático possível, por isso **não leva SKL por cima** — 1,25 × 100 % daria 125 % do
+   peso num par, o que não existe em equilíbrio estático (a parcela dinâmica já está no DAF).
+   Com o CG no centro dá ≈ 1,6× a tração da hipótese 1. Indicada quando as lingas não são
+   casadas / sem controle de comprimento, corpo muito rígido, ou quando a certificadora exige.
+
+**Formulação usada (equilíbrio 3D exato).** Como todas as pernas concorrem no gancho
+`G = (0,0,H)`, usando `q_i = T_i / L_i` as seis equações de equilíbrio (3 forças + 3 momentos)
+se reduzem a três, válidas também com pontos em cotas diferentes:
+
+```
+Σ q_i·(H − z_i) = W        Σ q_i·x_i = 0        Σ q_i·y_i = 0        V_i = q_i·(H − z_i)
+```
+
+Com 4 pernas a incógnita que sobra sai do teorema de Menabrea (mínimo da energia
+complementar `Σ T_i²·L_i / EA`). Perna que sairia comprimida é declarada frouxa e o sistema é
+resolvido com as três restantes (determinado).
+
+> Correção desta versão: até aqui a hipótese de pares diagonais recebia também o SKL 1,25
+> (dupla contagem, ≈ 2× a hipótese 1), a elástica usava rigidez `1/L` sem o `cos²β`, e o
+> momento era tomado só das verticais (`Σ V_i·x_i = 0`), o que viola o equilíbrio quando os
+> pontos estão em cotas diferentes.
 
 Saídas desta etapa: tração em cada perna, ângulo com a vertical, componente horizontal
 (que solicita o olhal fora do plano) e a reação no gancho.

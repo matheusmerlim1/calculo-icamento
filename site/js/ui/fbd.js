@@ -149,13 +149,40 @@ IC.fbd = (function () {
     q.itens.push(`<rect x="${n(bx0)}" y="${n(bz - h / 2)}" width="${n(bx1 - bx0)}" height="${n(h)}" class="corpo"/>`);
 
     // pernas com tração e ângulo
-    res.pernas.forEach((p, i) => {
+    const meio = res.pernas.map((p, i) => {
       const a = [q.X(proj[i][0]), q.Y(proj[i][1])];
       linha(q, a, g, "perna");
       circ(q, a, 5, "ponto");
-      const m = [(a[0] + g[0]) / 2, (a[1] + g[1]) / 2];
-      txt(q, [m[0] + (proj[i][0] < 0 ? -8 : 8), m[1]], `${F.kn(p.tracao)}`, "forca", proj[i][0] < 0 ? "end" : "start");
-      txt(q, [m[0] + (proj[i][0] < 0 ? -8 : 8), m[1] + 13], `${F.grau(p.angulo)} · ${F.mm(p.comprimento)}`, "rot-peq", proj[i][0] < 0 ? "end" : "start");
+      return [(a[0] + g[0]) / 2, (a[1] + g[1]) / 2];
+    });
+    // Rótulos: com quatro pernas, duas caem do mesmo lado na projeção e os meios das linhas
+    // ficam quase no mesmo ponto — os textos saíam um em cima do outro. Por lado, os rótulos
+    // ficam empilhados, alinhados por fora da perna mais aberta, e levam o nome da perna.
+    const comNome = res.pernas.length > 2;
+    let xTextoDir = -Infinity;          // até onde vão os rótulos da direita (para a cota não passar por cima)
+    [-1, 1].forEach(lado => {
+      const idx = res.pernas.map((_, i) => i).filter(i => (proj[i][0] < 0 ? -1 : 1) === lado)
+        .sort((i, j) => meio[i][1] - meio[j][1]);
+      if (!idx.length) return;
+      const y0 = Math.min(...idx.map(i => meio[i][1])) - (idx.length - 1) * 15;
+      const ys = idx.map((i, k) => (idx.length > 1 ? y0 + k * 32 : meio[i][1]));
+      // x de cada perna na altura y (a linha é inclinada: abre para fora ao descer)
+      const xNa = (i, y) => {
+        const a = [q.X(proj[i][0]), q.Y(proj[i][1])];
+        return Math.abs(a[1] - g[1]) < 1e-6 ? a[0] : g[0] + (a[0] - g[0]) * (y - g[1]) / (a[1] - g[1]);
+      };
+      // o texto inteiro (as duas linhas, até y+16) fica por fora de todas as pernas do lado
+      const xs = ys.flatMap(y => idx.flatMap(i => [xNa(i, y - 12), xNa(i, y + 16)]));
+      const xAlinha = lado < 0 ? Math.min(...xs) - 10 : Math.max(...xs) + 10;
+      const ancora = lado < 0 ? "end" : "start";
+      if (lado > 0) xTextoDir = xAlinha + 7 * Math.max(...idx.map(i =>
+        Math.max(`${comNome ? res.pernas[i].nome + " · " : ""}${F.kn(res.pernas[i].tracao)}`.length,
+          `${F.grau(res.pernas[i].angulo)} · ${F.mm(res.pernas[i].comprimento)}`.length)));
+      idx.forEach((i, k) => {
+        const p = res.pernas[i], y = ys[k];
+        txt(q, [xAlinha, y], `${comNome ? p.nome + " · " : ""}${F.kn(p.tracao)}`, "forca", ancora);
+        txt(q, [xAlinha, y + 13], `${F.grau(p.angulo)} · ${F.mm(p.comprimento)}`, "rot-peq", ancora);
+      });
     });
 
     // centro de massa e peso
@@ -166,7 +193,7 @@ IC.fbd = (function () {
     txt(q, [cg[0] - 10, cg[1] - 10], "CG", "rot", "end");
 
     // altura do gancho
-    cotaV(q, g[1], cg[1], Math.max(bx1, g[0]) + 30, `H ${F.mm(Gk[2])}`, +1);
+    cotaV(q, g[1], cg[1], Math.max(bx1, g[0], xTextoDir) + 30, `H ${F.mm(Gk[2])}`, +1);
 
     txt(q, [larg / 2, 20], "DIAGRAMA DE CORPO LIVRE", "titulo");
     return q.svg();
