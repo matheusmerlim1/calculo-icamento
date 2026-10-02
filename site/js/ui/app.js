@@ -493,15 +493,10 @@
         o cliente/certificadora exigir a envoltória.</p>`;
   }
 
-  /* ------------------------------------------------------------ resultado */
-  function pintarResultado() {
-    const ic = atual();
-    const r = resolver(ic);
-    const P = pontosDe(ic), H = alturaGancho(ic);
-
-    $("avisos").innerHTML = r.avisos.map(a => `<div class="aviso">⚠ ${F.esc(a)}</div>`).join("");
-
-    $("memorial-peso").innerHTML = memorial([
+  /* ------------------------------------------------------------ passos do memorial
+   * Usados na tela e no arquivo do SMath: a mesma conta, escrita num lugar só. */
+  function passosPeso(ic, r) {
+    return [
       {
         formula: "W = m · g",
         sub: `W = ${F.num(massaParaTela(ic.massa), 2)} ${uMassa()} × 9,80665 m/s²`,
@@ -512,7 +507,39 @@
         sub: `W_proj = ${F.num(r.pesoKN, 2)} × ${F.num(r.fatores.peso, 2)} × ${F.num(r.fatores.daf, 2)} × ${F.num(r.fatores.consequencia, 2)}`,
         resultado: `W_proj = ${F.num(r.pesoProjKN, 2)} kN`
       }
-    ]);
+    ];
+  }
+
+  /** p: perna resolvida; pt: o ponto dela; H: altura do gancho */
+  function passosPerna(r, p, pt, H) {
+    return [
+      {
+        formula: `L_${p.nome} = |G − ${p.nome}|`,
+        sub: `L_${p.nome} = |(0,0,${F.num(H, 0)}) − (${F.num(pt.x, 0)},${F.num(pt.y, 0)},${F.num(pt.z, 0)})|`,
+        resultado: `L_${p.nome} = ${F.num(p.comprimento, 0)} mm`
+      },
+      {
+        formula: `cos(β_${p.nome}) = (H − z)/L_${p.nome}`,
+        sub: `cos(β_${p.nome}) = (${F.num(H, 0)} − ${F.num(pt.z, 0)})/${F.num(p.comprimento, 0)} = ${F.num(Math.cos(p.angulo * Math.PI / 180), 3)}`,
+        resultado: `β_${p.nome} = ${F.grau(p.angulo)}`
+      },
+      {
+        formula: `T_${p.nome} = V_${p.nome} / cos(β_${p.nome})   — V_${p.nome} do equilíbrio do sistema (hipótese: ${r.hipotese}${r.fatores.skl !== 1 ? `, já com SKL ${F.num(r.fatores.skl, 2)}` : ""})`,
+        sub: `T_${p.nome} = ${F.kn(p.vertical)} / ${F.num(Math.cos(p.angulo * Math.PI / 180), 3)}`,
+        resultado: `T_${p.nome} = ${F.kn(p.tracao)}`
+      }
+    ];
+  }
+
+  /* ------------------------------------------------------------ resultado */
+  function pintarResultado() {
+    const ic = atual();
+    const r = resolver(ic);
+    const P = pontosDe(ic), H = alturaGancho(ic);
+
+    $("avisos").innerHTML = r.avisos.map(a => `<div class="aviso">⚠ ${F.esc(a)}</div>`).join("");
+
+    $("memorial-peso").innerHTML = memorial(passosPeso(ic, r));
 
     const maior = Math.max(...r.pernas.map(p => p.tracao));
     const menor = Math.min(...r.pernas.map(p => p.tracao));
@@ -529,23 +556,7 @@
         <td class="num">${F.kn(p.tracao)}</td>
         <td class="num">${F.ton(p.toneladas)}</td>
         <td class="num som">${F.kn(p.horizontal)}</td></tr>
-      <tr class="linha-formula"><td colspan="8">${memorial([
-        {
-          formula: `L_${p.nome} = |G − ${p.nome}|`,
-          sub: `L_${p.nome} = |(0,0,${F.num(H, 0)}) − (${F.num(P[i].x, 0)},${F.num(P[i].y, 0)},${F.num(P[i].z, 0)})|`,
-          resultado: `L_${p.nome} = ${F.num(p.comprimento, 0)} mm`
-        },
-        {
-          formula: `cos(β_${p.nome}) = (H − z)/L_${p.nome}`,
-          sub: `cos(β_${p.nome}) = (${F.num(H, 0)} − ${F.num(P[i].z, 0)})/${F.num(p.comprimento, 0)} = ${F.num(Math.cos(p.angulo * Math.PI / 180), 3)}`,
-          resultado: `β_${p.nome} = ${F.grau(p.angulo)}`
-        },
-        {
-          formula: `T_${p.nome} = V_${p.nome} / cos(β_${p.nome})   — V_${p.nome} do equilíbrio do sistema (hipótese: ${r.hipotese}${r.fatores.skl !== 1 ? `, já com SKL ${F.num(r.fatores.skl, 2)}` : ""})`,
-          sub: `T_${p.nome} = ${F.kn(p.vertical)} / ${F.num(Math.cos(p.angulo * Math.PI / 180), 3)}`,
-          resultado: `T_${p.nome} = ${F.kn(p.tracao)}`
-        }
-      ])}</td></tr>`).join("")}</tbody>
+      <tr class="linha-formula"><td colspan="8">${memorial(passosPerna(r, p, P[i], H))}</td></tr>`).join("")}</tbody>
       <tfoot>
         <tr><td>Soma das verticais de projeto</td><td colspan="3"></td>
           <td class="num">${F.kn(r.somaVerticaisProjKN)}</td>
@@ -1086,6 +1097,144 @@
     baixar(nome, bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   }
 
+  /* ------------------------------------------------------------ memorial no SMath Studio (.sm)
+   * O estudo inteiro, içamento por içamento. Cada etapa de cálculo vai para uma área
+   * recolhida do SMath com todas as contas; fora dela, os resultados da área são chamados de
+   * novo. A conta só fica "viva" no SMath quando reproduz o valor desta página — detalhes em
+   * js/core/smath-export.js. */
+  function descricaoSimbolo(sym) {
+    const s = IC.simbolos.lista.find(x => {
+      if (!x.re) return x.k === sym;
+      x.re.lastIndex = 0;
+      const m = String(sym).match(x.re);
+      return m && m[0] === sym;
+    });
+    return s ? `${s.desc}${s.un && !/^[\s\-–—]*$/.test(s.un) ? ` (${s.un})` : ""}` : "";
+  }
+  /** {formula, sub, resultado} (ou texto solto) -> passo do memorial do SMath */
+  const passoSm = (t, o, extra) => o && Object.assign(typeof o === "string" ? { t, r: o }
+    : { t, f: o.formula, s: o.sub, r: o.resultado }, extra || {});
+
+  function relatorioSmath() {
+    const S = window.SMathExport;
+    const doc = new S.Documento({ autor: E.resp || "", casas: 3 });
+    const mem = new S.Memorial(doc, { descricao: descricaoSimbolo });
+    doc.titulo("Memorial de cálculo de içamento", 1);
+    doc.texto([`Estudo: ${E.nome || "—"}`, `Documento: ${E.doc || "—"}`, `Responsável: ${E.resp || "—"}`,
+      `Emitido em: ${new Date().toLocaleDateString("pt-BR")}`, `Içamentos: ${E.icamentos.length}`].join("\n"));
+
+    E.icamentos.forEach(ic => {
+      const r = resolver(ic), f = r.fatores, P = pontosDe(ic), H = alturaGancho(ic);
+      const rig = riggingDe(ic), o = olhalDe(ic, rig);
+      doc.espaco(18);
+      doc.titulo(ic.nome, 1);
+
+      /* dados */
+      doc.titulo("Dados do içamento", 2);
+      doc.texto(`Arranjo: ${TIPOS[ic.tipo].nome}` + (TIPOS[ic.tipo].pernas > 2 ? ` · hipótese: ${r.hipotese}` : "")
+        + ` · base: ${(FAT.bases[ic.base] || {}).nome || ic.base}`);
+      mem.definir("m", `${F.num(ic.massa, 3)} kg`);
+      mem.definir("g", "9,80665 m/s²");
+      mem.definir("γ_peso", F.num(f.peso, 3));
+      mem.definir("DAF", F.num(f.daf, 3));
+      mem.definir("γ_cons", F.num(f.consequencia, 3));
+      mem.definir("SKL", F.num(f.skl, 3));
+      mem.definir("FS_linga", F.num(f.fsLinga, 3), "fator de segurança da linga");
+      doc.texto(P.map(p => `${p.nome}: x = ${F.num(p.x, 0)} mm · y = ${F.num(p.y, 0)} mm · z = ${F.num(p.z, 0)} mm`).join("\n"));
+      mem.definir("H", `${F.num(H, 1)} mm`);
+
+      /* cargas */
+      mem.secao("Peso de projeto", passosPeso(ic, r).map((p, i) => passoSm(i ? "Peso de projeto" : "Peso do corpo", p)));
+      const passosCargas = [];
+      r.pernas.forEach((p, i) => {
+        const [comp, ang, trac] = passosPerna(r, p, P[i], H);
+        passosCargas.push(
+          passoSm(`Perna ${p.nome} — comprimento`, comp),
+          passoSm(`Perna ${p.nome} — ângulo com a vertical`, ang),
+          { t: `Perna ${p.nome} — componente vertical (equilíbrio do sistema)`, r: `V_${p.nome} = ${F.num(p.vertical, 3)} kN` },
+          passoSm(`Perna ${p.nome} — tração`, trac));
+      });
+      passosCargas.push({ t: "Carga no gancho", r: `F_gancho = ${F.num(r.cargaGanchoKN, 2)} kN` },
+        { t: "Maior tração por perna", r: `T_max = ${F.num(r.maiorTracaoKN, 2)} kN` });
+      mem.secao("Cargas nas pernas", passosCargas);
+
+      /* linga */
+      const l = rig.linga;
+      if (l.ok) {
+        const mblCabo = l.linha && l.linha["ruptura" + l.categoria];
+        const passos = [passoSm("MBL requerida", l.formula)];
+        if (mblCabo) passos.push(
+          { t: `Cabo escolhido — ${IC.lingas.tipos[l.tipo].nome}, Ø ${F.num(l.diametro, 1)} mm, categoria ${l.categoria} N/mm²`,
+            r: `MBL = ${F.num(mblCabo, 2)} kN` },
+          { t: "Utilização da linga", f: "u = MBL_req / MBL", r: `u = ${F.num(l.utilizacao * 100, 1)} %`, ok: l.utilizacao <= 1 });
+        mem.secao("Linga", passos);
+      } else {
+        doc.titulo("Linga", 2);
+        doc.texto(`Nenhum cabo da tabela atende à MBL requerida (${F.kn(l.mblReqKN)}).`, { negrito: true, cor: "#A1332C" });
+      }
+
+      /* manilha e encaixe */
+      const m = rig.manilha;
+      if (m.ok) {
+        mem.secao(`Manilha — ${m.manilha.codigo}`, [
+          passoSm("Carga no pino", m.formula),
+          passoSm(`CMT da manilha ${m.manilha.codigo}`, m.formulaCmt, { ok: m.manilha.cmt >= m.cargaT })
+        ]);
+      } else {
+        doc.titulo("Manilha", 2);
+        doc.texto(`Nenhuma manilha do tipo escolhido atende à carga de ${F.ton(m.cargaT)}.`, { negrito: true, cor: "#A1332C" });
+      }
+      if (rig.casos.length) {
+        mem.secao(`Encaixe sapatilho ${rig.sapatilho.ok ? rig.sapatilho.sapatilho.codigo : ""} × manilha`, rig.casos.map(c => ({
+          t: `Caso ${c.n} — ${c.nome}`, f: c.formula,
+          s: `${F.num(c.a, 1)} mm ${c.ok ? ">" : "≤"} ${F.num(c.b, 1)} mm`,
+          r: c.ok ? `passa, com folga de ${F.num(c.a - c.b, 1)} mm` : `não passa — faltam ${F.num(c.b - c.a, 1)} mm`,
+          ok: c.ok
+        })));
+      }
+
+      /* olhal */
+      const quais = `${o.qtd} olhal(is) iguais (${o.nomes.join(", ")}), dimensionados pela perna ${o.governante.nome}`;
+      if (o.modo === "comprado") {
+        const rc = o.resultado;
+        mem.secao("Olhal comercial", [rc.ok
+          ? { t: `${rc.olhal.codigo} — ${quais}`, f: "CMT ≥ carga", s: `${F.num(rc.olhal.cmt, 2)} t ≥ ${F.num(rc.cargaT, 2)} t`,
+              r: `utilização = ${F.num(rc.utilizacao * 100, 0)} %`, ok: true }
+          : { t: quais, r: `Nenhum olhal comercial atende ${F.ton(rc.cargaT)} com pino Ø ${F.num(rc.pinoMm, 1)} mm.`, ok: false }]);
+      } else {
+        const g = o.geom, mn = rig.manilha.ok ? rig.manilha.manilha : null;
+        const passos = [{ t: quais, r: `F_pino = ${F.num(o.governante.tracao, 3)} kN` }];
+        if (mn) passos.push({
+          t: "Medidas que vêm da manilha",
+          f: "Ø furo = b(pino) + folga · R = f − g + b/2 + 5 · R.anel = R",
+          s: `Ø furo = ${F.num(mn.b, 1)} + 1,15 · R = ${F.num(mn.f, 1)} − ${F.num(mn.g, 1)} + ${F.num(mn.b / 2, 1)} + 5`,
+          r: `Ø furo = ${F.num(g.dFuro, 2)} mm · R = R.anel = ${F.num(g.R, 1)} mm`
+        });
+        const espTotal = (Number(g.t) || 0) + 2 * (Number(g.tAnel) || 0);
+        if (mn) passos.push({ t: "A chapa tem que entrar na boca da manilha", f: "t + 2·t_anel < boca",
+          s: `${F.num(espTotal, 1)} mm ${espTotal < mn.e ? "<" : "≥"} ${F.num(mn.e, 1)} mm`, ok: espTotal < mn.e });
+        o.verif.checks.forEach(c => passos.push(passoSm(`${c.n}. ${c.nome}`, c.formula,
+          { ok: c.ok, n: `Utilização: ${F.num(c.utilizacao * 100, 0)} %` })));
+        doc.titulo("Olhal fabricado — geometria", 2);
+        doc.texto(["t", "tAnel", "base", "h", "R", "rAnel", "dFuro"].filter(k => k in g)
+          .map(k => `${ROTULOS_GEOM[k]}: ${F.num(g[k], 2)}`).join("\n"));
+        mem.secao("Olhal fabricado — verificação", passos);
+      }
+
+      /* material */
+      doc.titulo("Lista de material", 2);
+      mem.tabela(["Item", "Qtd.", "Título", "Especificação", "Material", "Massa (kg)"],
+        materialDe(ic).itens.map((it, i) => [i + 1, F.num(it.qtd, 0), it.titulo, it.especificacao, it.material,
+          it.massa == null ? "-" : F.num(it.massa, 2)]));
+    });
+
+    doc.espaco(9);
+    doc.texto("Valores de catálogo e de norma devem ser conferidos com a edição contratada antes da emissão. "
+      + "Solda não é verificada automaticamente — conferir à parte pela NBR 8800.", { italico: true });
+    S.baixar(`${(E.nome || "icamento").replace(/[^\w-]+/g, "_")}.sm`, doc);
+    return mem.stats;
+  }
+
   /* ------------------------------------------------------------ recolher as caixas */
   // Quais caixas estão fechadas. Fica no navegador, separado do estudo: é preferência de
   // quem está olhando a tela, não dado do cálculo.
@@ -1351,6 +1500,11 @@
     };
     window.addEventListener("beforeprint", lerCabecalho);
     $("bt-relatorio").addEventListener("click", () => { lerCabecalho(); window.print(); });
+    $("bt-smath").addEventListener("click", () => {
+      lerCabecalho();
+      try { relatorioSmath(); }
+      catch (err) { console.error(err); alert("Não foi possível gerar o arquivo SMath: " + err.message); }
+    });
     const btXlsx = $("bt-material-xlsx");
     if (btXlsx) btXlsx.addEventListener("click", baixarMaterialXlsx);
   }
