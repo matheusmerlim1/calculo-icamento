@@ -55,6 +55,12 @@ ponto errado.
 escolhida; espessura, base, altura e o reforço são a sua escolha. A chapa com o reforço precisa
 entrar na boca da manilha, e isso é verificado.
 
+**Estrutura inclinada.** Nas duas pernas dá para marcar a peça como inclinada e informar a
+inclinação φ e o ângulo γ de cada olhal com a peça. O programa calcula onde ficam os pontos, o
+comprimento de cada linga para a peça ficar nessa inclinação e verifica o olhal com o ângulo real
+entre a linga e ele. O θ das fórmulas do olhal é o ângulo da linga com a base do olhal (antes
+entrava, errado, o ângulo com a vertical).
+
 **Linga única.** Com um ponto só, o corpo gira até o centro de massa ficar na vertical do ponto:
 a linga trabalha vertical e leva o peso de projeto inteiro (sem SKL). Em vez do ângulo, entra o
 comprimento da linga; o ponto precisa ficar acima do CG, senão o corpo vira — a página avisa.

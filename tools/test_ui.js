@@ -128,6 +128,59 @@ async function main() {
     return true;
   });
 
+  await passo("estrutura inclinada: pontos giram com a peça e o olhal usa o ângulo real", async () => {
+    await rodar(`document.querySelector('[data-tipo="duas"]').click();`);
+    await esperar(400);
+    const pontos = () => rodar(`return JSON.stringify(ICapp.pontosDe(ICapp.atual()).map(p => [p.x, p.y, p.z].map(v => Math.round(v))))`);
+    const reto = await pontos();
+    const mudar = (sel, v) => rodar(`const e=document.querySelector('${sel}'); e.value="${v}"; e.dispatchEvent(new Event("change",{bubbles:true}));`);
+    await mudar("#ic-inclinada", "sim"); await esperar(400);
+    await mudar('[data-incl="phi"]', "30"); await esperar(300);
+    await mudar('[data-incl="g2"]', "0"); await esperar(400);
+    const r = JSON.parse(await rodar(`const ic = ICapp.atual(); ic.olhal.modo = "fabricado"; ICapp.pintar();
+      const r = ICapp.resolver(ic), P = ICapp.pontosDe(ic), ang = ICapp.angulosOlhal(ic, r);
+      const o = ICapp.olhalDe(ic, ICapp.riggingDe(ic)), m = ic.medidas;
+      const util = x => Math.max(...x.verif.checks.map(c => c.utilizacao));
+      return JSON.stringify({ P, G: r.gancho, ang, a1: m.a1, a2: m.a2, h: m.h, gov: o.governante.nome,
+        piorGov: util(o.porPerna.find(x => x.perna.nome === o.governante.nome)),
+        piorTodas: Math.max(...o.porPerna.map(util)), fig: document.getElementById("fig-medidas").innerText,
+        tela: document.getElementById("resultado-olhal").innerText, campos: document.querySelectorAll("[data-incl]").length })`));
+    if (r.campos !== 3) throw new Error("campos de ângulo: " + r.campos);
+    const f = 30 * Math.PI / 180, u = [Math.cos(f), 0, Math.sin(f)], n = [-Math.sin(f), 0, Math.cos(f)];
+    const esp = [[-r.a1, -1], [r.a2, 1]].map(([s]) => u.map((c, k) => c * s + n[k] * r.h));
+    esp.forEach((e, i) => {
+      const p = [r.P[i].x, r.P[i].y, r.P[i].z];
+      if (Math.hypot(...p.map((v, k) => v - e[k])) > 0.01) throw new Error(`P${i + 1} fora do lugar: ${p} ≠ ${e}`);
+    });
+    if (!(r.P[1].z > r.P[0].z)) throw new Error("P2 devia ficar acima de P1");
+    // eixo do olhal: P1 em pé (γ = 90° → n), P2 na ponta (γ = 0° → +u); ângulo com a linga conferido à mão
+    const eixos = [n, u];
+    r.ang.forEach((a, i) => {
+      const d = [r.G[0] - r.P[i].x, r.G[1] - r.P[i].y, r.G[2] - r.P[i].z], L = Math.hypot(...d);
+      const esperado = Math.acos(d.reduce((s, v, k) => s + v * eixos[i][k], 0) / L) * 180 / Math.PI;
+      if (Math.abs(a.eixo - esperado) > 1e-6) throw new Error(`ângulo do olhal P${i + 1}: ${a.eixo} ≠ ${esperado}`);
+      if (Math.abs(a.base - (90 - esperado)) > 1e-6) throw new Error("θ com a base devia ser 90° − ângulo com o eixo");
+    });
+    if (Math.abs(r.piorGov - r.piorTodas) > 1e-9) throw new Error("o olhal governante devia ser o de maior utilização");
+    if (!/ESTRUTURA INCLINADA/.test(r.fig)) throw new Error("figura das medidas não é a da peça inclinada");
+    if (!/eixo do olhal/.test(r.tela)) throw new Error("tela do olhal sem o ângulo com o eixo");
+    await foto("ic_duas_inclinada");
+    await mudar("#ic-inclinada", "nao"); await esperar(400);
+    if ((await pontos()) !== reto) throw new Error("desmarcar a inclinação devia voltar aos mesmos pontos");
+    return true;
+  });
+
+  await passo("olhal em pé: θ das fórmulas é o ângulo da linga com a horizontal", async () => {
+    await rodar(`document.querySelector('[data-tipo="quatroSim"]').click();`);
+    await esperar(400);
+    const r = JSON.parse(await rodar(`const ic = ICapp.atual(), r = ICapp.resolver(ic);
+      return JSON.stringify({ ang: ICapp.angulosOlhal(ic, r), beta: r.pernas.map(p => p.angulo) })`));
+    r.ang.forEach((a, i) => {
+      if (Math.abs(a.base - (90 - r.beta[i])) > 1e-6) throw new Error(`perna ${i + 1}: θ ${a.base} ≠ 90 − β ${90 - r.beta[i]}`);
+    });
+    return true;
+  });
+
   await passo("espessura da chapa do olhal troca a manilha automática", async () => {
     await rodar(`document.querySelector('[data-tipo="quatroSim"]').click();`);
     await esperar(400);
@@ -269,7 +322,7 @@ async function main() {
     return true;
   });
 
-  await passo("o olhal é um só, dimensionado pela perna mais carregada", async () => {
+  await passo("o olhal é um só, dimensionado pela perna mais solicitada", async () => {
     const r = JSON.parse(await rodar(`const ic = ICapp.atual();
       ic.olhal.modo = "fabricado"; ICapp.pintar();
       const o = ICapp.olhalDe(ic, ICapp.riggingDe(ic));

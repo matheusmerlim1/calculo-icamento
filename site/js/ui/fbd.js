@@ -129,6 +129,14 @@ IC.fbd = (function () {
       return [sg * r, p.ponto[2]];
     });
     proj.forEach(p => q.ver(p));
+    // peça inclinada: o corpo é a barra ao longo do eixo dela (em elevação, x e z)
+    const barra = res.peca ? (() => {
+      const r = res.peca, comp = r.a1 + r.a2, esp = Math.max(Math.abs(r.h) * 0.6, comp * 0.07);
+      const topo = r.h > 0 ? r.h * 0.3 : esp / 2, s0 = -r.a1 - comp * 0.06, s1 = r.a2 + comp * 0.06;
+      const P = (s, nn) => [r.u[0] * s + r.n[0] * nn, r.u[2] * s + r.n[2] * nn];
+      return { cantos: [P(s0, topo - esp), P(s1, topo - esp), P(s1, topo), P(s0, topo)], olhal: Math.max(r.h - topo, esp * 0.5) };
+    })() : null;
+    if (barra) barra.cantos.forEach(c => q.ver(c));
     q.ver([0, Gk[2]]);
     q.ver([0, 0]);
     q.ajustar();
@@ -147,7 +155,16 @@ IC.fbd = (function () {
     if (bx1 - bx0 < 120) { const m = (bx0 + bx1) / 2; bx0 = m - 90; bx1 = m + 90; }   // linga única: sem largura
     const bz = q.Y(Math.min(...zs));
     const h = Math.max(24, Math.abs(q.Y(Math.min(...zs)) - q.Y(Math.max(...zs))) + 24);
-    if (res.pernas.length === 1) {
+    if (barra) {
+      poli(q, barra.cantos.map(c => [q.X(c[0]), q.Y(c[1])]), "corpo");
+      // olhal: do pé ao furo, na direção do eixo dele
+      res.pernas.forEach((p, i) => {
+        const d = (res.eixosOlhal || [])[i];
+        if (!d) return;
+        const pe = [proj[i][0] - d[0] * barra.olhal, proj[i][1] - d[2] * barra.olhal];
+        q.itens.push(`<line x1="${n(q.X(pe[0]))}" y1="${n(q.Y(pe[1]))}" x2="${n(q.X(proj[i][0]))}" y2="${n(q.Y(proj[i][1]))}" class="peca" style="stroke-width:7;stroke-linecap:round"/>`);
+      });
+    } else if (res.pernas.length === 1) {
       // linga única: o corpo vai do ponto (no topo) até abaixo do CG, que fica dentro dele
       const yTopo = q.Y(Math.max(...zs)), yBase = Math.max(q.Y(0), yTopo) + 30;
       q.itens.push(`<rect x="${n(bx0)}" y="${n(yTopo)}" width="${n(bx1 - bx0)}" height="${n(yBase - yTopo)}" class="corpo"/>`);

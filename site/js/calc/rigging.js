@@ -175,7 +175,10 @@ IC.rigging = (function () {
 
   /**
    * Verificação de resistência do olhal fabricado (docs/METODO.md, item 7).
-   * Fpino em kN, thetaGraus = ângulo da perna com a vertical, geom em mm, Fy em MPa.
+   * Fpino em kN, geom em mm, Fy em MPa.
+   * thetaGraus = ângulo da linga com a BASE do olhal (90° = puxando no eixo do olhal): é o θ das
+   *   fórmulas do memorial, f_a = F·sen θ (axial) e f_ipb = F·cos θ·h (flexão no plano). Com o
+   *   olhal em pé é o ângulo da linga com a horizontal — não com a vertical.
    * Não inclui a verificação de solda (item 8 do método) — fazer à parte.
    */
   function verificarOlhalFabricado({ Fpino, thetaGraus, geom, Fy = 355 }) {

@@ -92,6 +92,18 @@ Para cada perna `i`, com o ponto de içamento em `Pi` e o gancho em `G = (0, 0, 
 βi   = ângulo entre ûi e a vertical
 ```
 
+**Estrutura inclinada (opção das duas pernas)** — a peça faz `φ` com a horizontal e `P2` fica do
+lado de cima. Com `u = (cos φ, 0, sen φ)` o eixo da peça e `n = (−sen φ, 0, cos φ)` a normal dela:
+
+```
+P1 = −a₁·u + h·n        P2 = a₂·u + h·n        (a₁, a₂ ao longo da peça; h perpendicular a ela)
+eixo do olhal i = cos γᵢ·(±u) + sen γᵢ·n     (γ = 90° em pé sobre a peça, 0° na ponta, para fora)
+```
+
+O gancho continua na vertical do CG, e o equilíbrio é o das duas pernas em cotas diferentes. O
+comprimento que cada linga precisa ter para a peça ficar em `φ` sai da geometria e é mostrado na
+etapa 3. Os comprimentos `L₁ = |G − P1|` e `L₂ = |G − P2|` são o que se encomenda.
+
 **Uma linga (ponto único)** — sistema determinado. O corpo gira até o CG ficar na vertical do
 ponto, então a perna é vertical (`β = 0`) e leva o peso de projeto inteiro, sem SKL:
 
@@ -285,8 +297,18 @@ Cargas:    F_pino = carga de projeto da perna (item 2b)
            P_fora = 5 % de F_pino · cos(θ)     confirmado no memorial (verificação 6, abaixo)
 ```
 
-Verificações e tensões admissíveis (todas em função de `Fy = 355 MPa`; `θ` = ângulo da perna
-com a vertical):
+Verificações e tensões admissíveis (todas em função de `Fy = 355 MPa`; `θ` = ângulo da linga
+com a **base do olhal**, `θ = 90° − ∠(linga, eixo do olhal)`):
+
+> **Correção.** Até esta versão o programa passava para estas fórmulas o ângulo da perna com a
+> **vertical**. Com ele, linga vertical num olhal em pé dava flexão no plano máxima e força axial
+> zero — o contrário do real (tração pura). As fórmulas só fecham com θ medido a partir da base
+> do olhal: linga no eixo do olhal → `θ = 90°`, `f_a = F/A`, `f_ipb = 0`. Com o olhal em pé,
+> `θ` é o ângulo da linga com a horizontal.
+>
+> **Um olhal, verificado em cada perna.** O olhal fabricado é o mesmo em todos os pontos, mas é
+> verificado em cada perna com a carga e o ângulo dela; governa a de maior utilização (com a peça
+> inclinada ela pode não ser a mais tracionada). O olhal comercial continua pela maior tração.
 
 | # | Verificação | Fórmula | Admissível |
 |---|---|---|---|

@@ -108,8 +108,60 @@ IC.figuras = (function () {
   }
 
   /* ---------------------------------------------------------- medidas a informar */
-  const medidas = tipo => (tipo === "uma" ? medidasUma()
-    : tipo === "duas" ? medidasDuas() : medidasQuatro(tipo === "quatroDif"));
+  const medidas = (tipo, opts = {}) => (tipo === "uma" ? medidasUma()
+    : tipo === "duas" ? (opts.inclinada ? medidasDuasInclinada() : medidasDuas()) : medidasQuatro(tipo === "quatroDif"));
+
+  /** duas pernas com a peça inclinada: a₁, a₂ ao longo da peça, h perpendicular, φ e γ */
+  function medidasDuasInclinada() {
+    const W = 760, H = 480;
+    const f = 28 * Math.PI / 180, u = [Math.cos(f), -Math.sin(f)], nv = [-Math.sin(f), -Math.cos(f)];
+    const cg = [380, 226], a1 = 230, a2 = 230, hh = 34, esp = 26;
+    const at = (s, n) => [cg[0] + u[0] * s + nv[0] * n, cg[1] + u[1] * s + nv[1] * n];
+    const pt = q => `${Math.round(q[0] * 10) / 10},${Math.round(q[1] * 10) / 10}`;
+    const P1 = at(-a1, hh), P2 = at(a2, hh), G = [cg[0], 52];
+    const corpo = [at(-a1 - 40, -esp), at(a2 + 40, -esp), at(a2 + 40, esp - 6), at(-a1 - 40, esp - 6)];
+    // olhal em P1 em pé (γ = 90°) e em P2 inclinado (γ ≈ 50°), só para mostrar a medida
+    const olhal = (P, g, lado) => {
+      const gr = g * Math.PI / 180;
+      const d = [u[0] * lado * Math.cos(gr) + nv[0] * Math.sin(gr), u[1] * lado * Math.cos(gr) + nv[1] * Math.sin(gr)];
+      const pe = [P[0] - d[0] * 28, P[1] - d[1] * 28];
+      return { d, svg: `<line x1="${pe[0]}" y1="${pe[1]}" x2="${P[0]}" y2="${P[1]}" class="peca" style="stroke-width:9;stroke-linecap:round"/>` };
+    };
+    const o1 = olhal(P1, 90, -1), o2 = olhal(P2, 50, 1);
+    const eixo = (P, d, k = 70) => `<line x1="${P[0]}" y1="${P[1]}" x2="${P[0] + d[0] * k}" y2="${P[1] + d[1] * k}" class="eixo"/>`;
+    const hor = (P, k) => `<line x1="${P[0]}" y1="${P[1]}" x2="${P[0] + k}" y2="${P[1]}" class="eixo"/>`;
+    return `${cabeca(W, H)}
+      <text x="${W / 2}" y="20" class="titulo" text-anchor="middle">MEDIDAS A INFORMAR — DUAS PERNAS, ESTRUTURA INCLINADA</text>
+      <path d="M${G[0]},${G[1] - 22} v12" class="peca"/><circle cx="${G[0]}" cy="${G[1] - 4}" r="8" class="gancho-i"/>
+      <line x1="${G[0]}" y1="${G[1] + 4}" x2="${P1[0]}" y2="${P1[1]}" class="perna"/>
+      <line x1="${G[0]}" y1="${G[1] + 4}" x2="${P2[0]}" y2="${P2[1]}" class="perna"/>
+      <polygon points="${corpo.map(pt).join(" ")}" class="corpo"/>
+      ${o1.svg}${o2.svg}
+      <circle cx="${P1[0]}" cy="${P1[1]}" r="5" class="ponto"/><circle cx="${P2[0]}" cy="${P2[1]}" r="5" class="ponto"/>
+      <text x="${P1[0] - 14}" y="${P1[1] - 8}" text-anchor="end">P1</text>
+      <text x="${P2[0] + 12}" y="${P2[1] + 4}" text-anchor="start">P2</text>
+      <line x1="${G[0]}" y1="${G[1] + 10}" x2="${cg[0]}" y2="${cg[1] + 60}" class="eixo"/>
+      <circle cx="${cg[0]}" cy="${cg[1]}" r="7" class="cg"/>
+      <text x="${cg[0] + 12}" y="${cg[1] + 24}" class="rot">CG</text>
+
+      ${cota(...at(-a1, -esp - 22), ...at(0, -esp - 22), "a₁")}
+      ${cota(...at(0, -esp - 22), ...at(a2, -esp - 22), "a₂")}
+      ${cota(...at(-a1 - 22, 0), ...at(-a1 - 22, hh), "h", "end")}
+
+      ${hor(at(-a1 - 40, -esp), 150)}
+      <path d="M${at(-a1 - 40, -esp)[0] + 96},${at(-a1 - 40, -esp)[1]} A 96,96 0 0,0 ${at(-a1 - 40 + 96, -esp)[0]},${at(-a1 - 40 + 96, -esp)[1]}" class="arco"/>
+      <text x="${at(-a1 - 40, -esp)[0] + 104}" y="${at(-a1 - 40, -esp)[1] - 6}" class="forca">φ</text>
+
+      ${eixo(P2, o2.d)}${eixo(P2, u, 64)}
+      <text x="${P2[0] + 52}" y="${P2[1] - 44}" class="forca">γ₂</text>
+      ${eixo(P1, o1.d, 60)}
+      <text x="${P1[0] + 8}" y="${P1[1] - 52}" class="forca">γ₁ = 90°</text>
+
+      <text x="${W / 2}" y="${H - 40}" class="rot-peq" text-anchor="middle">φ — inclinação da peça com a horizontal (P2 do lado de cima) · a₁, a₂ — do CG a cada ponto, ao longo da peça</text>
+      <text x="${W / 2}" y="${H - 24}" class="rot-peq" text-anchor="middle">h — do eixo da peça ao furo do olhal, perpendicular a ela · α — ângulo de uma perna com a horizontal</text>
+      <text x="${W / 2}" y="${H - 8}" class="rot-peq" text-anchor="middle">γ — eixo do olhal com o eixo da peça: 90° = em pé sobre a peça, 0° = na ponta, apontando para fora</text>
+    </svg>`;
+  }
 
   /** uma linga: vista lateral com o comprimento L da linga e a altura h do ponto sobre o CG */
   function medidasUma() {
