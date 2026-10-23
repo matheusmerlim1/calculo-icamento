@@ -91,6 +91,16 @@
    * e como elas viram coordenadas — o sentido de cada uma está na figura das medidas.
    */
   const TIPOS = {
+    uma: {
+      nome: "Uma linga", resumo: "um único ponto, na vertical do CG", pernas: 1, unica: true,
+      // um ponto só: o corpo gira até o CG ficar na vertical do ponto, então a linga é vertical
+      // e o ângulo com a estrutura não define a altura do gancho — entra o comprimento da linga
+      // hu (e não h): as medidas são compartilhadas entre os arranjos, e aqui o ponto precisa
+      // ficar acima do CG — não pode herdar o h = 0 dos outros nem devolver o seu para eles
+      medidas: [["L", "L — comprimento da linga (do ponto ao gancho)"], ["hu", "h — altura do ponto acima do CG"]],
+      padrao: { L: 2000, hu: 500 },
+      pontos: m => [{ nome: "P1", x: 0, y: 0, z: m.hu }]
+    },
     duas: {
       nome: "Duas pernas", resumo: "duas lingas, corpo alongado", pernas: 2,
       medidas: [["a1", "a₁ — do CG até P1"], ["a2", "a₂ — do CG até P2"], ["h", "h — altura dos pontos em relação ao CG"]],
@@ -159,6 +169,7 @@
   /** altura do gancho: sai do ângulo informado na perna escolhida */
   function alturaGancho(ic) {
     const P = pontosDe(ic);
+    if (TIPOS[ic.tipo].unica) return P[0].z + Math.max(Number(ic.medidas.L) || 0, 1);
     const i = Math.min(ic.pernaAngulo || 0, P.length - 1);
     const d = Math.hypot(P[i].x, P[i].y);
     const ang = Math.max(1, Math.min(89, Number(ic.angulo) || 60));
@@ -172,7 +183,8 @@
       peso: b.peso[ic.origem] ?? 1.05,
       daf: FAT.daf(ic.base, ic.local, (Number(ic.massa) || 0) / 1000),
       consequencia: b.consequencia[ic.consequencia] ?? 1,
-      skl: TIPOS[ic.tipo].pernas > 2 ? b.skl.quatro : b.skl.duas,
+      // uma linga só leva o peso inteiro: não há distribuição desigual a cobrir
+      skl: TIPOS[ic.tipo].pernas > 2 ? b.skl.quatro : TIPOS[ic.tipo].pernas === 1 ? 1 : b.skl.duas,
       fsLinga: b.fsLinga.padrao,
       anguloMax: FAT.anguloMaximo
     };
@@ -196,6 +208,13 @@
     return Math.max(...E.icamentos.map(x => resolver(x).maiorTracaoKN));
   }
 
+  /** t + 2·t.anel do olhal fabricado — entra na escolha da manilha; null no olhal comprado */
+  function espessuraChapa(ic) {
+    if (ic.olhal.modo !== "fabricado") return null;
+    const g = ic.olhal.geom || { t: 25, tAnel: 0 };     // 25 mm = espessura de partida (rigging.js)
+    return (Number(g.t) || 0) + 2 * (Number(g.tAnel) || 0);
+  }
+
   function riggingDe(ic) {
     const f = fatoresDe(ic);
     const cargaGov = cargaGovernanteKN(ic);
@@ -203,7 +222,8 @@
     const sapatilho = RIG.escolherSapatilho(linga.diametro);
     const manilha = RIG.escolherManilha({
       cargaKN: cargaGov, tipo: ic.manilhaTipo, sapatilho: sapatilho.sapatilho,
-      diametroCaboMm: linga.diametro, codigo: ic.manilhaCodigo || null
+      diametroCaboMm: linga.diametro, codigo: ic.manilhaCodigo || null,
+      espessuraChapaMm: espessuraChapa(ic)
     });
     return { cargaGov, linga, sapatilho, manilha, casos: manilha.casos };
   }
@@ -275,7 +295,7 @@
       titulo: "Linga",
       qtd: 1,
       especificacao: `${tipoLinga.nome}, Ø ${F.num(rig.linga.diametro, 1)} mm, `
-        + `${pernas.length} pernas de ${pernas.map(p => F.num(p.comprimento, 0)).join(" / ")} mm`,
+        + `${pernas.length} ${pernas.length > 1 ? "pernas" : "perna"} de ${pernas.map(p => F.num(p.comprimento, 0)).join(" / ")} mm`,
       material: `Cabo de aço, categoria ${rig.linga.categoria} N/mm²`,
       // peso do catálogo é kgf por metro de cabo
       massa: rig.linga.peso ? rig.linga.peso * (compTotalMm / 1000) : null
@@ -447,15 +467,20 @@
         `<label class="campo"><span>${F.esc(rot)} (${uComp()})</span>${numCampo(k)}</label>`).join("")}</div>`;
     }
 
-    // ângulo da perna com a estrutura (substitui a altura do gancho)
+    // ângulo da perna com a estrutura (substitui a altura do gancho); com uma linga só ela é
+    // vertical e quem dá a altura do gancho é o comprimento informado nas medidas
     const P = pontosDe(ic);
+    $("ic-angulo").closest(".campo").style.display = t.unica ? "none" : "";
+    $("ic-perna-ang").closest(".campo").style.display = t.unica ? "none" : "";
     const iAng = Math.min(ic.pernaAngulo || 0, P.length - 1);
     $("ic-angulo").value = ic.angulo;
     $("ic-perna-ang").innerHTML = P.map((p, i) =>
       `<option value="${i}"${i === iAng ? " selected" : ""}>${F.esc(p.nome)}</option>`).join("");
     const H = alturaGancho(ic);
     const Lp = Math.hypot(P[iAng].x, P[iAng].y, H - P[iAng].z);
-    $("saida-altura").innerHTML = `Altura do gancho acima do CG: <b>${txtComp(H)}</b> · comprimento da perna ${F.esc(P[iAng].nome)}: <b>${txtComp(Lp)}</b>`;
+    $("saida-altura").innerHTML = `Altura do gancho acima do CG: <b>${txtComp(H)}</b> · comprimento da perna ${F.esc(P[iAng].nome)}: <b>${txtComp(Lp)}</b>`
+      + (t.unica ? ` · <b>uma linga só:</b> o ponto de içamento fica na vertical do centro de massa — o corpo gira até
+        isso acontecer — e a linga trabalha na vertical, com o peso inteiro.` : "");
 
     // fatores
     const f = fatoresDe(ic);
@@ -595,7 +620,7 @@
           ${aberto ? `
             <div class="item"><span>Peso do corpo</span><b>${F.kn(rx.pesoKN)}</b></div>
             <div class="item"><span>Peso de projeto</span><b>${F.kn(rx.pesoProjKN)}</b></div>
-            <div class="item"><span>Ângulo da perna</span><b>${F.grau(x.angulo)} c/ a estrutura</b></div>
+            <div class="item"><span>Ângulo da perna</span><b>${TIPOS[x.tipo].unica ? "vertical (linga única)" : `${F.grau(x.angulo)} c/ a estrutura`}</b></div>
             <div class="item"><span>Altura do gancho</span><b>${txtComp(alturaGancho(x))}</b></div>
             <div class="item"><span>γ peso × DAF × γc</span><b>${F.num(fx.peso, 2)} × ${F.num(fx.daf, 2)} × ${F.num(fx.consequencia, 2)}</b></div>
             <div class="item"><span>SKL</span><b>${F.num(fx.skl, 2)}</b></div>` : ""}
@@ -763,7 +788,10 @@
     const opcoes = [`<option value="">automático — ${m.manilha ? F.esc(m.manilha.codigo) : "nenhuma atende"}${m.encaixeCompleto ? "" : " (não encaixa em tudo)"}</option>`]
       .concat((m.candidatos || []).map(c => {
         const casosC = RIG.casosEncaixe({ sapatilho: s.sapatilho, manilha: c, diametroCaboMm: rig.linga.diametro });
-        const tag = casosC.length && casosC.every(x => x.ok) ? "✓ encaixa em tudo" : casosC.length ? "✗ falha em algum caso" : "";
+        const chC = RIG.encaixeChapa(c, espessuraChapa(ic));
+        const tag = (casosC.length && !casosC.every(x => x.ok)) ? "✗ falha em algum caso"
+          : chC && !chC.ok ? "✗ boca não serve para a chapa do olhal"
+          : casosC.length ? "✓ encaixa em tudo" : "";
         return `<option value="${F.esc(c.codigo)}"${ic.manilhaCodigo === c.codigo ? " selected" : ""}>${F.esc(c.codigo)} — CMT ${F.num(c.cmt, 2)} t ${tag}</option>`;
       }));
     html += `<label class="campo"><span>Manilha (código)</span><select id="ic-manilha-codigo">${opcoes.join("")}</select></label>`;
@@ -781,6 +809,7 @@
         </div>`
       : `<div class="aviso aviso--erro">Nenhuma manilha do tipo escolhido atende à carga de ${F.ton(m.cargaT)}.</div>`;
     html += `</div></div>`;     // fecha a coluna da manilha e o par
+    if (m.ok && m.chapa) html += avisoChapa(m.chapa, m.manual);
     if (m.ok && !m.encaixeCompleto) html += `<div class="aviso aviso--erro">Nenhuma manilha ${F.esc(IC.manilhas.tipos[m.tipo].nome)}
       encaixa nos 4 casos ao mesmo tempo com este sapatilho — veja qual caso falha na tabela abaixo.
       Tente outro código na lista acima, o outro tipo de manilha, ou um sapatilho/linga de outra bitola.</div>`;
@@ -806,6 +835,22 @@
     if (figEnc) figEnc.innerHTML = rig.casos.length
       ? FIG.encaixe(rig.casos, s.sapatilho, m.manilha, rig.linga.diametro)
       : "";
+  }
+
+  /** chapa do olhal × boca da manilha: entra na boca, sem passar da folga máxima */
+  function avisoChapa(ch, manual) {
+    const dica = ch.ok ? ""
+      : !ch.cabe ? manual
+        ? " Escolha uma manilha de boca maior ou diminua a espessura/reforço da chapa."
+        : " Nenhuma manilha do tipo escolhido, com CMT suficiente, recebe esta chapa: diminua a espessura ou o reforço."
+      : manual
+        ? " Escolha uma manilha menor (se a carga permitir) ou engrosse a chapa / ponha reforço."
+        : " Nenhuma manilha com CMT suficiente fica justa nesta chapa: engrosse a chapa ou ponha reforço (t.anel) até a folga ficar dentro do limite.";
+    return `<div class="${ch.ok ? "aviso" : "aviso aviso--erro"}">
+      <span class="selo ${ch.ok ? "selo--ok" : "selo--erro"}">${ch.ok ? "OK" : "falha"}</span>
+      Chapa do olhal na boca da manilha: t + 2·t.anel = ${F.num(ch.espessura, 1)} mm, boca e = ${F.num(ch.boca, 1)} mm,
+      folga ${F.num(ch.folga, 1)} mm — tem que ficar entre 0 e ${F.num(ch.folgaMax, 2)} mm
+      (t mínimo ${F.num(ch.tMin, 1)} mm).${dica}</div>`;
   }
 
   /* ------------------------------------------------------------ olhal */
@@ -908,10 +953,8 @@
 
     // medida que sai do cálculo: mostra o valor, sem campo para editar
 
-    // a chapa, com o reforço, tem que entrar na boca da manilha
-    const espTotal = (Number(g.t) || 0) + 2 * (Number(g.tAnel) || 0);
-    const boca = mn ? mn.e : null;
-    const cabeNaBoca = boca == null ? null : espTotal < boca;
+    // a chapa, com o reforço, tem que entrar na boca da manilha sem ficar folgada demais
+    const chapa = RIG.encaixeChapa(mn, espessuraChapa(ic));
 
     $("resultado-olhal").innerHTML = `
       <div class="olhal-bloco">
@@ -930,7 +973,8 @@
             <h4>Medidas que você escolhe</h4>
             <div class="olhal-geom">${GEOM_ESPESSURA.map(campoEspessura).join("")}${GEOM_ESCOLHA.map(campo).join("")}</div>
             <p class="dica">A <b>espessura</b> vem da lista de chapa comercial — é a bitola que se
-              compra — e é limitada pela boca da manilha. <b>Base</b> e <b>altura</b> definem o
+              compra. Ela tem que caber na boca da manilha com folga de até 11,75 mm — na escolha
+              automática, mudar a espessura troca a manilha. <b>Base</b> e <b>altura</b> definem o
               tamanho da chapa. O <b>reforço</b> é opcional: escolha "sem reforço" se o olhal não
               tiver anel.</p>
           </div>
@@ -953,10 +997,7 @@
           </div>
       </div>
 
-      ${boca == null ? "" : `<div class="${cabeNaBoca ? "aviso" : "aviso aviso--erro"}">
-        <span class="selo ${cabeNaBoca ? "selo--ok" : "selo--erro"}">${cabeNaBoca ? "OK" : "falha"}</span>
-        A chapa do olhal tem que entrar na boca da manilha:
-        t + 2·t.anel = ${F.num(espTotal, 1)} mm ${cabeNaBoca ? "<" : "≥"} boca = ${F.num(boca, 1)} mm.</div>`}
+      ${chapa ? avisoChapa(chapa, rig.manilha.manual) : ""}
 
       <table class="tab">
         <thead><tr><th>#</th><th>Verificação</th><th>Tensão</th><th>Admissível</th><th>Utilização</th><th></th></tr></thead>
@@ -1210,9 +1251,10 @@
           s: `Ø furo = ${F.num(mn.b, 1)} + 1,15 · R = ${F.num(mn.f, 1)} − ${F.num(mn.g, 1)} + ${F.num(mn.b / 2, 1)} + 5`,
           r: `Ø furo = ${F.num(g.dFuro, 2)} mm · R = R.anel = ${F.num(g.R, 1)} mm`
         });
-        const espTotal = (Number(g.t) || 0) + 2 * (Number(g.tAnel) || 0);
-        if (mn) passos.push({ t: "A chapa tem que entrar na boca da manilha", f: "t + 2·t_anel < boca",
-          s: `${F.num(espTotal, 1)} mm ${espTotal < mn.e ? "<" : "≥"} ${F.num(mn.e, 1)} mm`, ok: espTotal < mn.e });
+        const ch = RIG.encaixeChapa(mn, espessuraChapa(ic));
+        if (ch) passos.push({ t: "A chapa tem que entrar na boca da manilha, com folga de até 11,75 mm",
+          f: "0 < boca − (t + 2·t_anel) ≤ 11,75 mm",
+          s: `${F.num(ch.boca, 1)} − ${F.num(ch.espessura, 1)} = ${F.num(ch.folga, 1)} mm`, ok: ch.ok });
         o.verif.checks.forEach(c => passos.push(passoSm(`${c.n}. ${c.nome}`, c.formula,
           { ok: c.ok, n: `Utilização: ${F.num(c.utilizacao * 100, 0)} %` })));
         doc.titulo("Olhal fabricado — geometria", 2);

@@ -36,8 +36,14 @@ IC.iso3d = (function () {
     const dx = Math.max(...xs) - Math.min(...xs) || 1000;
     const dy = Math.max(...ys) - Math.min(...ys) || dx * 0.5;
     const margem = 0.08;
-    const x0 = Math.min(...xs) - dx * margem, x1 = Math.max(...xs) + dx * margem;
-    const y0 = Math.min(...ys) - dy * margem, y1 = Math.max(...ys) + dy * margem;
+    let x0 = Math.min(...xs) - dx * margem, x1 = Math.max(...xs) + dx * margem;
+    let y0 = Math.min(...ys) - dy * margem, y1 = Math.max(...ys) + dy * margem;
+    const unica = P.length === 1;
+    if (unica) {
+      // linga única: o ponto não dá o tamanho do corpo — desenha uma caixa proporcional à linga
+      const meia = Math.max(400, res.pernas[0].comprimento * 0.45);
+      x0 = -meia; x1 = meia; y0 = -meia * 0.65; y1 = meia * 0.65;
+    }
     const alturaCorpo = Math.max(dx, dy) * 0.35;
     let zTop = Math.max(...zs, 0), zBot = Math.min(zTop - alturaCorpo, 0);
 
@@ -119,7 +125,8 @@ IC.iso3d = (function () {
     const centroTela = [(a0 + a1) / 2 * s + ox, (b0 + b1) / 2 * s + oy];
     res.pernas.forEach((p, i) => {
       const a = S(p.ponto);
-      let ux = a[0] - centroTela[0], uy = a[1] - centroTela[1];
+      // linga única: o ponto cai no meio do desenho, em cima do CG — o rótulo sai para a direita
+      let ux = unica ? 1 : a[0] - centroTela[0], uy = unica ? -0.35 : a[1] - centroTela[1];
       const m = Math.hypot(ux, uy) || 1;
       ux /= m; uy /= m;
       const alvo = [a[0] + ux * 72, a[1] + uy * 50];
@@ -142,6 +149,12 @@ IC.iso3d = (function () {
       marcar(baixo[0], baixo[1], 7);
       out.push(`<path d="M${n(baixo[0] - 6)},${n(baixo[1] - 12)} L${n(baixo[0])},${n(baixo[1])} L${n(baixo[0] + 6)},${n(baixo[1] - 12)} z" class="seta-cheia"/>`);
       texto([baixo[0] + 10, baixo[1]], `W ${F.kn(res.pesoProjKN)}`, "forca", "start");
+    } else if (unica) {
+      // linga única: o comprimento da linga e a altura do ponto sobre o CG
+      const p = res.pernas[0];
+      const a = S(p.ponto);
+      texto([(a[0] + gk[0]) / 2 + 12, (a[1] + gk[1]) / 2], `L ${comp(p.comprimento)}`, "cota-t", "start");
+      texto([a[0] - 12, (a[1] + cg[1]) / 2 + 4], `h ${comp(p.ponto[2])}`, "cota-t", "end");
     } else {
       // cotas das distâncias, desenhadas FORA da caixa para não cair sobre o corpo
       const zc = Math.max(...zs);

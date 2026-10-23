@@ -92,6 +92,17 @@ Para cada perna `i`, com o ponto de içamento em `Pi` e o gancho em `G = (0, 0, 
 βi   = ângulo entre ûi e a vertical
 ```
 
+**Uma linga (ponto único)** — sistema determinado. O corpo gira até o CG ficar na vertical do
+ponto, então a perna é vertical (`β = 0`) e leva o peso de projeto inteiro, sem SKL:
+
+```
+P1 = (0, 0, h)      H = h + L      T = V = W_proj      componente horizontal = 0
+```
+
+O ponto precisa ficar acima do CG (`h > 0`); no nível dele ou abaixo o equilíbrio é instável e
+o corpo vira — a página avisa. Como a perna é vertical, quem dá a altura do gancho é o
+comprimento `L` da linga, não o ângulo com a estrutura.
+
 **Duas pernas** — sistema determinado. As trações saem do equilíbrio de forças e momentos:
 
 ```
@@ -251,6 +262,11 @@ Folgas usadas no memorial (substituem a faixa "3 a 6 mm" do rascunho anterior):
 
 - **furo do olhal × pino da manilha:** folga = **1,15 mm** (`D_furo = D_pino + 1,15`)
 - **espessura mínima na boca da manilha:** folga = **11,75 mm** (`T_min = T_manilha − 11,75`)
+
+No programa essa folga é regra de escolha, não só conferência: com olhal fabricado, a manilha
+automática é a menor (por CMT) que encaixa no sapatilho **e** recebe a chapa com
+`0 < e − (t + 2·t_anel) ≤ 11,75 mm`. Mudar a espessura ou o reforço do olhal troca a manilha. Se
+nenhuma manilha do tipo atende, fica a menor em que a chapa ao menos entra, com aviso de falha.
 
 Tabelas de anel de carga e corrente também estão na planilha de origem (`Tabelas MC -
 Içamento.xlsx`, abas "Anel de Carga"), ainda não digitadas em `site/data/` — entram quando o

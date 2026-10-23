@@ -143,10 +143,16 @@ IC.fbd = (function () {
 
     // corpo (retângulo simplificado ligando os pontos extremos)
     const xs = proj.map(p => p[0]), zs = proj.map(p => p[1]);
-    const bx0 = q.X(Math.min(...xs)), bx1 = q.X(Math.max(...xs));
+    let bx0 = q.X(Math.min(...xs)), bx1 = q.X(Math.max(...xs));
+    if (bx1 - bx0 < 120) { const m = (bx0 + bx1) / 2; bx0 = m - 90; bx1 = m + 90; }   // linga única: sem largura
     const bz = q.Y(Math.min(...zs));
     const h = Math.max(24, Math.abs(q.Y(Math.min(...zs)) - q.Y(Math.max(...zs))) + 24);
-    q.itens.push(`<rect x="${n(bx0)}" y="${n(bz - h / 2)}" width="${n(bx1 - bx0)}" height="${n(h)}" class="corpo"/>`);
+    if (res.pernas.length === 1) {
+      // linga única: o corpo vai do ponto (no topo) até abaixo do CG, que fica dentro dele
+      const yTopo = q.Y(Math.max(...zs)), yBase = Math.max(q.Y(0), yTopo) + 30;
+      q.itens.push(`<rect x="${n(bx0)}" y="${n(yTopo)}" width="${n(bx1 - bx0)}" height="${n(yBase - yTopo)}" class="corpo"/>`);
+    } else
+      q.itens.push(`<rect x="${n(bx0)}" y="${n(bz - h / 2)}" width="${n(bx1 - bx0)}" height="${n(h)}" class="corpo"/>`);
 
     // pernas com tração e ângulo
     const meio = res.pernas.map((p, i) => {

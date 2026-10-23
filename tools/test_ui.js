@@ -79,7 +79,7 @@ async function main() {
 
   await passo("cada tipo tem o seu desenho no cartão", async () => {
     const n = await rodar(`return document.querySelectorAll('.tipo .tipo__fig svg').length`);
-    if (n !== 3) throw new Error("desenhos nos cartões: " + n);
+    if (n !== 4) throw new Error("desenhos nos cartões: " + n);
     return true;
   });
 
@@ -94,7 +94,7 @@ async function main() {
     return true;
   });
 
-  for (const [tipo, pernas] of [["duas", 2], ["quatroDif", 4], ["quatroSim", 4]]) {
+  for (const [tipo, pernas] of [["uma", 1], ["duas", 2], ["quatroDif", 4], ["quatroSim", 4]]) {
     await passo(`tipo ${tipo} calcula ${pernas} pernas`, async () => {
       await rodar(`document.querySelector('[data-tipo="${tipo}"]').click();`);
       await esperar(500);
@@ -107,6 +107,49 @@ async function main() {
       return true;
     });
   }
+
+  await passo("linga única: perna vertical com o peso inteiro e sem campo de ângulo", async () => {
+    await rodar(`document.querySelector('[data-tipo="uma"]').click();`);
+    await esperar(400);
+    await rodar(`const e=document.querySelector('[data-medida="L"]'); e.value="3000"; e.dispatchEvent(new Event("change",{bubbles:true}));`);
+    await esperar(400);
+    const r = JSON.parse(await rodar(`const ic = ICapp.atual(), r = ICapp.resolver(ic); return JSON.stringify({
+      ang: r.pernas[0].angulo, T: r.pernas[0].tracao, gancho: r.cargaGanchoKN, skl: r.fatores.skl,
+      L: r.pernas[0].comprimento, campoAng: document.getElementById("ic-angulo").closest(".campo").style.display,
+      avisos: r.avisos, fig: document.getElementById("fig-medidas").innerText })`));
+    if (Math.abs(r.ang) > 1e-9) throw new Error("perna devia ser vertical, ângulo " + r.ang);
+    if (Math.abs(r.T - r.gancho) > 1e-9) throw new Error("tração devia ser a carga no gancho");
+    if (r.skl !== 1) throw new Error("linga única não leva SKL, veio " + r.skl);
+    if (Math.abs(r.L - 3000) > 1e-6) throw new Error("comprimento devia ser 3000, deu " + r.L);
+    if (r.campoAng !== "none") throw new Error("o campo de ângulo devia sumir");
+    if (r.avisos.length) throw new Error("avisos inesperados: " + r.avisos.join(" | "));
+    if (!/UMA LINGA/.test(r.fig)) throw new Error("figura das medidas não é a da linga única");
+    await foto("ic_uma_linga");
+    return true;
+  });
+
+  await passo("espessura da chapa do olhal troca a manilha automática", async () => {
+    await rodar(`document.querySelector('[data-tipo="quatroSim"]').click();`);
+    await esperar(400);
+    const codigo = () => rodar(`return ICapp.riggingDe(ICapp.atual()).manilha.manilha.codigo`);
+    const bocaOk = () => rodar(`return ICapp.riggingDe(ICapp.atual()).manilha.chapa.ok`);
+    const trocar = v => rodar(`const e=document.querySelector('[data-olhal-campo="t"]'); e.value="${v}"; e.dispatchEvent(new Event("change",{bubbles:true}));`);
+    const opcoes = JSON.parse(await rodar(`return JSON.stringify([...document.querySelector('[data-olhal-campo="t"]').options].map(o => Number(o.value)))`));
+    const antes = await codigo();
+    if (!(await bocaOk())) throw new Error("a manilha inicial devia receber a chapa");
+    // 38 mm: só fica justa numa manilha de boca entre 38 e 49,75 mm — não a de partida (boca 27)
+    if (!opcoes.includes(38)) throw new Error("lista de chapas sem 38 mm");
+    await trocar(38);
+    await esperar(400);
+    const depois = await codigo();
+    if (depois === antes) throw new Error(`a manilha não mudou com a chapa mais grossa (${antes})`);
+    if (!(await bocaOk())) throw new Error("a nova manilha devia receber a chapa mais grossa");
+    const aviso = await rodar(`return document.getElementById("resultado-olhal").innerText`);
+    if (!/boca da manilha/.test(aviso)) throw new Error("faltou a verificação da chapa na tela do olhal");
+    await trocar(25);
+    await esperar(400);
+    return true;
+  });
 
   await passo("ângulo da perna define a altura do gancho", async () => {
     await rodar(`document.querySelector('[data-tipo="quatroSim"]').click();`);

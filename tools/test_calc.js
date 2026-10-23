@@ -5,7 +5,7 @@
 const fs = require("fs"), vm = require("vm"), path = require("path");
 const SITE = path.join(__dirname, "..", "site");
 global.window = global;
-for (const f of ["data/fatores.js", "js/calc/cargas.js"])
+for (const f of ["data/fatores.js", "data/manilhas.js", "js/core/fmt.js", "js/calc/cargas.js", "js/calc/rigging.js"])
   vm.runInThisContext(fs.readFileSync(path.join(SITE, f), "utf8"), { filename: f });
 
 const C = IC.cargas, g = C.G;
@@ -117,6 +117,37 @@ const fora = C.resolver({
   fatores: { peso: 1, daf: 1, consequencia: 1, skl: 1 }
 });
 if (!fora.avisos.some(a => /fora do trecho/.test(a))) falhas.push("faltou o aviso de CG fora do trecho entre os pontos");
+else ok++;
+
+/* 5b — linga única: perna vertical, leva o peso de projeto inteiro, sem SKL */
+const uma = C.resolver({
+  massa: 3000, alturaGancho: 2500, pontos: [{ nome: "P1", x: 0, y: 0, z: 500 }],
+  fatores: { peso: 1.05, daf: 1.3, consequencia: 1, skl: 1 }
+});
+const Wu = 3000 * g / 1000 * 1.05 * 1.3;
+perto(uma.pernas.length, 1, 0, "linga única · uma perna");
+perto(uma.pernas[0].angulo, 0, 1e-9, "linga única · perna vertical");
+perto(uma.pernas[0].comprimento, 2000, 1e-9, "linga única · comprimento = H − h");
+perto(uma.pernas[0].tracao, Wu, 1e-9, "linga única · tração = peso de projeto");
+perto(uma.pernas[0].horizontal, 0, 1e-9, "linga única · sem componente horizontal");
+perto(uma.maiorTracaoKN, uma.cargaGanchoKN, 1e-9, "linga única · tração = carga no gancho");
+if (uma.avisos.length) falhas.push("linga única com o ponto acima do CG não devia avisar: " + uma.avisos.join(" | ")); else ok++;
+const umaBaixa = C.resolver({ massa: 3000, alturaGancho: 2000, pontos: [{ x: 0, y: 0, z: -200 }], fatores: {} });
+if (!umaBaixa.avisos.some(a => /acima do centro de massa/.test(a))) falhas.push("faltou o aviso de ponto único abaixo do CG"); else ok++;
+
+/* 5c — chapa do olhal × boca da manilha: cabe e a folga não passa de 11,75 mm.
+        Mudar a espessura muda a manilha escolhida automaticamente. */
+const R = IC.rigging;
+const mn = { e: 40, cmt: 5 };
+if (!R.encaixeChapa(mn, 30).ok) falhas.push("chapa 30 em boca 40 (folga 10) devia passar"); else ok++;
+if (R.encaixeChapa(mn, 25).ok) falhas.push("chapa 25 em boca 40 (folga 15) devia falhar"); else ok++;
+if (R.encaixeChapa(mn, 40).ok || R.encaixeChapa(mn, 40).cabe) falhas.push("chapa 40 em boca 40 não cabe"); else ok++;
+const tipoMn = Object.keys(IC.manilhas.tipos)[0];
+const escolha = esp => R.escolherManilha({ cargaKN: 20, tipo: tipoMn, espessuraChapaMm: esp });
+const bocas = IC.manilhas.lista(tipoMn).filter(m => m.cmt >= 20 / g).map(m => m.e).sort((a, b) => a - b);
+const fina = escolha(bocas[0] - 5), grossa = escolha(bocas[bocas.length - 1] - 5);
+if (!fina.chapa.ok || !grossa.chapa.ok) falhas.push("a escolha automática devia achar manilha que recebe a chapa");
+else if (!(grossa.manilha.e > fina.manilha.e)) falhas.push("chapa mais grossa devia levar a manilha de boca maior");
 else ok++;
 
 /* 6 — tabelas de fatores e de acessórios respondem */

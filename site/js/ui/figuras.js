@@ -81,6 +81,12 @@ IC.figuras = (function () {
     const sombra = cantos => `<polygon points="${cantos.map(c => pt(S(c[0], c[1], -2))).join(" ")}"
       style="fill:#c8d2e0;opacity:.55"/>`;
 
+    if (tipo === "uma") {
+      // um ponto só, no meio da face de cima: a linga desce vertical do gancho até ele
+      const c = [[-30, -22], [30, -22], [30, 22], [-30, 22]];
+      return `${cabeca(W, H)}${sombra(c)}${caixa(c, 22)}${amarracao([[0, 0]], 22, 74, [])}${cg(0, 0, 8)}</svg>`;
+    }
+
     if (tipo === "duas") {
       // corpo alongado: as duas pernas vão às pontas
       const c = [[-46, -13], [46, -13], [46, 13], [-46, 13]];
@@ -102,7 +108,34 @@ IC.figuras = (function () {
   }
 
   /* ---------------------------------------------------------- medidas a informar */
-  const medidas = tipo => (tipo === "duas" ? medidasDuas() : medidasQuatro(tipo === "quatroDif"));
+  const medidas = tipo => (tipo === "uma" ? medidasUma()
+    : tipo === "duas" ? medidasDuas() : medidasQuatro(tipo === "quatroDif"));
+
+  /** uma linga: vista lateral com o comprimento L da linga e a altura h do ponto sobre o CG */
+  function medidasUma() {
+    const W = 720, H = 300;
+    const gx = 330, gy = 56, yp = 168, ycg = 214;
+    return `${cabeca(W, H)}
+      <text x="${W / 2}" y="20" class="titulo" text-anchor="middle">MEDIDAS A INFORMAR — UMA LINGA</text>
+      <path d="M${gx},${gy - 22} v12" class="peca"/><circle cx="${gx}" cy="${gy - 4}" r="8" class="gancho-i"/>
+      <line x1="${gx}" y1="${gy + 4}" x2="${gx}" y2="${yp}" class="perna"/>
+      <rect x="${gx - 150}" y="${yp}" width="300" height="76" class="corpo"/>
+      <circle cx="${gx}" cy="${yp}" r="5" class="ponto"/>
+      <text x="${gx - 12}" y="${yp - 10}" text-anchor="end">P1</text>
+
+      <line x1="${gx}" y1="${yp}" x2="${gx}" y2="${ycg + 50}" class="eixo"/>
+      <circle cx="${gx}" cy="${ycg}" r="7" class="cg"/>
+      <text x="${gx + 12}" y="${ycg + 22}" class="rot">CG</text>
+
+      ${cota(gx + 190, gy + 4, gx + 190, yp, "L — comprimento da linga", "start")}
+      ${cota(gx + 170, yp, gx + 170, ycg, "h", "start")}
+      <line x1="${gx + 8}" y1="${ycg}" x2="${gx + 176}" y2="${ycg}" class="eixo"/>
+      <line x1="${gx + 8}" y1="${yp}" x2="${gx + 196}" y2="${yp}" class="eixo"/>
+
+      <text x="${W / 2}" y="${H - 24}" class="rot-peq" text-anchor="middle">o ponto fica na vertical do CG — o corpo gira até isso acontecer — e a linga trabalha vertical, com o peso inteiro</text>
+      <text x="${W / 2}" y="${H - 8}" class="rot-peq" text-anchor="middle">h — altura do ponto em relação ao CG (precisa ser + : ponto acima do CG, senão o corpo vira)</text>
+    </svg>`;
+  }
 
   /** vista lateral com o ângulo da perna, desenhada em qualquer canto */
   function detalheAngulo(x, y) {

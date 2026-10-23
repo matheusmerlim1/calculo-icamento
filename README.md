@@ -14,8 +14,8 @@ dependência, sem internet.
 **1 · Corpo a içar** — massa, origem do peso (pesado, calculado ou estimado), local da operação
 e a base normativa que define os fatores de projeto.
 
-**2 · Tipo de içamento** — duas pernas, quatro pernas simétrico, ou quatro pernas com cada ponto
-na sua coordenada.
+**2 · Tipo de içamento** — uma linga (um único ponto de içamento), duas pernas, quatro pernas
+simétrico, ou quatro pernas com cada ponto na sua coordenada.
 
 **3 · Medidas** — as **distâncias do centro de massa até cada ponto**, não coordenadas, e o
 **ângulo de uma das pernas com a estrutura** (em vez da altura do gancho, que sai calculada).
@@ -54,6 +54,14 @@ ponto errado.
 **O que é escolha e o que vem da manilha.** No olhal fabricado, `Ø furo` e `R` saem da manilha
 escolhida; espessura, base, altura e o reforço são a sua escolha. A chapa com o reforço precisa
 entrar na boca da manilha, e isso é verificado.
+
+**Linga única.** Com um ponto só, o corpo gira até o centro de massa ficar na vertical do ponto:
+a linga trabalha vertical e leva o peso de projeto inteiro (sem SKL). Em vez do ângulo, entra o
+comprimento da linga; o ponto precisa ficar acima do CG, senão o corpo vira — a página avisa.
+
+**A espessura do olhal escolhe a manilha.** A chapa com o reforço (t + 2·t.anel) tem que entrar
+na boca da manilha com folga de até 11,75 mm. Na escolha automática, mudar a espessura troca a
+manilha pela menor que atende à carga, ao sapatilho e à chapa.
 
 **Desenhos em escala.** O olhal e a manilha são desenhados a partir dos números correntes — mudou
 a medida, muda o desenho.

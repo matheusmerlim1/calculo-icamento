@@ -12,6 +12,8 @@
  *   Ti  = Vi / cos βi                 tração na perna
  *   Hi  = Ti · sen βi                 componente horizontal (entra na verificação do olhal)
  *
+ * Uma perna (linga única) é determinado: o corpo gira até o CG ficar na vertical do ponto,
+ * a perna fica vertical e leva o peso inteiro (V = T = W). O ponto precisa ficar acima do CG.
  * Duas pernas é determinado. Quatro pernas é hiperestático (4 incógnitas, 3 equações) e
  * tem duas hipóteses — as duas são calculadas sempre, a escolhida governa o projeto:
  *   "elastica"   corpo rígido sobre quatro molas: compatibilidade de deslocamentos com a
@@ -175,6 +177,14 @@ IC.cargas = (function () {
     let pernas, hipotese = "determinado", detalhe = "", sklUsado = 1, comparacao = null;
     if (n <= 2) {
       pernas = pernasDe(verticais(P, Wproj, null, H), 1);
+      if (n === 1) {
+        hipotese = "linga única";
+        detalhe = "um ponto só: a linga fica vertical e leva o peso inteiro";
+        if (Math.hypot(P[0][0], P[0][1]) > 1)
+          avisos.push("Com uma linga só o corpo gira até o centro de massa ficar na vertical do ponto — a posição em planta informada não se mantém.");
+        if (P[0][2] <= 0)
+          avisos.push("Com uma linga só o ponto de içamento precisa ficar acima do centro de massa (h > 0) — no nível dele ou abaixo o corpo fica instável e pode virar.");
+      }
       if (n === 2) {
         const d = desvioDaLinha(P[0], P[1]);
         if (d > 1) avisos.push(`O centro de massa está ${d.toFixed(0)} mm fora da linha entre os dois pontos — o corpo vai inclinar até alinhar.`);

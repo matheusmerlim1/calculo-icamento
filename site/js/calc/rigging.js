@@ -56,8 +56,11 @@ IC.rigging = (function () {
    * uma combinação que não encaixa fisicamente.
    *
    * codigo — força uma manilha específica (escolha manual do usuário), ignorando a busca.
+   * espessuraChapaMm — t + 2·t.anel do olhal fabricado (null no olhal comprado): a chapa tem
+   *   que entrar na boca da manilha sem sobrar mais que a folga máxima (ver encaixeChapa), então
+   *   mudar a espessura pode trocar a manilha escolhida.
    */
-  function escolherManilha({ cargaKN, tipo, sapatilho, diametroCaboMm, codigo }) {
+  function escolherManilha({ cargaKN, tipo, sapatilho, diametroCaboMm, codigo, espessuraChapaMm }) {
     const cargaT = cargaKN / G;
     const todas = IC.manilhas.lista(tipo);
     const cabem = todas.filter(m => m.cmt >= cargaT).sort((a, b) => a.cmt - b.cmt);
@@ -80,24 +83,44 @@ IC.rigging = (function () {
         utilizacao: manilha ? cargaT / manilha.cmt : null,
         formula: formulaCarga, formulaCmt: manilha ? formulaCmt(manilha) : null,
         casos, encaixeCompleto: casos.length > 0 && casos.every(c => c.ok),
-        candidatos: cabem
+        chapa: encaixeChapa(manilha, espessuraChapaMm), candidatos: cabem
       };
     }
 
-    let escolhida = null, casos = [], encaixeCompleto = false;
-    for (const m of cabem) {
+    // a menor (por CMT) que encaixa no sapatilho E fica justa na chapa do olhal; se nenhuma
+    // fizer as duas coisas, a menor em que ao menos a chapa entra, depois a menor que encaixa
+    // no sapatilho (a tela avisa da chapa); por fim, a menor pela carga
+    const encaixa = m => {
       const c = casosEncaixe({ sapatilho, manilha: m, diametroCaboMm });
-      if (c.length === 0 || c.every(x => x.ok)) { escolhida = m; casos = c; encaixeCompleto = true; break; }
-    }
-    if (!escolhida) {
-      escolhida = cabem[0] || null;
-      casos = escolhida ? casosEncaixe({ sapatilho, manilha: escolhida, diametroCaboMm }) : [];
-    }
+      return c.length === 0 || c.every(x => x.ok);
+    };
+    const chapa = m => encaixeChapa(m, espessuraChapaMm);
+    const escolhida = cabem.find(m => encaixa(m) && (!chapa(m) || chapa(m).ok))
+      || cabem.find(m => encaixa(m) && (!chapa(m) || chapa(m).cabe))
+      || cabem.find(encaixa) || cabem[0] || null;
+    const casos = escolhida ? casosEncaixe({ sapatilho, manilha: escolhida, diametroCaboMm }) : [];
     return {
       ok: !!escolhida, tipo, cargaKN, cargaT, manilha: escolhida, manual: false,
       utilizacao: escolhida ? cargaT / escolhida.cmt : null,
       formula: formulaCarga, formulaCmt: escolhida ? formulaCmt(escolhida) : null,
-      casos, encaixeCompleto, candidatos: cabem
+      casos, encaixeCompleto: !!escolhida && encaixa(escolhida),
+      chapa: encaixeChapa(escolhida, espessuraChapaMm), candidatos: cabem
+    };
+  }
+
+  /**
+   * Chapa do olhal × boca da manilha (docs/METODO.md, item 6 — folgas do memorial):
+   * a chapa com o reforço (t + 2·t.anel) tem que entrar na boca `e` da manilha, e a folga
+   * que sobra não pode passar de 11,75 mm (T_min = e − 11,75): manilha folgada demais na chapa
+   * trabalha torta, com o pino fletido e a carga fora do plano do olhal.
+   */
+  const FOLGA_BOCA_MAX = 11.75;
+  function encaixeChapa(manilha, espessuraMm) {
+    if (!manilha || !(Number(espessuraMm) > 0)) return null;
+    const folga = manilha.e - espessuraMm;
+    return {
+      boca: manilha.e, espessura: espessuraMm, folga, folgaMax: FOLGA_BOCA_MAX,
+      tMin: manilha.e - FOLGA_BOCA_MAX, cabe: folga > 0, ok: folga > 0 && folga <= FOLGA_BOCA_MAX
     };
   }
 
@@ -219,7 +242,7 @@ IC.rigging = (function () {
   }
 
   return {
-    escolherLinga, escolherSapatilho, escolherManilha, casosEncaixe,
+    escolherLinga, escolherSapatilho, escolherManilha, casosEncaixe, encaixeChapa,
     escolherOlhalComprado, geometriaOlhalPartida, verificarOlhalFabricado
   };
 })();
