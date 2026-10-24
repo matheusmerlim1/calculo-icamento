@@ -167,8 +167,14 @@ IC.iso3d = (function () {
       const r = res.peca;
       const meioTrecho = i => S(r.w[i].map((c, k) => r.dobra[k] + c * r.a[i] / 2));
       const A1 = meioTrecho(0), A2 = meioTrecho(1);
-      texto([A1[0], A1[1] + 22], `a₁ ${comp(r.a[0])} · φ₁ ${F.grau(r.phi[0])}`, "cota-t");
-      texto([A2[0], A2[1] + 22], `a₂ ${comp(r.a[1])} · φ₂ ${F.grau(r.phi[1])}`, "cota-t");
+      if (r.dobrada) {
+        texto([A1[0], A1[1] + 22], `a₁ ${comp(r.a[0])} · φ₁ ${F.grau(r.phi[0])}`, "cota-t");
+        texto([A2[0], A2[1] + 22], `a₂ ${comp(r.a[1])} · φ₂ ${F.grau(r.phi[1])}`, "cota-t");
+      } else {
+        texto([A1[0], A1[1] + 22], `a₁ ${comp(r.a[0])}`, "cota-t");
+        texto([A2[0], A2[1] + 22], `a₂ ${comp(r.a[1])}`, "cota-t");
+        texto([cg[0] + 14, cg[1] + 32], `φ ${F.grau(r.phi[1])} c/ a horizontal`, "forca", "start");
+      }
     } else if (unica) {
       // linga única: o comprimento da linga e a altura do ponto sobre o CG
       const p = res.pernas[0];

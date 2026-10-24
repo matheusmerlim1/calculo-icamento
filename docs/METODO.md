@@ -92,10 +92,11 @@ Para cada perna `i`, com o ponto de içamento em `Pi` e o gancho em `G = (0, 0, 
 βi   = ângulo entre ûi e a vertical
 ```
 
-**Estrutura inclinada (opção das duas pernas)** — a peça tem dois trechos que se encontram na
-dobra `D = (e, 0, 0)`, a `e` da vertical do CG (+ para o lado de `P2`). Cada trecho faz `φᵢ` com a
-horizontal, positivo quando `Pᵢ` fica acima da dobra: peça em V tem os dois positivos, peça reta
-inclinada tem `φ₁ = −φ₂`. Com `wᵢ` o eixo do trecho (da dobra para `Pᵢ`) e `nᵢ` a normal dele:
+**Estrutura inclinada ou em V (opções das duas pernas)** — a peça é vista como dois trechos que se
+encontram na dobra `D = (e, 0, 0)`, a `e` da vertical do CG (+ para o lado de `P2`). Cada trecho faz
+`φᵢ` com a horizontal, positivo quando `Pᵢ` fica acima da dobra. **Em V**: `φ₁`, `φ₂` e `e`
+informados. **Inclinada** (peça reta, `P2` do lado de cima): um `φ` só, com `φ₁ = −φ`, `φ₂ = φ` e
+`e = 0`. Com `wᵢ` o eixo do trecho (da dobra para `Pᵢ`) e `nᵢ` a normal dele:
 
 ```
 w₁ = (−cos φ₁, 0, sen φ₁)   n₁ = (sen φ₁, 0, cos φ₁)

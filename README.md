@@ -55,10 +55,11 @@ ponto errado.
 escolhida; espessura, base, altura e o reforço são a sua escolha. A chapa com o reforço precisa
 entrar na boca da manilha, e isso é verificado.
 
-**Estrutura inclinada.** Nas duas pernas dá para marcar a peça como inclinada. A peça tem dois
-trechos que se encontram numa dobra, e cada um tem a sua inclinação com a horizontal (φ₁ e φ₂):
-serve para a peça reta inclinada (φ₁ = −φ₂) e para a peça dobrada ou em V. Informam-se também a
-posição da dobra em relação ao CG (e) e o ângulo γ de cada olhal com o seu trecho. O programa
+**Estrutura horizontal, inclinada ou em V.** Nas duas pernas, o campo "Estrutura" tem três
+opções. **Horizontal**: os pontos ficam na direção do CG. **Inclinada**: peça reta, com um ângulo φ
+com a horizontal. **Em V (dobrada)**: dois trechos que se encontram numa dobra, cada um com a sua
+inclinação (φ₁ e φ₂, positivos com o ponto acima da dobra), mais a posição da dobra em relação ao
+CG (e). Nas duas últimas entra também o ângulo γ de cada olhal com a peça (ou o trecho). O programa
 calcula onde ficam os pontos, o comprimento de cada linga para a peça ficar nessa posição e
 verifica o olhal com o ângulo real entre a linga e ele. O θ das fórmulas do olhal é o ângulo da
 linga com a base do olhal (antes entrava, errado, o ângulo com a vertical).

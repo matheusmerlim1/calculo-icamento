@@ -134,10 +134,11 @@ async function main() {
     const pontos = () => rodar(`return JSON.stringify(ICapp.pontosDe(ICapp.atual()).map(p => [p.x, p.y, p.z].map(v => Math.round(v))))`);
     const reto = await pontos();
     const mudar = (sel, v) => rodar(`const e=document.querySelector('${sel}'); e.value="${v}"; e.dispatchEvent(new Event("change",{bubbles:true}));`);
-    await mudar("#ic-inclinada", "sim"); await esperar(400);
-    // peça reta inclinada a 30°: o trecho de P1 desce da dobra (−30°) e o de P2 sobe (30°)
-    await mudar('[data-incl="phi1"]', "-30"); await esperar(300);
-    await mudar('[data-incl="phi2"]', "30"); await esperar(300);
+    const opcoes = await rodar(`return [...document.getElementById("ic-inclinada").options].map(o => o.value).join(",")`);
+    if (opcoes !== "horizontal,inclinada,dobrada") throw new Error("opções da estrutura: " + opcoes);
+    await mudar("#ic-inclinada", "inclinada"); await esperar(400);
+    // peça reta inclinada a 30°, com um ângulo só
+    await mudar('[data-incl="phi"]', "30"); await esperar(300);
     await mudar('[data-incl="g2"]', "0"); await esperar(400);
     const r = JSON.parse(await rodar(`const ic = ICapp.atual(); ic.olhal.modo = "fabricado"; ICapp.pintar();
       const r = ICapp.resolver(ic), P = ICapp.pontosDe(ic), ang = ICapp.angulosOlhal(ic, r);
@@ -147,7 +148,7 @@ async function main() {
         piorGov: util(o.porPerna.find(x => x.perna.nome === o.governante.nome)),
         piorTodas: Math.max(...o.porPerna.map(util)), fig: document.getElementById("fig-medidas").innerText,
         tela: document.getElementById("resultado-olhal").innerText, campos: document.querySelectorAll("[data-incl]").length })`));
-    if (r.campos !== 4) throw new Error("campos de ângulo: " + r.campos);
+    if (r.campos !== 3) throw new Error("campos de ângulo da peça reta: " + r.campos);
     const f = 30 * Math.PI / 180, u = [Math.cos(f), 0, Math.sin(f)], n = [-Math.sin(f), 0, Math.cos(f)];
     const esp = [[-r.a1, -1], [r.a2, 1]].map(([s]) => u.map((c, k) => c * s + n[k] * r.h));
     esp.forEach((e, i) => {
@@ -169,6 +170,10 @@ async function main() {
     await foto("ic_duas_inclinada");
 
     // peça em V: cada trecho com a sua inclinação, os dois pontos acima da dobra, dobra fora do CG
+    await mudar("#ic-inclinada", "dobrada"); await esperar(400);
+    const camposV = await rodar(`return [document.querySelectorAll("[data-incl]").length, document.getElementById("fig-medidas").innerText]`);
+    if (camposV[0] !== 4) throw new Error("campos de ângulo da peça em V: " + camposV[0]);
+    if (!/EM V/.test(camposV[1])) throw new Error("figura das medidas não é a da peça em V");
     await mudar('[data-incl="phi1"]', "40"); await esperar(300);
     await mudar('[data-incl="phi2"]', "20"); await esperar(300);
     await mudar('[data-medida="e"]', "200"); await esperar(400);
@@ -191,7 +196,7 @@ async function main() {
     await foto("ic_duas_v");
     await rodar(`window.scrollTo(0, 0)`);
 
-    await mudar("#ic-inclinada", "nao"); await esperar(400);
+    await mudar("#ic-inclinada", "horizontal"); await esperar(400);
     if ((await pontos()) !== reto) throw new Error("desmarcar a inclinação devia voltar aos mesmos pontos");
     return true;
   });
@@ -485,6 +490,18 @@ async function main() {
     await mudar('[data-olhal-campo="t"]', "25"); await esperar(400);
     r = JSON.parse(await igual());
     if (r.t[0] !== 25 || r.t[1] !== 25) throw new Error("a espessura mudada no segundo devia ir para o de maior carga: " + r.t);
+    // olhal fabricado: todas as medidas iguais, como a tela mostra
+    const geoms = JSON.parse(await rodar(`const [a, b] = ICapp.estudo.icamentos;
+      return JSON.stringify([a, b].map(x => ICapp.olhalDe(x, ICapp.riggingDe(x)).geom))`));
+    Object.keys(geoms[0]).forEach(k => {
+      if (geoms[0][k] !== geoms[1][k]) throw new Error(`olhal: ${k} diferente: ${geoms[0][k]} ≠ ${geoms[1][k]}`);
+    });
+    // olhal comprado: o mesmo modelo, escolhido pela maior carga do estudo
+    await mudar("#ic-olhal-modo", "comprado"); await esperar(400);
+    const comprados = JSON.parse(await rodar(`const [a, b] = ICapp.estudo.icamentos;
+      return JSON.stringify([a, b].map(x => { const o = ICapp.olhalDe(x, ICapp.riggingDe(x)).resultado; return o.olhal && o.olhal.codigo; }))`));
+    if (!comprados[0] || comprados[0] !== comprados[1]) throw new Error("olhal comprado diferente: " + comprados);
+    await mudar("#ic-olhal-modo", "fabricado"); await esperar(400);
     return true;
   });
 
