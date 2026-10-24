@@ -55,11 +55,20 @@ ponto errado.
 escolhida; espessura, base, altura e o reforço são a sua escolha. A chapa com o reforço precisa
 entrar na boca da manilha, e isso é verificado.
 
-**Estrutura inclinada.** Nas duas pernas dá para marcar a peça como inclinada e informar a
-inclinação φ e o ângulo γ de cada olhal com a peça. O programa calcula onde ficam os pontos, o
-comprimento de cada linga para a peça ficar nessa inclinação e verifica o olhal com o ângulo real
-entre a linga e ele. O θ das fórmulas do olhal é o ângulo da linga com a base do olhal (antes
-entrava, errado, o ângulo com a vertical).
+**Estrutura inclinada.** Nas duas pernas dá para marcar a peça como inclinada. A peça tem dois
+trechos que se encontram numa dobra, e cada um tem a sua inclinação com a horizontal (φ₁ e φ₂):
+serve para a peça reta inclinada (φ₁ = −φ₂) e para a peça dobrada ou em V. Informam-se também a
+posição da dobra em relação ao CG (e) e o ângulo γ de cada olhal com o seu trecho. O programa
+calcula onde ficam os pontos, o comprimento de cada linga para a peça ficar nessa posição e
+verifica o olhal com o ângulo real entre a linga e ele. O θ das fórmulas do olhal é o ângulo da
+linga com a base do olhal (antes entrava, errado, o ângulo com a vertical).
+
+**Usar a maior carga do estudo.** Um içamento com essa opção leva o mesmo conjunto do içamento de
+maior carga: mesma linga, mesma manilha e o mesmo olhal. Mudar um deles em qualquer dos dois muda
+nos dois.
+
+**Recalcular ao terminar de digitar.** Os campos numéricos só recalculam quando a pessoa termina
+de digitar (Enter, Tab ou clique fora), e não a cada tecla.
 
 **Linga única.** Com um ponto só, o corpo gira até o centro de massa ficar na vertical do ponto:
 a linga trabalha vertical e leva o peso de projeto inteiro (sem SKL). Em vez do ângulo, entra o

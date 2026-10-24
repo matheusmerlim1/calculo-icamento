@@ -171,19 +171,31 @@
   const vsoma = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 
   /**
-   * Estrutura inclinada (opção das duas pernas): a peça faz o ângulo φ com a horizontal e P2
-   * fica do lado de cima. u é o eixo da peça (de P1 para P2), n a normal "para cima" dela.
-   * a₁ e a₂ passam a ser medidos ao longo da peça, e h perpendicular a ela — giram juntos.
-   * γ de cada olhal é o ângulo do eixo do olhal com o eixo da peça: 90° = em pé sobre a peça,
+   * Estrutura inclinada (opção das duas pernas): a peça tem dois trechos que se encontram na
+   * dobra, cada um com a sua inclinação φᵢ com a horizontal — positiva quando o ponto Pᵢ fica
+   * acima da dobra. Peça reta inclinada: φ₁ = −φ₂. Peça em V: os dois positivos.
+   * w[i] é o eixo do trecho i (da dobra para Pᵢ), n[i] a normal "para cima" dele. a₁ e a₂ são
+   * medidos da dobra ao longo de cada trecho, h perpendicular a ele; e é a distância horizontal
+   * da vertical do CG até a dobra (+ para o lado de P2).
+   * γ de cada olhal é o ângulo do eixo do olhal com o eixo do trecho: 90° = em pé sobre ele,
    * 0° = na ponta, apontando para fora. Desmarcada a opção, nada disso entra.
    */
   function inclinacaoDe(ic) {
     if (ic.tipo !== "duas" || !ic.inclinada) return null;
-    if (!ic.inclinacao) ic.inclinacao = { phi: 30, g1: 90, g2: 90 };
-    const phi = numOu(ic.inclinacao.phi, 30), f = phi * Math.PI / 180;
+    if (!ic.inclinacao) ic.inclinacao = { phi1: -30, phi2: 30, g1: 90, g2: 90 };
+    // vinha da versão com um φ só para a peça reta (medido subindo de P1 para P2)
+    if (ic.inclinacao.phi !== undefined && ic.inclinacao.phi1 === undefined) {
+      ic.inclinacao.phi1 = -numOu(ic.inclinacao.phi, 30);
+      ic.inclinacao.phi2 = numOu(ic.inclinacao.phi, 30);
+    }
+    delete ic.inclinacao.phi;
+    const phi = [numOu(ic.inclinacao.phi1, -30), numOu(ic.inclinacao.phi2, 30)];
+    const f = phi.map(v => v * Math.PI / 180);
     return {
       phi, g: [numOu(ic.inclinacao.g1, 90), numOu(ic.inclinacao.g2, 90)],
-      u: [Math.cos(f), 0, Math.sin(f)], n: [-Math.sin(f), 0, Math.cos(f)]
+      w: [[-Math.cos(f[0]), 0, Math.sin(f[0])], [Math.cos(f[1]), 0, Math.sin(f[1])]],
+      n: [[Math.sin(f[0]), 0, Math.cos(f[0])], [-Math.sin(f[1]), 0, Math.cos(f[1])]],
+      dobra: [Number(ic.medidas.e) || 0, 0, 0]
     };
   }
 
@@ -191,17 +203,20 @@
     const inc = inclinacaoDe(ic);
     if (!inc) return TIPOS[ic.tipo].pontos(ic.medidas);
     const m = ic.medidas, h = Number(m.h) || 0;
-    const p = (s, nome) => { const v = vsoma(vesc(inc.u, s), vesc(inc.n, h)); return { nome, x: v[0], y: v[1], z: v[2] }; };
-    return [p(-Math.abs(m.a1), "P1"), p(Math.abs(m.a2), "P2")];
+    const p = (i, s, nome) => {
+      const v = vsoma(inc.dobra, vsoma(vesc(inc.w[i], s), vesc(inc.n[i], h)));
+      return { nome, x: v[0], y: v[1], z: v[2] };
+    };
+    return [p(0, Math.abs(m.a1), "P1"), p(1, Math.abs(m.a2), "P2")];
   }
 
-  /** eixo de cada olhal (unitário, do pé para o furo): vertical, ou girado com a peça inclinada */
+  /** eixo de cada olhal (unitário, do pé para o furo): vertical, ou girado com o trecho da peça */
   function eixosOlhalDe(ic) {
     const inc = inclinacaoDe(ic);
     if (!inc) return pontosDe(ic).map(() => [0, 0, 1]);
-    return [-1, 1].map((lado, i) => {
+    return [0, 1].map(i => {
       const g = inc.g[i] * Math.PI / 180;
-      return vsoma(vesc(inc.u, lado * Math.cos(g)), vesc(inc.n, Math.sin(g)));   // para fora · para cima
+      return vsoma(vesc(inc.w[i], Math.cos(g)), vesc(inc.n[i], Math.sin(g)));   // para fora · para cima
     });
   }
 
@@ -250,10 +265,11 @@
       massa: ic.massa, alturaGancho: alturaGancho(ic), pontos: pontosDe(ic),
       hipotese4: ic.hipotese4, fatores: fatoresDe(ic)
     });
-    // para os desenhos: o eixo de cada olhal e, na estrutura inclinada, o eixo da peça
+    // para os desenhos: o eixo de cada olhal e, na estrutura inclinada, os trechos da peça
     r.eixosOlhal = eixosOlhalDe(ic);
     const inc = inclinacaoDe(ic);
-    if (inc) r.peca = { phi: inc.phi, u: inc.u, n: inc.n, a1: Math.abs(ic.medidas.a1), a2: Math.abs(ic.medidas.a2), h: Number(ic.medidas.h) || 0 };
+    if (inc) r.peca = { phi: inc.phi, w: inc.w, n: inc.n, dobra: inc.dobra,
+      a: [Math.abs(ic.medidas.a1), Math.abs(ic.medidas.a2)], h: Number(ic.medidas.h) || 0 };
     return r;
   }
 
@@ -267,6 +283,31 @@
     const propria = resolver(ic).maiorTracaoKN;
     if (ic.lingaPropria) return propria;
     return Math.max(...E.icamentos.map(x => resolver(x).maiorTracaoKN));
+  }
+
+  /** o içamento de maior carga de perna do estudo (no empate, o primeiro) */
+  function icamentoGovernante() {
+    return E.icamentos.reduce((a, b) => (resolver(b).maiorTracaoKN > resolver(a).maiorTracaoKN + 1e-9 ? b : a), E.icamentos[0]);
+  }
+
+  /** de quem são a linga, a manilha e o olhal deste içamento: dele, ou do de maior carga */
+  const modeloDe = ic => (ic.lingaPropria ? ic : icamentoGovernante());
+
+  /**
+   * Quem usa a maior carga do estudo leva o mesmo conjunto do içamento de maior carga:
+   * mesma linga, mesma manilha e o mesmo olhal (modo, aço e geometria). Copiado a cada
+   * repintura, para acompanhar o que mudar lá.
+   */
+  function sincronizarPadrao() {
+    const gov = icamentoGovernante();
+    if (gov.olhal.modo === "fabricado" && !gov.olhal.geom) olhalDe(gov, riggingDe(gov));
+    E.icamentos.forEach(ic => {
+      if (ic.lingaPropria || ic === gov) return;
+      ic.linga = Object.assign({}, gov.linga);
+      ic.manilhaTipo = gov.manilhaTipo;
+      ic.manilhaCodigo = gov.manilhaCodigo;
+      ic.olhal = JSON.parse(JSON.stringify(gov.olhal));
+    });
   }
 
   /** t + 2·t.anel do olhal fabricado — entra na escolha da manilha; null no olhal comprado */
@@ -542,24 +583,30 @@
     } else {
       // estrutura inclinada: a₁, a₂ e h passam a ser medidos na própria peça
       const ROT_INCLINADA = {
-        a1: "a₁ — do CG até P1 (lado de baixo), ao longo da peça",
-        a2: "a₂ — do CG até P2 (lado de cima), ao longo da peça",
-        h: "h — do eixo da peça ao furo do olhal, perpendicular à peça"
+        a1: "a₁ — da dobra até P1, ao longo do trecho 1",
+        a2: "a₂ — da dobra até P2, ao longo do trecho 2",
+        h: "h — do eixo do trecho ao furo do olhal, perpendicular a ele",
+        e: "e — da vertical do CG até a dobra, na horizontal (+ para o lado de P2)"
       };
+      const listaMedidas = inc ? [...t.medidas, ["e", ROT_INCLINADA.e]] : t.medidas;
       const angCampo = (k, rot, valor) => `<label class="campo"><span>${F.esc(rot)}</span>
         <input type="text" inputmode="decimal" data-incl="${k}" data-key="incl-${k}" value="${paraCampo(valor, 1)}"></label>`;
       $("campos-medidas").innerHTML = (ic.tipo === "duas" ? `<div class="grade">
           <label class="campo"><span>Estrutura</span><select id="ic-inclinada">
             <option value="nao"${inc ? "" : " selected"}>horizontal — pontos na mesma direção do CG</option>
             <option value="sim"${inc ? " selected" : ""}>inclinada — informar os ângulos</option></select></label>
-          ${inc ? angCampo("phi", "φ — inclinação da peça com a horizontal (°)", inc.phi)
-            + angCampo("g1", "γ₁ — eixo do olhal em P1 com o eixo da peça (°)", inc.g[0])
-            + angCampo("g2", "γ₂ — eixo do olhal em P2 com o eixo da peça (°)", inc.g[1]) : ""}
+          ${inc ? angCampo("phi1", "φ₁ — trecho de P1 com a horizontal (°)", inc.phi[0])
+            + angCampo("phi2", "φ₂ — trecho de P2 com a horizontal (°)", inc.phi[1])
+            + angCampo("g1", "γ₁ — eixo do olhal em P1 com o eixo do trecho 1 (°)", inc.g[0])
+            + angCampo("g2", "γ₂ — eixo do olhal em P2 com o eixo do trecho 2 (°)", inc.g[1]) : ""}
         </div>
-        ${inc ? `<p class="dica">γ = 90° é o olhal em pé sobre a peça; γ = 0° é o olhal na ponta, alinhado
-          com a peça e apontando para fora. A peça fica nesta inclinação se as lingas tiverem os
-          comprimentos da tabela da etapa 5 — o olhal é verificado com o ângulo real entre a linga e ele.</p>` : ""}` : "")
-        + `<div class="grade">${t.medidas.map(([k, rot]) =>
+        ${inc ? `<p class="dica">Cada trecho tem a sua inclinação: φ é positivo quando o ponto fica
+          <b>acima</b> da dobra e negativo quando fica abaixo. Peça em V: os dois positivos. Peça
+          reta inclinada: φ₁ = −φ₂ (ex.: −30° e 30°). γ = 90° é o olhal em pé sobre o trecho; γ = 0°
+          é o olhal na ponta, alinhado com o trecho e apontando para fora. A peça fica nesta posição
+          se as lingas tiverem os comprimentos da tabela da etapa 5 — o olhal é verificado com o
+          ângulo real entre a linga e ele.</p>` : ""}` : "")
+        + `<div class="grade">${listaMedidas.map(([k, rot]) =>
         `<label class="campo"><span>${F.esc(inc && ROT_INCLINADA[k] || rot)} (${uComp()})</span>${numCampo(k)}</label>`).join("")}</div>`;
     }
 
@@ -578,7 +625,7 @@
     const H = alturaGancho(ic);
     const Lp = Math.hypot(P[iAng].x, P[iAng].y, H - P[iAng].z);
     $("saida-altura").innerHTML = `Altura do gancho acima do CG: <b>${txtComp(H)}</b> · comprimento da perna ${F.esc(P[iAng].nome)}: <b>${txtComp(Lp)}</b>`
-      + (inc ? ` · para a peça ficar a ${F.grau(inc.phi)}, as lingas precisam ter
+      + (inc ? ` · para a peça ficar com φ₁ = ${F.grau(inc.phi[0])} e φ₂ = ${F.grau(inc.phi[1])}, as lingas precisam ter
         ${P.map(p => `${F.esc(p.nome)} <b>${txtComp(Math.hypot(p.x, p.y, H - p.z))}</b>`).join(" e ")}` : "")
       + (t.unica ? ` · <b>uma linga só:</b> o ponto de içamento fica na vertical do centro de massa — o corpo gira até
         isso acontecer — e a linga trabalha na vertical, com o peso inteiro.` : "");
@@ -732,6 +779,8 @@
               <option value="propria"${x.lingaPropria ? " selected" : ""}>dimensionar para este içamento</option>
               <option value="padrao"${x.lingaPropria ? "" : " selected"}>usar a maior carga do estudo (${F.num(maiorEstudo, 2)} t)</option>
             </select></label>
+          ${!x.lingaPropria && modeloDe(x) !== x ? `<p class="etiqueta" id="dica-linga">Linga, manilha e olhal iguais aos de
+            <b>${F.esc(modeloDe(x).nome)}</b>, o içamento de maior carga. Mudar um deles aqui muda lá também.</p>` : ""}
           <div class="linha-campos">
             <button type="button" class="bt bt--peq bt--fantasma" id="bt-duplicar">Duplicar</button>
             <button type="button" class="bt bt--peq bt--risco" id="bt-remover">Remover</button>
@@ -1206,6 +1255,7 @@
   }
 
   const pintar = () => {
+    sincronizarPadrao();
     pintarAbas(); pintarEntrada(); pintarResultado();
     pintarLinga(); pintarSapatilhoManilha(); pintarOlhal(); pintarMaterial(); pintarCapa();
     espelharCampos();
@@ -1295,8 +1345,9 @@
       mem.definir("SKL", F.num(f.skl, 3));
       mem.definir("FS_linga", F.num(f.fsLinga, 3), "fator de segurança da linga");
       const incM = inclinacaoDe(ic);
-      if (incM) doc.texto(`Estrutura inclinada: φ = ${F.grau(incM.phi)} com a horizontal · olhal em P1 a γ₁ = ${F.grau(incM.g[0])} `
-        + `e em P2 a γ₂ = ${F.grau(incM.g[1])} com o eixo da peça`);
+      if (incM) doc.texto(`Estrutura inclinada: trecho de P1 a φ₁ = ${F.grau(incM.phi[0])} e trecho de P2 a `
+        + `φ₂ = ${F.grau(incM.phi[1])} com a horizontal (+ = ponto acima da dobra) · dobra a e = ${F.num(incM.dobra[0], 0)} mm do CG · `
+        + `olhal em P1 a γ₁ = ${F.grau(incM.g[0])} e em P2 a γ₂ = ${F.grau(incM.g[1])} com o eixo do trecho`);
       doc.texto(P.map(p => `${p.nome}: x = ${F.num(p.x, 0)} mm · y = ${F.num(p.y, 0)} mm · z = ${F.num(p.z, 0)} mm`).join("\n"));
       mem.definir("H", `${F.num(H, 1)} mm`);
 
@@ -1557,6 +1608,7 @@
 
     document.addEventListener("change", e => {
       const ic = atual(), el = e.target;
+      const mod = modeloDe(ic);      // linga, manilha e olhal compartilhados vão para o de maior carga
       if (el.id === "un-comp") E.unid.comp = el.value;
       else if (el.id === "un-massa") E.unid.massa = el.value;
       else if (el.id === "ic-nome") ic.nome = el.value || ic.nome;
@@ -1569,37 +1621,34 @@
       else if (el.id === "ic-perna-ang") ic.pernaAngulo = Number(el.value) || 0;
       else if (el.id === "ic-hipotese") ic.hipotese4 = el.value;
       else if (el.id === "ic-linga") ic.lingaPropria = el.value === "propria";
-      else if (el.id === "ic-linga-tipo") ic.linga.tipo = el.value;
-      else if (el.id === "ic-linga-cat") ic.linga.categoria = el.value;
-      else if (el.id === "ic-manilha-tipo") { ic.manilhaTipo = el.value; ic.manilhaCodigo = null; }
-      else if (el.id === "ic-manilha-codigo") ic.manilhaCodigo = el.value || null;
-      else if (el.id === "ic-olhal-modo") ic.olhal.modo = el.value;
-      else if (el.id === "ic-olhal-tipo") ic.olhal.tipoComprado = el.value;
-      else if (el.id === "ic-olhal-aco") ic.olhal.aco = el.value;
-      else if (el.id === "ic-olhal-fy") ic.olhal.fy = Number(el.value) || 355;
+      else if (el.id === "ic-linga-tipo") mod.linga.tipo = el.value;
+      else if (el.id === "ic-linga-cat") mod.linga.categoria = el.value;
+      else if (el.id === "ic-manilha-tipo") { mod.manilhaTipo = el.value; mod.manilhaCodigo = null; }
+      else if (el.id === "ic-manilha-codigo") mod.manilhaCodigo = el.value || null;
+      else if (el.id === "ic-olhal-modo") mod.olhal.modo = el.value;
+      else if (el.id === "ic-olhal-tipo") mod.olhal.tipoComprado = el.value;
+      else if (el.id === "ic-olhal-aco") mod.olhal.aco = el.value;
+      else if (el.id === "ic-olhal-fy") mod.olhal.fy = Number(el.value) || 355;
       else if (el.id === "ic-material-modo") { pintarMaterial(); return; }
       else if (el.dataset.olhalCampo) {
         // um olhal só para o içamento inteiro
-        if (!ic.olhal.geom) olhalDe(ic, riggingDe(ic));
-        ic.olhal.geom[el.dataset.olhalCampo] = Number(el.value) || 0;
+        if (!mod.olhal.geom) olhalDe(mod, riggingDe(mod));
+        mod.olhal.geom[el.dataset.olhalCampo] = Number(el.value) || 0;
         // R mudou: o reforço acompanha
-        if (el.dataset.olhalCampo === "R") ic.olhal.geom.rAnel = Number(el.value) || 0;
+        if (el.dataset.olhalCampo === "R") mod.olhal.geom.rAnel = Number(el.value) || 0;
       }
       else if (el.dataset.medida) ic.medidas[el.dataset.medida] = lerComp(el.value);
       else if (el.id === "ic-inclinada") ic.inclinada = el.value === "sim";
       else if (el.dataset.incl) {
-        if (!ic.inclinacao) ic.inclinacao = { phi: 30, g1: 90, g2: 90 };
+        if (!ic.inclinacao) ic.inclinacao = { phi1: -30, phi2: 30, g1: 90, g2: 90 };
         const v = Number(String(el.value).replace(",", "."));
         ic.inclinacao[el.dataset.incl] = isFinite(v) ? v : 0;
       }
       else if (el.dataset.fator) ic.fatores = Object.assign(fatoresDe(ic), { [el.dataset.fator]: Number(el.value) || 0 });
       else return;
-      comFocoPreservado(pintar);
-    });
-
-    // digitar num campo numérico já recalcula
-    document.addEventListener("input", e => {
-      if (e.target.matches('input[type="number"]')) e.target.dispatchEvent(new Event("change", { bubbles: true }));
+      // o "change" de um campo numérico só sai quando a pessoa termina de digitar (Enter, Tab ou
+      // clique fora); a repintura espera o foco chegar ao campo seguinte para não puxá-lo de volta
+      setTimeout(() => comFocoPreservado(pintar), 0);
     });
 
     $("tipos").addEventListener("click", e => {

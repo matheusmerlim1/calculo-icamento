@@ -129,14 +129,18 @@ IC.fbd = (function () {
       return [sg * r, p.ponto[2]];
     });
     proj.forEach(p => q.ver(p));
-    // peça inclinada: o corpo é a barra ao longo do eixo dela (em elevação, x e z)
+    // peça inclinada: o corpo são as barras dos dois trechos, cada uma na inclinação dele (x e z)
     const barra = res.peca ? (() => {
-      const r = res.peca, comp = r.a1 + r.a2, esp = Math.max(Math.abs(r.h) * 0.6, comp * 0.07);
-      const topo = r.h > 0 ? r.h * 0.3 : esp / 2, s0 = -r.a1 - comp * 0.06, s1 = r.a2 + comp * 0.06;
-      const P = (s, nn) => [r.u[0] * s + r.n[0] * nn, r.u[2] * s + r.n[2] * nn];
-      return { cantos: [P(s0, topo - esp), P(s1, topo - esp), P(s1, topo), P(s0, topo)], olhal: Math.max(r.h - topo, esp * 0.5) };
+      const r = res.peca, comp = r.a[0] + r.a[1], esp = Math.max(Math.abs(r.h) * 0.6, comp * 0.07);
+      const topo = r.h > 0 ? r.h * 0.3 : esp / 2;
+      const trechos = [0, 1].map(i => {
+        const w = r.w[i], nn = r.n[i], s0 = -esp / 2, s1 = r.a[i] + comp * 0.06;
+        const P = (s, h) => [r.dobra[0] + w[0] * s + nn[0] * h, r.dobra[2] + w[2] * s + nn[2] * h];
+        return [P(s0, topo - esp), P(s1, topo - esp), P(s1, topo), P(s0, topo)];
+      });
+      return { trechos, olhal: Math.max(r.h - topo, esp * 0.5) };
     })() : null;
-    if (barra) barra.cantos.forEach(c => q.ver(c));
+    if (barra) barra.trechos.flat().forEach(c => q.ver(c));
     q.ver([0, Gk[2]]);
     q.ver([0, 0]);
     q.ajustar();
@@ -156,7 +160,7 @@ IC.fbd = (function () {
     const bz = q.Y(Math.min(...zs));
     const h = Math.max(24, Math.abs(q.Y(Math.min(...zs)) - q.Y(Math.max(...zs))) + 24);
     if (barra) {
-      poli(q, barra.cantos.map(c => [q.X(c[0]), q.Y(c[1])]), "corpo");
+      barra.trechos.forEach(t => poli(q, t.map(c => [q.X(c[0]), q.Y(c[1])]), "corpo"));
       // olhal: do pé ao furo, na direção do eixo dele
       res.pernas.forEach((p, i) => {
         const d = (res.eixosOlhal || [])[i];

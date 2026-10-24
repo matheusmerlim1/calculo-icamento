@@ -52,7 +52,9 @@ IC.iso3d = (function () {
       [x0, y0, zTop], [x1, y0, zTop], [x1, y1, zTop], [x0, y1, zTop]
     ];
     const peca = res.peca ? caixaInclinada(res.peca) : null;
-    if (peca) cantos = peca.cantos;
+    // peça inclinada: uma caixa por trecho, cada uma na inclinação dele
+    const caixas = peca ? peca.trechos : [cantos];
+    if (peca) cantos = caixas.flat();
     // arestas: as três que chegam no canto de trás (índice 3 em planta) ficam tracejadas
     const arestas = [
       [0, 1], [1, 2], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6],
@@ -96,13 +98,15 @@ IC.iso3d = (function () {
     };
 
     /* --------------------------------------------------- corpo */
-    const c = cantos.map(S);
-    c.forEach(q => marcar(q[0], q[1]));
-    // face de cima, para dar volume
-    out.push(`<polygon points="${[4, 5, 6, 7].map(i => `${n(c[i][0])},${n(c[i][1])}`).join(" ")}" class="face-topo"/>`);
-    out.push(`<polygon points="${[0, 1, 5, 4].map(i => `${n(c[i][0])},${n(c[i][1])}`).join(" ")}" class="face-lado"/>`);
-    out.push(`<polygon points="${[1, 2, 6, 5].map(i => `${n(c[i][0])},${n(c[i][1])}`).join(" ")}" class="face-lado2"/>`);
-    arestas.forEach(([i, j, oculta]) => linha(c[i], c[j], oculta ? "aresta oculta" : "aresta"));
+    caixas.forEach(cx8 => {
+      const c = cx8.map(S);
+      c.forEach(q => marcar(q[0], q[1]));
+      // face de cima, para dar volume
+      out.push(`<polygon points="${[4, 5, 6, 7].map(i => `${n(c[i][0])},${n(c[i][1])}`).join(" ")}" class="face-topo"/>`);
+      out.push(`<polygon points="${[0, 1, 5, 4].map(i => `${n(c[i][0])},${n(c[i][1])}`).join(" ")}" class="face-lado"/>`);
+      out.push(`<polygon points="${[1, 2, 6, 5].map(i => `${n(c[i][0])},${n(c[i][1])}`).join(" ")}" class="face-lado2"/>`);
+      arestas.forEach(([i, j, oculta]) => linha(c[i], c[j], oculta ? "aresta oculta" : "aresta"));
+    });
 
     /* --------------------------------------------------- centro de massa e gancho */
     const cg = S([0, 0, 0]), gk = S(Gk);
@@ -159,11 +163,12 @@ IC.iso3d = (function () {
       out.push(`<path d="M${n(baixo[0] - 6)},${n(baixo[1] - 12)} L${n(baixo[0])},${n(baixo[1])} L${n(baixo[0] + 6)},${n(baixo[1] - 12)} z" class="seta-cheia"/>`);
       texto([baixo[0] + 10, baixo[1]], `W ${F.kn(res.pesoProjKN)}`, "forca", "start");
     } else if (peca) {
-      // peça inclinada: a₁ e a₂ ao longo da peça e a inclinação φ
-      const r = res.peca, A1 = S(r.u.map(c => -c * r.a1 / 2)), A2 = S(r.u.map(c => c * r.a2 / 2));
-      texto([A1[0], A1[1] + 22], `a₁ ${comp(r.a1)}`, "cota-t");
-      texto([A2[0], A2[1] + 22], `a₂ ${comp(r.a2)}`, "cota-t");
-      texto([cg[0] + 14, cg[1] + 32], `φ ${F.grau(r.phi)} c/ a horizontal`, "forca", "start");
+      // peça inclinada: a₁ e a₂ ao longo de cada trecho e a inclinação φ de cada um
+      const r = res.peca;
+      const meioTrecho = i => S(r.w[i].map((c, k) => r.dobra[k] + c * r.a[i] / 2));
+      const A1 = meioTrecho(0), A2 = meioTrecho(1);
+      texto([A1[0], A1[1] + 22], `a₁ ${comp(r.a[0])} · φ₁ ${F.grau(r.phi[0])}`, "cota-t");
+      texto([A2[0], A2[1] + 22], `a₂ ${comp(r.a[1])} · φ₂ ${F.grau(r.phi[1])}`, "cota-t");
     } else if (unica) {
       // linga única: o comprimento da linga e a altura do ponto sobre o CG
       const p = res.pernas[0];
@@ -219,20 +224,23 @@ IC.iso3d = (function () {
     return `<svg viewBox="${n(vx)} ${n(vy)} ${n(vw)} ${n(vh)}" xmlns="http://www.w3.org/2000/svg" class="dw" preserveAspectRatio="xMidYMid meet">${out.join("")}</svg>`;
   }
 
-  /** caixa da peça inclinada, ao longo do eixo u e da normal n (mesma ordem de cantos da caixa reta) */
+  /** caixas da peça inclinada, uma por trecho: da dobra até além do ponto, ao longo do eixo w
+   *  do trecho e da normal n dele (mesma ordem de cantos da caixa reta) */
   function caixaInclinada(r) {
-    const comp = r.a1 + r.a2;
+    const comp = r.a[0] + r.a[1];
     const esp = Math.max(Math.abs(r.h) * 0.6, comp * 0.07);    // espessura da peça
     const topo = r.h > 0 ? r.h * 0.3 : esp / 2;               // o olhal sai da face de cima
     const larg = esp * 0.9;
-    const s0 = -r.a1 - comp * 0.06, s1 = r.a2 + comp * 0.06;
-    const P = (s, y, nn) => [r.u[0] * s + r.n[0] * nn, y, r.u[2] * s + r.n[2] * nn];
     const nb = topo - esp, y0 = -larg / 2, y1 = larg / 2;
-    return {
-      cantos: [P(s0, y0, nb), P(s1, y0, nb), P(s1, y1, nb), P(s0, y1, nb),
-        P(s0, y0, topo), P(s1, y0, topo), P(s1, y1, topo), P(s0, y1, topo)],
-      olhal: Math.max(r.h - topo, esp * 0.5)
-    };
+    const trechos = [0, 1].map(i => {
+      const w = r.w[i], nn = r.n[i];
+      const P = (s, y, h) => [r.dobra[0] + w[0] * s + nn[0] * h, y, r.dobra[2] + w[2] * s + nn[2] * h];
+      // começa um pouco antes da dobra, para os dois trechos se encontrarem sem fresta
+      const s0 = -esp / 2, s1 = r.a[i] + comp * 0.06;
+      return [P(s0, y0, nb), P(s1, y0, nb), P(s1, y1, nb), P(s0, y1, nb),
+        P(s0, y0, topo), P(s1, y0, topo), P(s1, y1, topo), P(s0, y1, topo)];
+    });
+    return { trechos, olhal: Math.max(r.h - topo, esp * 0.5) };
   }
 
   /** eixos X (comprimento), Y (largura) e Z (altura), no canto do desenho */

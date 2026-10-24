@@ -135,7 +135,9 @@ async function main() {
     const reto = await pontos();
     const mudar = (sel, v) => rodar(`const e=document.querySelector('${sel}'); e.value="${v}"; e.dispatchEvent(new Event("change",{bubbles:true}));`);
     await mudar("#ic-inclinada", "sim"); await esperar(400);
-    await mudar('[data-incl="phi"]', "30"); await esperar(300);
+    // peça reta inclinada a 30°: o trecho de P1 desce da dobra (−30°) e o de P2 sobe (30°)
+    await mudar('[data-incl="phi1"]', "-30"); await esperar(300);
+    await mudar('[data-incl="phi2"]', "30"); await esperar(300);
     await mudar('[data-incl="g2"]', "0"); await esperar(400);
     const r = JSON.parse(await rodar(`const ic = ICapp.atual(); ic.olhal.modo = "fabricado"; ICapp.pintar();
       const r = ICapp.resolver(ic), P = ICapp.pontosDe(ic), ang = ICapp.angulosOlhal(ic, r);
@@ -145,7 +147,7 @@ async function main() {
         piorGov: util(o.porPerna.find(x => x.perna.nome === o.governante.nome)),
         piorTodas: Math.max(...o.porPerna.map(util)), fig: document.getElementById("fig-medidas").innerText,
         tela: document.getElementById("resultado-olhal").innerText, campos: document.querySelectorAll("[data-incl]").length })`));
-    if (r.campos !== 3) throw new Error("campos de ângulo: " + r.campos);
+    if (r.campos !== 4) throw new Error("campos de ângulo: " + r.campos);
     const f = 30 * Math.PI / 180, u = [Math.cos(f), 0, Math.sin(f)], n = [-Math.sin(f), 0, Math.cos(f)];
     const esp = [[-r.a1, -1], [r.a2, 1]].map(([s]) => u.map((c, k) => c * s + n[k] * r.h));
     esp.forEach((e, i) => {
@@ -165,6 +167,30 @@ async function main() {
     if (!/ESTRUTURA INCLINADA/.test(r.fig)) throw new Error("figura das medidas não é a da peça inclinada");
     if (!/eixo do olhal/.test(r.tela)) throw new Error("tela do olhal sem o ângulo com o eixo");
     await foto("ic_duas_inclinada");
+
+    // peça em V: cada trecho com a sua inclinação, os dois pontos acima da dobra, dobra fora do CG
+    await mudar('[data-incl="phi1"]', "40"); await esperar(300);
+    await mudar('[data-incl="phi2"]', "20"); await esperar(300);
+    await mudar('[data-medida="e"]', "200"); await esperar(400);
+    const v = JSON.parse(await rodar(`const ic = ICapp.atual(), m = ic.medidas;
+      return JSON.stringify({ P: ICapp.pontosDe(ic), eixos: ICapp.eixosOlhalDe(ic), a1: m.a1, a2: m.a2, h: m.h, e: m.e,
+        d3: document.getElementById("fig-3d-medidas").innerHTML.length })`));
+    const rad = g => g * Math.PI / 180;
+    const w = [[-Math.cos(rad(40)), 0, Math.sin(rad(40))], [Math.cos(rad(20)), 0, Math.sin(rad(20))]];
+    const nV = [[Math.sin(rad(40)), 0, Math.cos(rad(40))], [-Math.sin(rad(20)), 0, Math.cos(rad(20))]];
+    [v.a1, v.a2].forEach((s, i) => {
+      const e = w[i].map((c, k) => (k === 0 ? v.e : 0) + c * Math.abs(s) + nV[i][k] * v.h);
+      const p = [v.P[i].x, v.P[i].y, v.P[i].z];
+      if (Math.hypot(...p.map((x, k) => x - e[k])) > 0.01) throw new Error(`V: P${i + 1} fora do lugar: ${p} ≠ ${e}`);
+    });
+    if (!(v.P[0].z > 0 && v.P[1].z > 0)) throw new Error("V: os dois pontos deviam ficar acima da dobra");
+    // P2 com γ = 0°: o olhal aponta ao longo do trecho 2
+    if (Math.hypot(...v.eixos[1].map((c, k) => c - w[1][k])) > 1e-9) throw new Error("V: eixo do olhal em P2 devia seguir o trecho 2");
+    if (!(v.d3 > 0)) throw new Error("V: desenho 3D vazio");
+    await rodar(`document.getElementById("fig-3d-medidas").scrollIntoView()`); await esperar(200);
+    await foto("ic_duas_v");
+    await rodar(`window.scrollTo(0, 0)`);
+
     await mudar("#ic-inclinada", "nao"); await esperar(400);
     if ((await pontos()) !== reto) throw new Error("desmarcar a inclinação devia voltar aos mesmos pontos");
     return true;
@@ -431,6 +457,34 @@ async function main() {
     const n = await rodar(`return ICapp.estudo.icamentos.length`);
     if (n !== 2) throw new Error("içamentos: " + n);
     await foto("ic_dois_icamentos");
+    return true;
+  });
+
+  await passo("usar a maior carga do estudo leva a mesma linga, manilha e olhal do de maior carga", async () => {
+    const mudar = (sel, v) => rodar(`const e=document.querySelector('${sel}'); e.value="${v}"; e.dispatchEvent(new Event("change",{bubbles:true}));`);
+    // o segundo (aberto) fica mais leve e passa a usar a carga do estudo
+    await mudar("#ic-massa", "1000"); await esperar(300);
+    await mudar("#ic-linga", "padrao"); await esperar(400);
+    if (!(await rodar(`return !!document.getElementById("dica-linga")`))) throw new Error("faltou o aviso de que o conjunto vem do outro içamento");
+    // no de maior carga: troca o tipo de manilha e a espessura do olhal
+    await rodar(`document.querySelector('[data-aba="0"]').click();`); await esperar(400);
+    const outroTipo = await rodar(`const ic = ICapp.estudo.icamentos[0];
+      return Object.keys(IC.manilhas.tipos).find(k => k !== ic.manilhaTipo)`);
+    await mudar("#ic-manilha-tipo", outroTipo); await esperar(400);
+    await rodar(`ICapp.estudo.icamentos[0].olhal.modo = "fabricado"; ICapp.pintar();`); await esperar(300);
+    await mudar('[data-olhal-campo="t"]', "38"); await esperar(400);
+    const igual = () => rodar(`const [a, b] = ICapp.estudo.icamentos, ra = ICapp.riggingDe(a), rb = ICapp.riggingDe(b);
+      return JSON.stringify({ tipo: [a.manilhaTipo, b.manilhaTipo], t: [a.olhal.geom.t, b.olhal.geom.t],
+        modo: [a.olhal.modo, b.olhal.modo], linga: [ra.linga.diametro, rb.linga.diametro],
+        manilha: [ra.manilha.manilha && ra.manilha.manilha.codigo, rb.manilha.manilha && rb.manilha.manilha.codigo] })`);
+    let r = JSON.parse(await igual());
+    Object.entries(r).forEach(([k, [a, b]]) => { if (a !== b) throw new Error(`${k} diferente: ${a} ≠ ${b}`); });
+    if (r.tipo[0] !== outroTipo) throw new Error("o tipo de manilha não mudou no de maior carga");
+    // mudar no que usa a carga do estudo muda lá também
+    await rodar(`document.querySelector('[data-aba="1"]').click();`); await esperar(400);
+    await mudar('[data-olhal-campo="t"]', "25"); await esperar(400);
+    r = JSON.parse(await igual());
+    if (r.t[0] !== 25 || r.t[1] !== 25) throw new Error("a espessura mudada no segundo devia ir para o de maior carga: " + r.t);
     return true;
   });
 

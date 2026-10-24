@@ -92,17 +92,21 @@ Para cada perna `i`, com o ponto de içamento em `Pi` e o gancho em `G = (0, 0, 
 βi   = ângulo entre ûi e a vertical
 ```
 
-**Estrutura inclinada (opção das duas pernas)** — a peça faz `φ` com a horizontal e `P2` fica do
-lado de cima. Com `u = (cos φ, 0, sen φ)` o eixo da peça e `n = (−sen φ, 0, cos φ)` a normal dela:
+**Estrutura inclinada (opção das duas pernas)** — a peça tem dois trechos que se encontram na
+dobra `D = (e, 0, 0)`, a `e` da vertical do CG (+ para o lado de `P2`). Cada trecho faz `φᵢ` com a
+horizontal, positivo quando `Pᵢ` fica acima da dobra: peça em V tem os dois positivos, peça reta
+inclinada tem `φ₁ = −φ₂`. Com `wᵢ` o eixo do trecho (da dobra para `Pᵢ`) e `nᵢ` a normal dele:
 
 ```
-P1 = −a₁·u + h·n        P2 = a₂·u + h·n        (a₁, a₂ ao longo da peça; h perpendicular a ela)
-eixo do olhal i = cos γᵢ·(±u) + sen γᵢ·n     (γ = 90° em pé sobre a peça, 0° na ponta, para fora)
+w₁ = (−cos φ₁, 0, sen φ₁)   n₁ = (sen φ₁, 0, cos φ₁)
+w₂ = ( cos φ₂, 0, sen φ₂)   n₂ = (−sen φ₂, 0, cos φ₂)
+Pi = D + aᵢ·wᵢ + h·nᵢ                      (aᵢ ao longo do trecho; h perpendicular a ele)
+eixo do olhal i = cos γᵢ·wᵢ + sen γᵢ·nᵢ    (γ = 90° em pé sobre o trecho, 0° na ponta, para fora)
 ```
 
 O gancho continua na vertical do CG, e o equilíbrio é o das duas pernas em cotas diferentes. O
-comprimento que cada linga precisa ter para a peça ficar em `φ` sai da geometria e é mostrado na
-etapa 3. Os comprimentos `L₁ = |G − P1|` e `L₂ = |G − P2|` são o que se encomenda.
+comprimento que cada linga precisa ter para a peça ficar nessa posição sai da geometria e é
+mostrado na etapa 3. Os comprimentos `L₁ = |G − P1|` e `L₂ = |G − P2|` são o que se encomenda.
 
 **Uma linga (ponto único)** — sistema determinado. O corpo gira até o CG ficar na vertical do
 ponto, então a perna é vertical (`β = 0`) e leva o peso de projeto inteiro, sem SKL:
