@@ -66,6 +66,9 @@
   /* ---- documento corrido: sem caixas, sem fundo, sem "não quebrar a caixa" (que empurrava
      etapas inteiras para a folha seguinte e deixava meia folha em branco) */
   .folha, .etapas { display: block; padding: 0; margin: 0; gap: 0; }
+  .tab-rolagem { overflow: visible !important; }
+  /* no papel a linga volta a ser uma coluna só: números, cabo e memorial, um embaixo do outro */
+  .linga-par { display: block; }
   .etapa, .etapa--larga {
     display: block; width: auto; margin: 0 0 7mm; padding: 0;
     background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible;

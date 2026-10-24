@@ -627,9 +627,9 @@
           : "";
       $("campos-medidas").innerHTML = (ic.tipo === "duas" ? `<div class="grade">
           <label class="campo"><span>Estrutura</span><select id="ic-inclinada">
-            ${opc("horizontal", "horizontal — pontos na mesma direção do CG")}
-            ${opc("inclinada", "inclinada — peça reta, um ângulo")}
-            ${opc("dobrada", "em V (dobrada) — um ângulo por trecho")}</select></label>
+            ${opc("horizontal", "horizontal")}
+            ${opc("inclinada", "inclinada (peça reta)")}
+            ${opc("dobrada", "em V (dobrada)")}</select></label>
           ${angulos}
         </div>${dica}` : "")
         + `<div class="grade">${listaMedidas.map(([k, rot]) =>
@@ -923,16 +923,20 @@
       $("resultado-linga").innerHTML = `<div class="aviso aviso--erro">Nenhum cabo da tabela atende à MBL requerida (${F.kn(l.mblReqKN)}).</div>`;
       return;
     }
-    $("resultado-linga").innerHTML = `
-      <div class="painel">
-        <div class="item"><span>Carga governante</span><b>${F.kn(rig.cargaGov)} · ${F.ton(rig.cargaGov / G)}</b></div>
-        <div class="item"><span>FS da linga</span><b>${F.num(l.fsLinga, 2)}</b></div>
-        <div class="item"><span>MBL requerida</span><b>${F.kn(l.mblReqKN)}</b></div>
-        <div class="item"><span>Utilização (MBL requerida / MBL do cabo)</span><b>${F.num(l.utilizacao * 100, 0)} %</b></div>
+    // caixa larga: os números e o cabo à esquerda, o memorial (com a legenda das letras) à direita
+    $("resultado-linga").innerHTML = `<div class="linga-par">
+      <div class="linga-par__col">
+        <div class="painel">
+          <div class="item"><span>Carga governante</span><b>${F.kn(rig.cargaGov)} · ${F.ton(rig.cargaGov / G)}</b></div>
+          <div class="item"><span>FS da linga</span><b>${F.num(l.fsLinga, 2)}</b></div>
+          <div class="item"><span>MBL requerida</span><b>${F.kn(l.mblReqKN)}</b></div>
+          <div class="item"><span>Utilização (MBL requerida / MBL do cabo)</span><b>${F.num(l.utilizacao * 100, 0)} %</b></div>
+        </div>
+        ${ficha(`Cabo escolhido — ${IC.lingas.tipos[l.tipo].nome}`, l.linha,
+          ["diametro", "peso", "ruptura" + l.categoria, "dimB", "dimC"], ROTULOS_LINGA)}
       </div>
-      ${memorial(l.formula)}
-      ${ficha(`Cabo escolhido — ${IC.lingas.tipos[l.tipo].nome}`, l.linha,
-        ["diametro", "peso", "ruptura" + l.categoria, "dimB", "dimC"], ROTULOS_LINGA)}`;
+      <div class="linga-par__col linga-par__col--mem">${memorial(l.formula)}</div>
+    </div>`;
   }
 
   /* ------------------------------------------------------------ sapatilho e manilha */
@@ -1282,11 +1286,24 @@
     });
   }
 
+  /** tabela das caixas dentro de uma faixa que rola de lado: numa tela estreita, a tabela
+   *  rola dentro da caixa em vez de esticar a página inteira */
+  function rolagemNasTabelas() {
+    document.querySelectorAll(".etapa table.tab").forEach(t => {
+      if (t.parentElement.classList.contains("tab-rolagem") || t.closest("tr.linha-formula")) return;
+      const faixa = document.createElement("div");
+      faixa.className = "tab-rolagem";
+      t.before(faixa);
+      faixa.appendChild(t);
+    });
+  }
+
   const pintar = () => {
     sincronizarPadrao();
     pintarAbas(); pintarEntrada(); pintarResultado();
     pintarLinga(); pintarSapatilhoManilha(); pintarOlhal(); pintarMaterial(); pintarCapa();
     espelharCampos();
+    rolagemNasTabelas();
     // o conteúdo acabou de ser refeito: os botões de recolher e de esconder o cálculo
     // precisam ser recolocados (o do cálculo só existe onde há cálculo)
     if (typeof pintarDobra === "function") pintarDobra();

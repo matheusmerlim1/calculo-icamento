@@ -78,7 +78,9 @@ IC.simbolos = (function () {
    * Os de chave mais longa são testados primeiro, para "t_anel" não virar "t".
    */
   function noTexto(texto) {
-    const t = String(texto || "");
+    // a unidade logo depois de um número ("2,41 t", "23,6 kN") não é símbolo: sem isto o "t"
+    // de tonelada aparecia na legenda como a espessura da chapa
+    const t = String(texto || "").replace(/(\d)\s*(kN|kgf|kg|mm|cm|MPa|m\/s²|t|N|m)(?![\wÀ-ú])/gu, "$1");
     const achados = [];
     const ordem = S.slice().sort((a, b) => b.k.length - a.k.length);
     let sobra = t;

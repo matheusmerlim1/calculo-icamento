@@ -14,7 +14,7 @@
 }
 .topo__nome { font-weight: 700; }
 .topo__sub { font-size: var(--t-xs); color: var(--c-texto-2); }
-.topo__acoes { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+.topo__acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; align-items: center; }
 
 /* O botão de portfólio entra aqui dentro (o app move o elemento no início), em vez de ficar
    fixo no canto com uma faixa reservada só para ele. */
@@ -64,25 +64,22 @@
   align-items: start;
   min-height: 0;
 }
-/* Blocos lado a lado: cabe o que couber em colunas de ~330px — três numa tela grande,
-   duas numa média, uma no celular. */
+/* Uma caixa por linha, na largura toda. Com caixas lado a lado, a mais curta da fileira
+   ficava com um vazio no pé (ou a fileira, desalinhada); na largura toda os campos se
+   espalham em colunas e as caixas curtas (1 e 4) ficam com uma ou duas fileiras de campos. */
 .etapas {
   display: grid; min-width: 0;
   gap: var(--e-3);
-  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
-  /* stretch: as caixas de uma mesma linha terminam na mesma altura. Com align-items:start
-     cada uma parava onde o seu conteúdo acabava e a fileira ficava desalinhada. */
-  align-items: stretch;
-  /* dense: uma caixa estreita sobe para o buraco ao lado de outra, em vez de deixar
-     meia tela vazia. Cada caixa leva o seu número no título, então a sequência do
-     roteiro continua visível — e no papel volta tudo para uma coluna, na ordem. */
-  grid-auto-flow: row dense;
+  grid-template-columns: minmax(0, 1fr);
 }
 /* etapa com tabela larga ou desenho: a linha inteira, senão fica ilegível */
 .etapa--larga { grid-column: 1 / -1; }
 
 .etapa {
   display: flex; flex-direction: column;     /* o corpo ocupa a altura que sobrar */
+  /* sem isto a caixa cresce até a largura da tabela mais larga (~1080px) e, com o
+     overflow escondido, cortava tabela e figura à direita */
+  min-width: 0;
   background: var(--c-superficie);
   border: 1px solid var(--c-linha);
   border-radius: var(--raio);
@@ -116,7 +113,33 @@
   border-radius: 50%; background: var(--c-acento); color: #fff; font-size: var(--t-xs);
 }
 /* dentro da caixa, o espaço é curto: o que está junto é junto. Entre caixas, --e-3. */
-.etapa__corpo { padding: var(--e-3); display: grid; gap: var(--e-2); }
+.etapa__corpo { padding: var(--e-3); display: grid; gap: var(--e-2); min-width: 0; }
+.etapa__corpo > * { min-width: 0; }
+/* tabela larga numa tela estreita: rola dentro da caixa, em vez de esticar a página */
+.tab-rolagem { overflow-x: auto; max-width: 100%; }
+
+/* campo de texto longo (a base normativa): duas colunas da grade, para não cortar o nome */
+@media (min-width: 761px) { .campo--2 { grid-column: span 2; } }
+
+@media (max-width: 760px) {
+  /* alvo de toque: no celular o botão de recolher e a lixeira da aba precisam caber o dedo */
+  .aba__lixo { display: inline-grid; place-items: center; min-width: 28px; min-height: 28px; }
+  .etapa__dobra { width: 32px; height: 32px; }
+  .etapa__dobra--mem { width: auto; height: 32px; }
+  /* tipos: dois por linha — um por linha empilhava quatro cartões altos */
+  /* (com .etapa na frente: as regras gerais vêm mais abaixo no arquivo e venceriam) */
+  .etapa .tipos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* figura: a largura manda e a altura acompanha; com a altura fixa o desenho encolhia
+     no meio de uma folha branca alta */
+  .etapa .fig-topo, .etapa .figs figure { width: 100%; }
+  .etapa .fig-topo svg, .etapa .figs svg { width: 100%; height: auto; max-height: none; }
+  /* cabeçalho: um campo por linha, ocupando a largura */
+  .topo { gap: 8px 12px; }
+  .campo--inline { flex: 1 1 100%; }
+  .campo--inline > span { min-width: 84px; }
+  .campo--inline input, .campo--inline select { flex: 1; width: auto; min-width: 0; }
+  .topo__acoes { width: 100%; }
+}
 .etapa--espera { opacity: .72; }
 .etapa--espera .etapa__n { background: var(--c-texto-3); }
 
@@ -126,6 +149,15 @@
 .linha-campos .campo { min-width: 220px; }
 
 .dica { margin: 0; font-size: var(--t-xs); color: var(--c-texto-3); }
+/* nota solta no pé da caixa (fora do corpo): o mesmo recuo do corpo, senão encosta na borda */
+.etapa > .dica { padding: 0 var(--e-3) var(--e-3); margin-top: calc(-1 * var(--e-1)); }
+
+/* linga: números e cabo à esquerda, memorial à direita; numa tela estreita, um embaixo do outro */
+.linga-par { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--e-2) var(--e-4); align-items: start; }
+.linga-par__col { display: grid; gap: var(--e-2); min-width: 0; }
+/* memorial escondido: a coluna dele some e os números ocupam a largura */
+body.sem-memorial .etapa:not(.com-calculo) .linga-par__col--mem,
+.etapa.sem-calculo .linga-par__col--mem { display: none; }
 .dica b { color: var(--c-texto-2); }
 
 /* ---------------------------------------------------------- tipo de içamento */
@@ -199,7 +231,9 @@
     var(--c-erro) 0 3px, color-mix(in srgb, var(--c-erro) 55%, #000) 3px 6px);
 }
 /* desenho do olhal ao lado dos campos: mexeu num número, o desenho muda */
-.olhal-par { display: grid; grid-template-columns: minmax(360px, 560px) minmax(0, 1fr); gap: 10px; align-items: start; margin-bottom: 8px; }
+/* figura e medidas lado a lado enquanto couberem; o resto vai para baixo, sem sair da caixa */
+.olhal-par { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 10px; align-items: start; margin-bottom: 8px; }
+.olhal-par > * { min-width: 0; }
 /* sem width:100% a folha encolhe para o tamanho natural do desenho (fit-content herdado
    de .fig-topo) e o desenho sai minusculo dentro de uma coluna larga */
 .olhal-par .fig-topo { position: sticky; top: 8px; width: 100%; }
@@ -242,7 +276,9 @@ body.sem-memorial tr.linha-formula,
 .formulas__titulo { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .4px; color: var(--c-texto-3); }
 
 /* as contas à esquerda e a legenda das letras à direita, onde antes sobrava espaço */
-.formulas--com-legenda { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 8px 16px; align-items: start; }
+/* lado a lado só quando cada uma tem ~300px; numa coluna estreita a legenda vai para baixo,
+   senão ela ficava com uma palavra por linha */
+.formulas--com-legenda { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 8px 16px; align-items: start; }
 .formulas__contas { display: grid; gap: 5px; min-width: 0; }
 .formulas__legenda { display: grid; gap: 2px; align-content: start; border-left: 1px dashed var(--c-linha-forte); padding: 0 6px 0 12px; }
 .simbolo { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 8px; font-size: var(--t-xs); align-items: baseline; }
