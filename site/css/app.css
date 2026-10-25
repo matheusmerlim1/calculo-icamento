@@ -253,7 +253,8 @@ body.sem-memorial .etapa:not(.com-calculo) .linga-par__col--mem,
 .olhal-par #fig-olhal svg { max-height: 300px; }
 @media (max-width: 900px) { .olhal-par { grid-template-columns: 1fr; } }
 
-.olhal-geom { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 8px; align-items: end; }
+/* quatro medidas numa fileira: com 150px a quarta (h) caía sozinha na segunda */
+.olhal-geom { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 8px; margin-bottom: 8px; align-items: end; }
 /* rótulo em cima, campo embaixo: com o rótulo quebrando em duas linhas, o campo descia
    junto e a fileira ficava torta. Agora todos os campos começam na mesma altura. */
 .olhal-geom .campo { display: grid; grid-template-rows: 1fr auto; gap: 3px; height: 100%; }
@@ -261,6 +262,12 @@ body.sem-memorial .etapa:not(.com-calculo) .linga-par__col--mem,
 .olhal-geom input, .olhal-geom select { width: 100%; }
 .olhal-bloco { padding: 8px; border: 1px solid var(--c-linha); border-radius: var(--raio); margin-bottom: 10px; background: var(--c-superficie-2); }
 .olhal-bloco h4 { margin: 0 0 8px; font-size: var(--t-sm); }
+/* na largura toda, rótulo e valor ficavam a 1000px um do outro: duas colunas */
+/* no máximo duas colunas (com três, quatro itens ficavam desencontrados) e uma só quando a
+   coluna não chega a 340px — senão o rótulo quebrava em duas linhas */
+.olhal-bloco--largo > .painel {
+  grid-template-columns: repeat(auto-fit, minmax(max(min(340px, 100%), calc(50% - 16px)), 1fr)); column-gap: 32px;
+}
 /* a tag diz de qual manilha saíram estas medidas, sem ter que voltar à etapa 7 */
 .olhal-bloco__tag {
   font-family: var(--fonte-mono); font-size: var(--t-xs); font-weight: 700;
@@ -319,6 +326,10 @@ tr.linha-formula .formulas { border-color: var(--c-linha-forte); background: var
 .pecas-par { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 10px; align-items: start; }
 .peca-bloco { min-width: 0; border: 1px solid var(--c-linha); border-radius: var(--raio); padding: 8px 10px; background: var(--c-superficie-2); }
 .peca-bloco__t { margin: 0 0 6px; font-size: var(--t-sm); color: var(--c-texto-2); }
+/* escolha da manilha: tipo, código e carga numa fileira, acima das duas peças */
+.escolha-manilha { margin-bottom: 10px; }
+.escolha-manilha__grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 8px 16px; align-items: end; }
+.escolha-manilha .formulas { margin-top: 8px; }
 .ficha-par { display: grid; grid-template-columns: minmax(300px, 420px) max-content; gap: 12px; align-items: start; margin-bottom: 8px; justify-content: start; }
 .ficha-par > .fig-topo { padding: 4px; }
 @media (max-width: 640px) { .ficha-par { grid-template-columns: 1fr; } }
@@ -409,12 +420,13 @@ tr.linha-formula .formulas { border-color: var(--c-linha-forte); background: var
 }
 /* a figura ao lado da ficha mostra as letras da tabela: precisa ser lida, não só olhada */
 .ficha-par .fig-topo svg { height: auto; width: 100%; max-height: 340px; }
-#fig-encaixe { width: 100%; }
-#fig-encaixe svg { height: auto; width: 100%; max-width: 600px; max-height: none; }
+/* a folha branca do tamanho do desenho: na largura toda sobravam faixas brancas dos lados */
+#fig-encaixe { width: min(100%, 720px); }
+#fig-encaixe svg { height: auto; width: 100%; max-height: none; }
 
 /* figuras que antes vinham empilhadas, uma por linha */
 /* figuras que antes vinham empilhadas, uma por linha: agora dividem a largura da caixa em
    colunas iguais (duas na etapa 3, três na 5) e o desenho cresce até a largura da coluna */
-.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 8px; align-items: stretch; }
+.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 8px; align-items: stretch; }
 .figs > figure { min-width: 0; width: 100%; margin: 0; }
 .figs svg { width: 100%; height: auto; max-height: 340px; }

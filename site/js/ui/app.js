@@ -495,13 +495,14 @@
     return { rig, olhal: o, itens };
   }
 
-  /** massa aproximada do olhal fabricado: a chapa (base × h) menos o furo, a 7,85 kg/dm³.
-   *  É estimativa — a chapa real é recortada e pode levar reforço; serve para o peso total
-   *  do conjunto não sair vazio. */
+  /** massa aproximada do olhal fabricado: a chapa (base × h, mais o topo arredondado de raio R
+   *  acima do furo) menos o furo, a 7,85 kg/dm³. Sem o topo, um furo grande deixava a área — e
+   *  a massa — negativa. É estimativa: serve para o peso total do conjunto não sair vazio. */
   function massaOlhalFabricado(g) {
     const base = Number(g.base), h = Number(g.h), t = Number(g.t), d = Number(g.dFuro) || 0;
     if (!(base > 0 && h > 0 && t > 0)) return null;
-    const areaMm2 = base * h - Math.PI * d * d / 4;
+    const R = Number(g.R) || base / 2;
+    const areaMm2 = Math.max(0, base * h + Math.PI * R * R / 2 - Math.PI * d * d / 4);
     const chapa = areaMm2 * t * 7.85e-6;                       // mm³ → kg
     const anel = (Number(g.tAnel) > 0 && Number(g.rAnel) > 0)  // reforço, quando houver
       ? Math.PI * (Math.pow(Number(g.rAnel), 2) - Math.pow(d / 2, 2)) * Number(g.tAnel) * 2 * 7.85e-6
@@ -786,7 +787,10 @@
     $("comparacao-hipoteses").innerHTML = r.comparacao ? comparacaoHipoteses(r) : "";
 
     $("fig-3d-cargas").innerHTML = IC.iso3d.desenhar(r, { modo: "cargas", comp: txtComp });
-    $("fig-planta").innerHTML = IC.fbd.planta(r);
+    // com uma linga só, a planta é um ponto em cima do CG: um quadro vazio que não diz nada
+    const umPonto = TIPOS[ic.tipo].unica;
+    $("fig-planta").style.display = umPonto ? "none" : "";
+    $("fig-planta").innerHTML = umPonto ? "" : IC.fbd.planta(r);
     $("fig-elevacao").innerHTML = IC.fbd.elevacao(r);
 
     const f = r.fatores;
@@ -965,8 +969,11 @@
 
     const rig = riggingDe(ic);
     const s = rig.sapatilho, m = rig.manilha;
-    let html = `<div class="pecas-par">`;
-    html += s.ok
+    let html = "";
+    // a escolha da manilha fica numa faixa larga acima das peças: dentro da coluna da manilha ela
+    // a deixava ~300px mais alta que a do sapatilho, com um vazio embaixo do sapatilho
+    let pecas = `<div class="pecas-par">`;
+    pecas += s.ok
       ? `<div class="peca-bloco"><h4 class="peca-bloco__t">Sapatilho</h4>
          <div class="ficha-par ficha-par--col">
           <figure class="fig-topo">${FIG.sapatilho(s.sapatilho)}</figure>
@@ -974,8 +981,8 @@
         </div></div>`
       : `<div class="peca-bloco"><div class="aviso aviso--erro">Nenhum sapatilho cadastrado para Ø ${F.num(rig.linga.diametro, 1)} mm.</div></div>`;
 
-    // a manilha começa a sua coluna, com a escolha do tipo dentro dela
-    html += `<div class="peca-bloco"><h4 class="peca-bloco__t">Manilha</h4>
+    html += `<div class="peca-bloco escolha-manilha"><h4 class="peca-bloco__t">Escolha da manilha</h4>
+      <div class="escolha-manilha__grade">
       <label class="campo"><span>Tipo de manilha</span>
         <select id="ic-manilha-tipo">${opcoesTipo}</select></label>`;
 
@@ -991,21 +998,26 @@
         return `<option value="${F.esc(c.codigo)}"${ic.manilhaCodigo === c.codigo ? " selected" : ""}>${F.esc(c.codigo)} — CMT ${F.num(c.cmt, 2)} t ${tag}</option>`;
       }));
     html += `<label class="campo"><span>Manilha (código)</span><select id="ic-manilha-codigo">${opcoes.join("")}</select></label>`;
-
     html += m.ok
       ? `<div class="painel">
           <div class="item"><span>Carga no pino (F.pino)</span><b>${F.kn(m.cargaKN)} · ${F.ton(m.cargaT)}</b></div>
           <div class="item"><span>Utilização (carga / CMT)</span><b>${F.num(m.utilizacao * 100, 0)} %</b></div>
-        </div>
-        ${memorial([m.formula, m.formulaCmt])}
-        <div class="ficha-par ficha-par--col">
+        </div></div>
+        ${memorial([m.formula, m.formulaCmt])}</div>`
+      : `</div></div>`;
+
+    pecas += `<div class="peca-bloco"><h4 class="peca-bloco__t">Manilha</h4>`;
+    pecas += m.ok
+      ? `<div class="ficha-par ficha-par--col">
           <figure class="fig-topo">${FIG.manilha(rig.manilha.ok ? rig.manilha.manilha : null)}</figure>
           ${ficha(`Manilha escolhida — ${IC.manilhas.tipos[m.tipo].nome}`, m.manilha,
             IC.manilhas.tipos[m.tipo].campos, ROTULOS_MANILHA)}
         </div>`
       : `<div class="aviso aviso--erro">Nenhuma manilha do tipo escolhido atende à carga de ${F.ton(m.cargaT)}.</div>`;
-    html += `</div></div>`;     // fecha a coluna da manilha e o par
-    if (m.ok && m.chapa) html += avisoChapa(m.chapa, m.manual);
+    pecas += `</div></div>`;     // fecha a coluna da manilha e o par
+    html += pecas;
+    // o aviso da chapa já sai na etapa 8, onde a espessura é escolhida: aqui só quando falha
+    if (m.ok && m.chapa && !m.chapa.ok) html += avisoChapa(m.chapa, m.manual);
     if (m.ok && !m.encaixeCompleto) html += `<div class="aviso aviso--erro">Nenhuma manilha ${F.esc(IC.manilhas.tipos[m.tipo].nome)}
       encaixa nos 4 casos ao mesmo tempo com este sapatilho — veja qual caso falha na tabela abaixo.
       Tente outro código na lista acima, o outro tipo de manilha, ou um sapatilho/linga de outra bitola.</div>`;
@@ -1153,7 +1165,7 @@
     const chapa = RIG.encaixeChapa(mn, espessuraChapa(ic));
 
     $("resultado-olhal").innerHTML = `
-      <div class="olhal-bloco">
+      <div class="olhal-bloco olhal-bloco--largo">
         <h4>${F.esc(quais)}</h4>
         <div class="painel">
           <div class="item"><span>Dimensionado pela perna</span><b>${F.esc(gov.nome)} — a mais solicitada no olhal</b></div>

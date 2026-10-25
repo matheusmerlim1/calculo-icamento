@@ -123,11 +123,12 @@
   .tipos { display: block; }
   .tipo { display: none; }
   .tipo.on {
-    display: flex; align-items: center; gap: 5mm; text-align: left;
+    display: grid; grid-template-columns: 38mm minmax(0, 1fr); column-gap: 5mm; align-content: center; text-align: left;
     background: none !important; border: 0; padding: 0; color: #000; break-inside: avoid;
   }
   .tipo.on .tipo__fig { background: none; width: 38mm; margin: 0; padding: 0; }
-  .tipo.on b, .tipo.on span { display: block; color: #000 !important; }
+  .tipo.on b, .tipo.on span { display: block; color: #000 !important; grid-column: 2; }
+  .tipo.on .tipo__fig { grid-column: 1; grid-row: 1 / 3; }
 
   /* ---- figuras: largura explícita. Com width/height auto o SVG (só viewBox) encolhia a
      um ponto — saía uma bolinha no lugar do desenho. */
@@ -139,8 +140,15 @@
   .olhal-par { display: block; }
   .olhal-par .fig-topo { position: static; max-width: 110mm; margin: 0 0 3mm; }
   .olhal-par .fig-topo svg { max-height: 95mm; }
-  .ficha-par { display: grid; grid-template-columns: 60mm minmax(0, 1fr); gap: 5mm; }
-  .ficha-par .fig-topo svg { max-height: 80mm; }
+  /* com --col junto: a regra de tela (duas classes) vencia esta e o desenho saía na largura
+     da folha, em cima da ficha */
+  .ficha-par, .ficha-par.ficha-par--col { display: grid; grid-template-columns: 60mm minmax(0, 1fr); gap: 5mm; }
+  .ficha-par .fig-topo svg, .ficha-par.ficha-par--col .fig-topo svg { max-height: 80mm; }
+  .escolha-manilha__grade { grid-template-columns: 1fr 1fr 1.3fr; }
+  /* ficha ao lado do desenho: em duas colunas, senão ela descia muito além do desenho */
+  .ficha-par .ficha__grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* título de bloco não fica sozinho no pé da folha */
+  .peca-bloco__t, .olhal-bloco h4 { break-after: avoid; page-break-after: avoid; }
   .ficha__grade { grid-template-columns: repeat(auto-fit, minmax(58mm, 1fr)); gap: 0 6mm; }
   .ficha__item { border-bottom: .4pt solid #ccc; font-size: 9pt; padding: .6mm 0; }
   .pecas-par { display: block; }

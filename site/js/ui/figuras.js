@@ -800,8 +800,15 @@ IC.figuras = (function () {
     const CABO = "#c0504d";                       // o cabo, como na referência
 
     const P = 248, ALTP = 322;                    // largura e altura de cada painel
-    const W = P * 3, H = ALTP + 116;
+    const W = P * 3;
     const k = (ALTP - 96) / Math.max(sA, G.h);    // escala comum às três vistas
+    // a nota "passa" e o pé da folha acompanham o ponto mais baixo das três vistas: com a
+    // posição fixa sobrava uma faixa vazia entre o desenho e a nota quando a manilha é alta
+    const eCaboK = Math.max(cabo * k, 5);
+    const pontaSap = yv => yv + (sA - sC / 2) * k + eCaboK;
+    const yPinoLado = 70 + G.h * k + G.base * k;
+    const yFundo = Math.max(pontaSap(138) + 16, yPinoLado + 66, 138 + G.a / 2 * k + 28);
+    const yNota = yFundo + 26, H = yNota + 18;
 
     const cotaH = (yy, x1, x2, txt, c) => `<g class="cota">
       <line x1="${x1}" y1="${yy}" x2="${x2}" y2="${yy}" class="dim" style="stroke:${c}"
@@ -813,7 +820,7 @@ IC.figuras = (function () {
       <text x="${xx + (anc === "start" ? 6 : -6)}" y="${(y1 + y2) / 2 + 4}" text-anchor="${anc}"
             style="fill:${c}">${txt}</text></g>`;
     const titulo = (cx, t) => `<text x="${cx}" y="44" class="rot-peq" text-anchor="middle">${IC.fmt.esc(t)}</text>`;
-    const nota = (cx, t, c) => `<text x="${cx}" y="${ALTP + 62}" class="rot-peq" text-anchor="middle"
+    const nota = (cx, t, c) => `<text x="${cx}" y="${yNota}" class="rot-peq" text-anchor="middle"
       style="fill:${c};font-weight:700">${IC.fmt.esc(t)}</text>`;
 
     /** sapatilho de frente (gota apontando para baixo) com o cabo na ranhura */
@@ -839,7 +846,7 @@ IC.figuras = (function () {
       ${titulo(cx1, "1 — de frente, no corpo da manilha")}
       ${sapatilhoFrente(cx1, yVolta1)}
       <circle cx="${cx1}" cy="${yVolta1}" r="${rBarra}" style="fill:#c3cee1" stroke="#7d90a8" stroke-width="1"/>
-      <rect x="${cx1 - rBarra * 0.42}" y="${yVolta1}" width="${rBarra * 0.84}" height="${ALTP - yVolta1 - 20}"
+      <rect x="${cx1 - rBarra * 0.42}" y="${yVolta1}" width="${rBarra * 0.84}" height="${pontaSap(yVolta1) + 16 - yVolta1}"
             style="fill:#c3cee1" stroke="#7d90a8" stroke-width="1"/>
       ${cotaH(yVolta1 + sD / 2 * k * 0.62, cx1 - sD / 2 * k * 0.8, cx1 + sD / 2 * k * 0.8, `C = ${mm(sD)}`, cor(c1))}
       ${cotaV(cx1 + sC / 2 * k + 34, yVolta1 - rBarra, yVolta1 + rBarra, `D = ${mm(G.a)}`, cor(c1))}
@@ -880,8 +887,8 @@ IC.figuras = (function () {
 
     return `${cabeca(W, H)}
       <text x="${W / 2}" y="20" class="titulo" text-anchor="middle">ENCAIXE — SAPATILHO, MANILHA E CABO</text>
-      <line x1="${P}" y1="30" x2="${P}" y2="${H - 30}" class="ext"/>
-      <line x1="${2 * P}" y1="30" x2="${2 * P}" y2="${H - 30}" class="ext"/>
+      <line x1="${P}" y1="30" x2="${P}" y2="${H - 8}" class="ext"/>
+      <line x1="${2 * P}" y1="30" x2="${2 * P}" y2="${H - 8}" class="ext"/>
       ${vista1}${vista2}${vista3}
     </svg>`;
   }
