@@ -2,8 +2,8 @@
 
 /* ---------------------------------------------------------- cabeçalho */
 .topo {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 8px 16px;
+  display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap;
+  padding: 6px 16px;
   background: #123040;
   border-bottom: 1px solid #0b2130;
 }
@@ -14,7 +14,9 @@
 }
 .topo__nome { font-weight: 700; }
 .topo__sub { font-size: var(--t-xs); color: var(--c-texto-2); }
-.topo__acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; align-items: center; }
+.topo__acoes { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; align-items: center; }
+/* na barra, botões baixos: com o tamanho cheio a barra ocupava duas fileiras altas */
+.topo__acoes .bt { padding: 4px 10px; font-size: var(--t-sm); }
 
 /* O botão de portfólio entra aqui dentro (o app move o elemento no início), em vez de ficar
    fixo no canto com uma faixa reservada só para ele. */
@@ -25,7 +27,7 @@
 
 .campo { display: flex; flex-direction: column; gap: 3px; font-size: var(--t-xs); color: var(--c-texto-2); min-width: 0; }
 .campo--inline { flex-direction: row; align-items: center; gap: 6px; }
-.campo--inline input { width: 190px; }
+.campo--inline input { width: 150px; }
 .campo input, .campo select { width: 100%; }
 
 .bt {
@@ -129,6 +131,9 @@
   /* tipos: dois por linha — um por linha empilhava quatro cartões altos */
   /* (com .etapa na frente: as regras gerais vêm mais abaixo no arquivo e venceriam) */
   .etapa .tipos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* com dois por linha não sobra largura para o desenho ao lado do texto: volta para cima */
+  .etapa .tipo { grid-template-columns: minmax(0, 1fr); }
+  .etapa .tipo .tipo__fig { grid-row: auto; margin-bottom: 4px; }
   /* figura: a largura manda e a altura acompanha; com a altura fixa o desenho encolhia
      no meio de uma folha branca alta */
   .etapa .fig-topo, .etapa .figs figure { width: 100%; }
@@ -143,10 +148,10 @@
 .etapa--espera { opacity: .72; }
 .etapa--espera .etapa__n { background: var(--c-texto-3); }
 
-.grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
 .grade--4 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .linha-campos { display: flex; gap: 12px; flex-wrap: wrap; }
-.linha-campos .campo { min-width: 220px; }
+.linha-campos .campo { min-width: 200px; }
 
 .dica { margin: 0; font-size: var(--t-xs); color: var(--c-texto-3); }
 /* nota solta no pé da caixa (fora do corpo): o mesmo recuo do corpo, senão encosta na borda */
@@ -161,11 +166,13 @@ body.sem-memorial .etapa:not(.com-calculo) .linga-par__col--mem,
 .dica b { color: var(--c-texto-2); }
 
 /* ---------------------------------------------------------- tipo de içamento */
-.tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
-.tipo__fig svg { max-height: 120px; }
+/* desenho à esquerda e texto à direita: com o desenho em cima, cada cartão tinha ~190px de altura */
+.tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }
+.tipo__fig svg { max-height: 64px; }
 .tipo {
-  display: grid; gap: 3px; text-align: left;
-  padding: 7px 9px;
+  display: grid; grid-template-columns: 84px minmax(0, 1fr); grid-template-rows: auto auto;
+  column-gap: 10px; row-gap: 2px; align-content: center; text-align: left;
+  padding: 6px 8px;
   border: 1px solid var(--c-linha-forte); border-radius: var(--raio);
   background: var(--c-superficie-2); color: var(--c-texto);
 }
@@ -173,6 +180,9 @@ body.sem-memorial .etapa:not(.com-calculo) .linga-par__col--mem,
 .tipo.on { border-color: var(--c-acento); background: var(--c-acento-suave); }
 .tipo b { font-size: var(--t-sm); }
 .tipo span { font-size: var(--t-xs); color: var(--c-texto-3); }
+.tipo .tipo__fig { grid-row: 1 / 3; margin-bottom: 0; }
+.tipo b { align-self: end; }
+.tipo span { align-self: start; }
 
 /* ---------------------------------------------------------- tabelas */
 .tab { font-size: var(--t-sm); }
@@ -400,8 +410,11 @@ tr.linha-formula .formulas { border-color: var(--c-linha-forte); background: var
 /* a figura ao lado da ficha mostra as letras da tabela: precisa ser lida, não só olhada */
 .ficha-par .fig-topo svg { height: auto; width: 100%; max-height: 340px; }
 #fig-encaixe { width: 100%; }
-#fig-encaixe svg { height: auto; width: 100%; max-width: 980px; max-height: none; }
+#fig-encaixe svg { height: auto; width: 100%; max-width: 600px; max-height: none; }
 
 /* figuras que antes vinham empilhadas, uma por linha */
-.figs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: start; }
-.figs > figure { flex: 0 1 auto; min-width: 0; }
+/* figuras que antes vinham empilhadas, uma por linha: agora dividem a largura da caixa em
+   colunas iguais (duas na etapa 3, três na 5) e o desenho cresce até a largura da coluna */
+.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 8px; align-items: stretch; }
+.figs > figure { min-width: 0; width: 100%; margin: 0; }
+.figs svg { width: 100%; height: auto; max-height: 340px; }

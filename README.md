@@ -68,6 +68,10 @@ linga com a base do olhal (antes entrava, errado, o ângulo com a vertical).
 maior carga: mesma linga, mesma manilha e o mesmo olhal. Mudar um deles em qualquer dos dois muda
 nos dois.
 
+**Vírgula decimal, sem arredondar.** Todo campo numérico aceita `12,5` ou `12.5` (com vírgula, o
+ponto é milhar: `1.250,5`) e guarda o valor exato digitado — massa, medidas, ângulos, fatores, Fy
+e medidas do olhal. O arredondamento fica só nos resultados exibidos.
+
 **Recalcular ao terminar de digitar.** Os campos numéricos só recalculam quando a pessoa termina
 de digitar (Enter, Tab ou clique fora), e não a cada tecla.
 

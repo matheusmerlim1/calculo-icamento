@@ -48,7 +48,9 @@
   const passoComp = () => (uComp() === "m" ? 0.05 : 10);
   const passoMassa = () => (uMassa() === "t" ? 0.1 : uMassa() === "N" ? 100 : 10);
   const txtComp = mm => `${F.num(compParaTela(mm), decComp())} ${uComp()}`;
-  const paraCampo = (v, dec) => F.num(v, dec).replace(",", ".");
+  // o campo mostra o valor como foi digitado — vírgula decimal e sem arredondar; as 6 casas
+  // só limpam o ruído do ponto flutuante (2,5 m → 2500 mm → 2,5 m, e não 2,4999999)
+  const paraCampo = v => F.num(isFinite(Number(v)) ? Number(v) : 0, 6);
 
   /* ---------------------------------------------------------- valor com unidade digitada
    * O campo aceita "5000", "5 t", "5t", "12,5 kN". Quando vem unidade junto, é ela que vale
@@ -66,9 +68,23 @@
     const t = String(texto == null ? "" : texto).trim().toLowerCase().replace(/\s+/g, "");
     const m = t.match(/^([-+]?[\d.,]+)([a-zçãéê]*)$/i);
     if (!m) return { num: NaN, unid: null };
-    const num = Number(m[1].replace(/\.(?=\d{3}\b)/g, "").replace(",", "."));
-    return { num, unid: m[2] || null };
+    return { num: lerNum(m[1]), unid: m[2] || null };
   }
+
+  /**
+   * texto -> número, aceitando vírgula ou ponto decimal: "12,5", "12.5", "1.250,75".
+   * Com vírgula, o ponto é separador de milhar; sem vírgula, um ponto só é decimal
+   * ("2.125 m" é dois metros e pouco, não 2125) e vários pontos são milhar ("1.250.000").
+   */
+  function lerNum(texto) {
+    let t = String(texto == null ? "" : texto).trim().replace(/\s+/g, "");
+    if (t === "") return NaN;
+    if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+    else if ((t.match(/\./g) || []).length > 1) t = t.replace(/\./g, "");
+    return Number(t);
+  }
+  /** número do campo, ou o padrão quando o campo vem vazio ou com lixo */
+  const numCampoOu = (texto, padrao) => { const v = lerNum(texto); return isFinite(v) ? v : padrao; };
 
   /** texto do campo -> kg */
   function lerMassa(texto) {
@@ -537,7 +553,7 @@
     const t = TIPOS[ic.tipo];
 
     $("ic-nome").value = ic.nome;
-    $("ic-massa").value = paraCampo(massaParaTela(ic.massa), UNID.massa[uMassa()].dec);
+    $("ic-massa").value = paraCampo(massaParaTela(ic.massa));
     $("ic-massa").title = `Dá para digitar a unidade junto: "5 t", "800 kg", "50 kN".`;
     $("rot-massa").textContent = `Massa (${uMassa()})`;
     $("ic-origem").value = ic.origem;
@@ -577,7 +593,7 @@
 
     const numCampo = k => `<input type="text" inputmode="decimal" data-medida="${k}"
       data-key="medida-${k}" title="Dá para digitar a unidade junto: &quot;2,5 m&quot;, &quot;2500 mm&quot;."
-      value="${paraCampo(compParaTela(ic.medidas[k]), decComp())}">`;
+      value="${paraCampo(compParaTela(ic.medidas[k]))}">`;
     if (t.porPonto) {
       $("campos-medidas").innerHTML = `<table class="tab tab--pontos"><thead><tr>
           <th>Ponto</th><th>x (${uComp()})</th><th>y (${uComp()})</th>
@@ -602,7 +618,7 @@
       }[est] || {};
       const listaMedidas = est === "dobrada" ? [...t.medidas, ["e", ROT.e]] : t.medidas;
       const angCampo = (k, rot, valor) => `<label class="campo"><span>${F.esc(rot)}</span>
-        <input type="text" inputmode="decimal" data-incl="${k}" data-key="incl-${k}" value="${paraCampo(valor, 1)}"></label>`;
+        <input type="text" inputmode="decimal" data-incl="${k}" data-key="incl-${k}" value="${paraCampo(valor)}"></label>`;
       const opc = (v, txt) => `<option value="${v}"${v === est ? " selected" : ""}>${txt}</option>`;
       const angulos = est === "dobrada"
         ? angCampo("phi1", "φ₁ — trecho de P1 com a horizontal (°)", inc.phi[0])
@@ -645,7 +661,7 @@
       ? "Ângulo da perna com a horizontal (°)" : "Ângulo da perna com a estrutura (°)";
     $("ic-perna-ang").closest(".campo").style.display = t.unica ? "none" : "";
     const iAng = Math.min(ic.pernaAngulo || 0, P.length - 1);
-    $("ic-angulo").value = ic.angulo;
+    $("ic-angulo").value = paraCampo(ic.angulo);
     $("ic-perna-ang").innerHTML = P.map((p, i) =>
       `<option value="${i}"${i === iAng ? " selected" : ""}>${F.esc(p.nome)}</option>`).join("");
     const H = alturaGancho(ic);
@@ -663,7 +679,7 @@
       skl: "Distribuição desigual SKL", fsLinga: "FS da linga", anguloMax: "Ângulo máx. c/ a vertical (°)"
     };
     $("campos-fatores").innerHTML = Object.entries(rotulos).map(([k, rot]) =>
-      `<label class="campo"><span>${rot}</span><input type="number" step="0.05" data-fator="${k}" data-key="fator-${k}" value="${f[k]}"></label>`).join("");
+      `<label class="campo"><span>${rot}</span><input type="text" inputmode="decimal" data-fator="${k}" data-key="fator-${k}" value="${paraCampo(f[k])}"></label>`).join("");
   }
 
   /** quatro pernas: as duas hipóteses lado a lado, para o memorial mostrar a diferença */
@@ -1075,7 +1091,7 @@
       `<option value="${a.id}"${a.id === aco.id ? " selected" : ""}>${F.esc(a.nome)}${a.fy ? ` — Fy ${a.fy} MPa` : ""}</option>`).join("");
     // o Fy só é campo quando o aço é "outro"; nos demais ele é o valor do aço
     const fyLivre = !aco.fy;
-    $("ic-olhal-fy").value = fyDoOlhal(ic);
+    $("ic-olhal-fy").value = paraCampo(fyDoOlhal(ic));
     $("ic-olhal-fy").disabled = !fyLivre;
     $("ic-olhal-fy").title = fyLivre
       ? "Aço fora da lista: informe o Fy do certificado do material."
@@ -1114,10 +1130,8 @@
 
     const g = o.geom, v = o.verif;
     const mn = rig.manilha.ok ? rig.manilha.manilha : null;
-    // input[type=number] não aceita vírgula: o valor vai cru, com ponto
-    const cru = v => String(Math.round((Number(v) || 0) * 100) / 100);
     const campo = k => `<label class="campo"><span>${ROTULOS_GEOM[k]}</span>
-      <input type="number" step="any" min="0" data-olhal-campo="${k}" data-key="olhal-${k}" value="${cru(g[k])}"></label>`;
+      <input type="text" inputmode="decimal" data-olhal-campo="${k}" data-key="olhal-${k}" value="${paraCampo(g[k])}"></label>`;
 
     // espessura: só bitola que se compra. O valor atual entra na lista mesmo que não seja
     // comercial (projeto antigo, chapa de sobra), marcado como fora de tabela.
@@ -1189,6 +1203,7 @@
             <p class="dica">São calculadas a partir da manilha — mudou a manilha na etapa 7,
               mudam aqui e no desenho.</p>
           </div>
+        </div>
       </div>
 
       ${chapa ? avisoChapa(chapa, rig.manilha.manual) : ""}
@@ -1664,7 +1679,7 @@
       else if (el.id === "ic-local") { ic.local = el.value; ic.fatores = null; }
       else if (el.id === "ic-base") { ic.base = el.value; ic.fatores = null; }
       else if (el.id === "ic-cons") { ic.consequencia = el.value; ic.fatores = null; }
-      else if (el.id === "ic-angulo") ic.angulo = Math.max(1, Math.min(89, Number(el.value) || 60));
+      else if (el.id === "ic-angulo") ic.angulo = Math.max(1, Math.min(89, numCampoOu(el.value, 60)));
       else if (el.id === "ic-perna-ang") ic.pernaAngulo = Number(el.value) || 0;
       else if (el.id === "ic-hipotese") ic.hipotese4 = el.value;
       else if (el.id === "ic-linga") ic.lingaPropria = el.value === "propria";
@@ -1675,23 +1690,24 @@
       else if (el.id === "ic-olhal-modo") mod.olhal.modo = el.value;
       else if (el.id === "ic-olhal-tipo") mod.olhal.tipoComprado = el.value;
       else if (el.id === "ic-olhal-aco") mod.olhal.aco = el.value;
-      else if (el.id === "ic-olhal-fy") mod.olhal.fy = Number(el.value) || 355;
+      else if (el.id === "ic-olhal-fy") mod.olhal.fy = numCampoOu(el.value, 0) || 355;
       else if (el.id === "ic-material-modo") { pintarMaterial(); return; }
       else if (el.dataset.olhalCampo) {
         // um olhal só para o içamento inteiro
         if (!mod.olhal.geom) olhalDe(mod, riggingDe(mod));
-        mod.olhal.geom[el.dataset.olhalCampo] = Number(el.value) || 0;
+        // espessura e reforço vêm de <select> (valor com ponto); o resto, do campo de texto
+        const v = Math.max(0, numCampoOu(el.value, 0));
+        mod.olhal.geom[el.dataset.olhalCampo] = v;
         // R mudou: o reforço acompanha
-        if (el.dataset.olhalCampo === "R") mod.olhal.geom.rAnel = Number(el.value) || 0;
+        if (el.dataset.olhalCampo === "R") mod.olhal.geom.rAnel = v;
       }
       else if (el.dataset.medida) ic.medidas[el.dataset.medida] = lerComp(el.value);
       else if (el.id === "ic-inclinada") { ic.inclinada = el.value !== "horizontal"; ic.dobrada = el.value === "dobrada"; }
       else if (el.dataset.incl) {
         if (!ic.inclinacao) ic.inclinacao = {};
-        const v = Number(String(el.value).replace(",", "."));
-        ic.inclinacao[el.dataset.incl] = isFinite(v) ? v : 0;
+        ic.inclinacao[el.dataset.incl] = numCampoOu(el.value, 0);
       }
-      else if (el.dataset.fator) ic.fatores = Object.assign(fatoresDe(ic), { [el.dataset.fator]: Number(el.value) || 0 });
+      else if (el.dataset.fator) ic.fatores = Object.assign(fatoresDe(ic), { [el.dataset.fator]: numCampoOu(el.value, 0) });
       else return;
       // o "change" de um campo numérico só sai quando a pessoa termina de digitar (Enter, Tab ou
       // clique fora); a repintura espera o foco chegar ao campo seguinte para não puxá-lo de volta

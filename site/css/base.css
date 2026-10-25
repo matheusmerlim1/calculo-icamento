@@ -81,7 +81,7 @@ input:focus-visible, select:focus-visible, button:focus-visible {
   outline: 2px solid var(--c-acento);
   outline-offset: 1px;
 }
-input[type="number"] { font-family: var(--fonte-mono); }
+input[type="number"], input[inputmode="decimal"] { font-family: var(--fonte-mono); }
 
 table { border-collapse: collapse; width: 100%; }
 

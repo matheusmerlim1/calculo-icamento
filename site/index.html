@@ -4,9 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cálculo de içamento</title>
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/app.css">
-  <link rel="stylesheet" href="css/desenho.css">
+  <!-- ?v= muda a cada versão: sem isso o navegador segue com o app.js antigo do cache -->
+  <link rel="stylesheet" href="css/base.css?v=20261025">
+  <link rel="stylesheet" href="css/app.css?v=20261025">
+  <link rel="stylesheet" href="css/desenho.css?v=20261025">
 </head>
 <body>
 
@@ -102,7 +103,7 @@
           <div id="campos-medidas"></div>
           <div class="linha-campos">
             <label class="campo"><span>Ângulo da perna com a estrutura (°)</span>
-              <input type="number" id="ic-angulo" min="1" max="89" step="1"></label>
+              <input type="text" inputmode="decimal" id="ic-angulo"></label>
             <label class="campo"><span>Medido na perna</span><select id="ic-perna-ang"></select></label>
             <label class="campo"><span>Hipótese nas quatro pernas</span>
               <select id="ic-hipotese">
@@ -180,7 +181,7 @@
               <select id="ic-olhal-aco"></select></label>
             <label class="campo" id="campo-olhal-fy">
               <span>Fy da chapa (MPa)</span>
-              <input type="number" id="ic-olhal-fy" step="5" min="0"></label>
+              <input type="text" inputmode="decimal" id="ic-olhal-fy"></label>
           </div>
           <div id="resultado-olhal"></div>
         </div>
@@ -189,12 +190,12 @@
       <section class="etapa etapa--larga" data-etapa="9">
         <h2><span class="etapa__n">9</span> Lista de material<button type="button" class="etapa__dobra" data-dobra aria-expanded="true" title="Recolher esta caixa">−</button></h2>
         <div class="etapa__corpo">
-          <label class="campo campo--inline"><span>Mostrar</span>
-            <select id="ic-material-modo">
-              <option value="icamento">só deste içamento</option>
-              <option value="estudo">consolidada: todo o estudo</option>
-            </select></label>
-          <div class="linha-campos" style="justify-content:flex-end">
+          <div class="linha-campos" style="justify-content:space-between;align-items:center">
+            <label class="campo campo--inline"><span>Mostrar</span>
+              <select id="ic-material-modo">
+                <option value="icamento">só deste içamento</option>
+                <option value="estudo">consolidada: todo o estudo</option>
+              </select></label>
             <button type="button" class="bt bt--fantasma bt--peq" id="bt-material-xlsx">Baixar em Excel (.xlsx)</button>
           </div>
           <table class="tab tab--material" id="tab-material"></table>
@@ -213,27 +214,27 @@
   </footer>
 
   <!-- dados -->
-  <script src="data/fatores.js"></script>
-  <script src="data/manilhas.js"></script>
-  <script src="data/olhais.js"></script>
-  <script src="data/chapas.js"></script>
-  <script src="data/acos.js"></script>
-  <script src="data/simbolos.js"></script>
-  <script src="data/lingas.js"></script>
-  <script src="data/sapatilhos.js"></script>
+  <script src="data/fatores.js?v=20261025"></script>
+  <script src="data/manilhas.js?v=20261025"></script>
+  <script src="data/olhais.js?v=20261025"></script>
+  <script src="data/chapas.js?v=20261025"></script>
+  <script src="data/acos.js?v=20261025"></script>
+  <script src="data/simbolos.js?v=20261025"></script>
+  <script src="data/lingas.js?v=20261025"></script>
+  <script src="data/sapatilhos.js?v=20261025"></script>
 
   <!-- núcleo -->
-  <script src="js/core/fmt.js"></script>
-  <script src="js/core/xlsx.js"></script>
-  <script src="js/core/smath-export.js"></script>
-  <script src="js/calc/cargas.js"></script>
-  <script src="js/calc/rigging.js"></script>
+  <script src="js/core/fmt.js?v=20261025"></script>
+  <script src="js/core/xlsx.js?v=20261025"></script>
+  <script src="js/core/smath-export.js?v=20261025"></script>
+  <script src="js/calc/cargas.js?v=20261025"></script>
+  <script src="js/calc/rigging.js?v=20261025"></script>
 
   <!-- interface -->
-  <script src="js/ui/figuras.js"></script>
-  <script src="js/ui/iso3d.js"></script>
-  <script src="js/ui/fbd.js"></script>
-  <script src="js/ui/app.js"></script>
+  <script src="js/ui/figuras.js?v=20261025"></script>
+  <script src="js/ui/iso3d.js?v=20261025"></script>
+  <script src="js/ui/fbd.js?v=20261025"></script>
+  <script src="js/ui/app.js?v=20261025"></script>
 <!-- === Botao de volta ao portfolio - cole antes de </body> === -->
 <a id="mr-portfolio-btn" href="https://matheusmerlim1.github.io/" target="_blank" rel="noopener"
    aria-label="Abrir o portf&oacute;lio de Matheus Raposo" title="Ver todos os meus projetos">

@@ -372,10 +372,10 @@ async function main() {
   await passo("campos do olhal aceitam decimal e o desenho acompanha", async () => {
     const vazio = await rodar(`return [...document.querySelectorAll("[data-olhal-campo]")]
       .filter(i => i.value === "").map(i => i.dataset.olhalCampo).join(",")`);
-    if (vazio) throw new Error("campo em branco: " + vazio + " (vírgula em input[type=number])");
+    if (vazio) throw new Error("campo em branco: " + vazio + " (campo vazio)");
     const antes = await rodar(`return document.querySelector("#fig-olhal svg").getAttribute("viewBox")`);
     await rodar(`const e = document.querySelector('[data-olhal-campo="base"]');
-      e.value = String(Number(e.value) * 2); e.dispatchEvent(new Event("change",{bubbles:true}));`);
+      e.value = String(Number(e.value.replace(",", ".")) * 2).replace(".", ","); e.dispatchEvent(new Event("change",{bubbles:true}));`);
     await esperar(400);
     const depois = await rodar(`return document.querySelector("#fig-olhal svg").getAttribute("viewBox")`);
     if (antes === depois) throw new Error("o desenho não mudou com a medida");
@@ -538,7 +538,8 @@ async function main() {
     if (Math.abs(kn - 5000) > 20) throw new Error(`"49,03 kN" virou ${kn} kg`);
     // o campo é reescrito na unidade escolhida
     const naTela = await rodar(`return document.getElementById("ic-massa").value`);
-    if (!/^5\d{3}/.test(String(naTela).replace(/\D/g, "").slice(0, 4)))
+    // sem arredondar: 49,03 kN = 4999,67 kg, e é isso que o campo mostra
+    if (Math.abs(Number(String(naTela).replace(",", ".")) - kn) > 0.01)
       throw new Error("o campo não voltou em kg: " + naTela);
     // medida: 2,5 m num campo em mm
     await rodar(`const e = document.querySelector('[data-medida]'); e.value = "2,5 m";
@@ -549,6 +550,40 @@ async function main() {
       return JSON.stringify({k, v: ic.medidas[k]});`));
     if (Math.abs(med.v - 2500) > 1) throw new Error(`"2,5 m" virou ${med.v} mm`);
     await por("massa", "5000");
+    return true;
+  });
+
+  await passo("vírgula decimal em todos os campos, sem arredondar", async () => {
+    const mudar = async (sel, v) => {
+      await rodar(`const e = document.querySelector(${JSON.stringify(sel)}); e.value = ${JSON.stringify(v)};
+        e.dispatchEvent(new Event("change",{bubbles:true}));`);
+      await esperar(350);
+    };
+    const r = async () => JSON.parse(await rodar(`const ic = ICapp.atual();
+      const k = document.querySelector('[data-medida]').dataset.medida;
+      return JSON.stringify({massa: ic.massa, ang: ic.angulo, med: ic.medidas[k],
+        campoMassa: document.getElementById("ic-massa").value,
+        campoAng: document.getElementById("ic-angulo").value,
+        campoMed: document.querySelector('[data-medida]').value,
+        fator: ic.fatores && ic.fatores.peso});`));
+    await mudar("#ic-massa", "5432,75");
+    await mudar("#ic-angulo", "57,5");
+    await mudar("[data-medida]", "1234,56");
+    await mudar('[data-fator="peso"]', "1,075");
+    const v = await r();
+    if (Math.abs(v.massa - 5432.75) > 1e-9) throw new Error("massa arredondada: " + v.massa);
+    if (Math.abs(v.ang - 57.5) > 1e-9) throw new Error("ângulo arredondado: " + v.ang);
+    if (Math.abs(v.med - 1234.56) > 1e-9) throw new Error("medida arredondada: " + v.med);
+    if (Math.abs(v.fator - 1.075) > 1e-9) throw new Error("fator: " + v.fator);
+    if (v.campoMassa !== "5432,75" || v.campoAng !== "57,5" || v.campoMed !== "1234,56")
+      throw new Error("campo não voltou com vírgula: " + JSON.stringify(v));
+    // ponto também vale como decimal, e "1.250,5" é milhar com vírgula
+    await mudar("#ic-massa", "1.250,5");
+    if (Math.abs((await r()).massa - 1250.5) > 1e-9) throw new Error("1.250,5 não virou 1250,5");
+    await mudar("#ic-angulo", "45.25");
+    if (Math.abs((await r()).ang - 45.25) > 1e-9) throw new Error("45.25 não virou 45,25");
+    await mudar("#ic-massa", "5000"); await mudar("#ic-angulo", "60");
+    await mudar("[data-medida]", "2500"); await mudar('[data-fator="peso"]', "1,03");
     return true;
   });
 
