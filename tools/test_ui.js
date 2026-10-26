@@ -456,6 +456,55 @@ async function main() {
     return true;
   });
 
+  await passo("peças do SolidWorks: eslinga e manilha com as propriedades da lista", async () => {
+    const r = JSON.parse(await rodar(`return JSON.stringify(ICapp.pecasSolidworks());`));
+    if (r.length !== 2) throw new Error("esperava 2 peças, veio " + r.length);
+    const chaves = ["titlePT", "specPT", "material", "mass", "length", "area"];
+    for (const p of r) {
+      const falta = chaves.filter(k => !(k in p.props));
+      if (falta.length) throw new Error(p.arquivo + ": faltam " + falta.join(", "));
+      if (p.props.length !== "-" || p.props.area !== "-") throw new Error("length/area devem ser '-'");
+      if (p.props.mass !== "-" && !/^\d+(\.\d+)?$/.test(p.props.mass)) throw new Error("massa fora do formato: " + p.props.mass);
+    }
+    const [esl, man] = r;
+    if (!/^Eslinga \d pernas? \(CMT [\d,]+ ton\) com .*sapatilho.*Cabo de aço \((AACI|AF)\) Ø/.test(esl.props.specPT))
+      throw new Error("especificação da eslinga: " + esl.props.specPT);
+    if (esl.props.material !== "Aço liga") throw new Error("material da eslinga: " + esl.props.material);
+    if (man.props.material !== "-") throw new Error("material da manilha: " + man.props.material);
+    if (!/Green Pin .* ou similar \(CMT/.test(man.props.specPT)) throw new Error("especificação da manilha: " + man.props.specPT);
+    console.log("      " + esl.props.titlePT + " | " + esl.props.specPT + " | " + esl.props.mass);
+    console.log("      " + man.props.titlePT + " | " + man.props.specPT + " | " + man.props.mass);
+    return true;
+  });
+
+  await passo("peças SolidWorks saem em .SLDPRT com as propriedades gravadas", async () => {
+    const r = JSON.parse(await rodar(`return (async () => {
+      const M = IC.sldprtModelo, out = [];
+      for (const p of ICapp.pecasSolidworks()) {
+        const arq = await IC.sldprt.gerar(p.props);
+        const dv = new DataView(arq.buffer);
+        const s = M.secoes.find(x => x.nome === "docProps/custom.xml");
+        const comp = dv.getUint32(s.secao + 14, true), crc = dv.getUint32(s.secao + 10, true);
+        const z = arq.slice(s.inicioDados, s.inicioDados + comp);
+        const xml = await new Response(new Blob([z]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+        const esc = v => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        out.push({ tam: arq.length, tamModelo: atob(M.arquivo).length,
+          crcOk: IC.xlsx.crc32(new TextEncoder().encode(xml)) === crc && dv.getUint32(s.toc + 10, true) === crc,
+          todas: Object.values(p.props).every(v => xml.includes(">" + esc(v) + "<")),
+          semMarcador: !xml.includes("ZZtitlePTZZ") });
+      }
+      return JSON.stringify(out);
+    })()`));
+    if (r.length !== 2) throw new Error("esperava 2 peças");
+    for (const x of r) {
+      if (x.tam !== x.tamModelo) throw new Error("o arquivo mudou de tamanho — os blocos têm de ficar no lugar");
+      if (!x.crcOk) throw new Error("crc do custom.xml não confere");
+      if (!x.todas) throw new Error("alguma propriedade não foi gravada no custom.xml");
+      if (!x.semMarcador) throw new Error("sobrou marcador do modelo");
+    }
+    return true;
+  });
+
   await passo("adiciona um segundo içamento", async () => {
     await rodar(`document.querySelector("[data-novo]").click();`);
     await esperar(600);

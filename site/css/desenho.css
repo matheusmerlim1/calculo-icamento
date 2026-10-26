@@ -61,7 +61,7 @@
     font: 10pt/1.45 var(--fonte);
   }
   .topo, .abas, .resumo, .rodape, #mr-portfolio-btn,
-  .topo__acoes, .etapa__dobra, .etapa__dobra--mem, .bt { display: none !important; }
+  .topo__acoes, .etapa__dobra, .etapa__dobra--mem, .bt, .so-tela { display: none !important; }
 
   /* ---- documento corrido: sem caixas, sem fundo, sem "não quebrar a caixa" (que empurrava
      etapas inteiras para a folha seguinte e deixava meia folha em branco) */

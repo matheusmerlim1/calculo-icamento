@@ -20,6 +20,8 @@ IC.manilhas = {
     "P-6065": {
       nome: "Green Pin Sling Shackle P-6065",
       descricao: "Manilha de laço, pino com porca e contrapino, punho para ROV",
+      // texto da especificação na lista de material do SolidWorks
+      especificacao: "Manilha curva com pino, porca e contrapino, punho para ROV",
       campos: ["codigo", "cmt", "peso", "a", "b", "c", "d", "e", "f", "g", "h", "i"],
       // [código, CMT (t), peso (kg), a, b, c, d, e, f, g, h, i]
       linhas: [
@@ -40,6 +42,7 @@ IC.manilhas = {
     "G-4163": {
       nome: "Green Pin Standard Shackle G-4163",
       descricao: "Manilha de laço (bow), pino com porca e contrapino",
+      especificacao: "Manilha curva com pino, porca e contrapino",
       campos: ["codigo", "cmt", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"],
       // sem peso no catálogo; j = largura, k = espessura da porca
       // [código, CMT (t), a, b, c, d, e, f, g, h, i, j, k]

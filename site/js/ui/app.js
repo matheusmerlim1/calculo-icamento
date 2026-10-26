@@ -1373,6 +1373,104 @@
     baixar(nome, bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   }
 
+  /* ------------------------------------------------------------ peças vazias para o SolidWorks
+   * Uma peça para a linga e outra para a manilha, sem geometria, só com as propriedades que a
+   * lista de material do conjunto lê. Os .SLDPRT saem prontos de js/core/sldprt.js, que troca
+   * as propriedades de uma peça vazia salva pelo próprio SolidWorks.
+   *
+   * Texto no padrão das listas de material de içamento já emitidas. A eslinga é UMA peça (o
+   * conjunto de pernas) e leva a massa do cabo todo; a manilha leva a massa UNITÁRIA — ela é
+   * inserida uma vez por ponto no conjunto, e a quantidade sai da contagem do SolidWorks.
+   * Massa em kg, sem unidade, com ponto decimal. */
+  const nomeArquivo = s => String(s).replace(/[\\/:*?"<>|]+/g, "-").trim();
+  // nome dentro do .zip sem acento: o descompactador do Windows nem sempre respeita UTF-8
+  const semAcento = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w .()-]+/g, "_");
+  const massaSw = (kg, dec) => (kg == null ? "-" : String(Math.round(kg * 10 ** dec) / 10 ** dec));
+
+  /** bitola em polegada, no jeito da lista: 5/8", 1.1/2", 2" (arredonda a 1/16") */
+  function polegada(mm) {
+    const n = Math.round(mm / 25.4 * 16);
+    const inteiro = Math.floor(n / 16);
+    let num = n % 16, den = 16;
+    while (num && num % 2 === 0) { num /= 2; den /= 2; }
+    const frac = num ? `${num}/${den}` : "";
+    return (inteiro && frac ? `${inteiro}.${frac}` : inteiro ? `${inteiro}` : frac) + '"';
+  }
+
+  /** "1 perna com 2880 mm e 1 perna com 3100 mm" — pernas iguais (a 10 mm) juntas */
+  function textoPernas(pernas) {
+    const grupos = new Map();
+    pernas.forEach(p => {
+      const L = Math.round(p.comprimento / 10) * 10;
+      grupos.set(L, (grupos.get(L) || 0) + 1);
+    });
+    if (grupos.size === 1) return `com ${F.num([...grupos.keys()][0], 0)} mm`;
+    return ": " + [...grupos].sort((a, b) => a[0] - b[0])
+      .map(([L, q]) => `${q} ${q > 1 ? "pernas" : "perna"} com ${F.num(L, 0)} mm`).join(" e ");
+  }
+
+  function pecasSolidworks(ic) {
+    const rig = riggingDe(ic);
+    const pernas = resolver(ic).pernas;
+    const pecas = [];
+
+    const l = rig.linga;
+    if (l.ok) {
+      const n = pernas.length;
+      const alma = /-aco$/.test(l.tipo) ? "AACI" : "AF";
+      const classe = l.tipo.split("-")[0];
+      const compM = pernas.reduce((t, p) => t + p.comprimento, 0) / 1000;
+      pecas.push({
+        arquivo: nomeArquivo(`${ic.nome} - Eslinga`),
+        props: {
+          titlePT: `Eslinga içamento ${ic.nome}`,
+          specPT: `Eslinga ${n} ${n > 1 ? "pernas" : "perna"} (CMT ${F.num(rig.cargaGov / G, 1)} ton) `
+            + `com ${n > 1 ? "anelão e " : ""}sapatilho ${textoPernas(pernas)}. `
+            + `Cabo de aço (${alma}) Ø${polegada(l.diametro)} (${F.num(l.diametro, 1)} mm): `
+            + `classe ${classe} (${F.num(l.peso, 2)} kg/m). Categoria ${l.categoria} N/mm².`,
+          material: "Aço liga",
+          mass: massaSw(l.peso ? l.peso * compM : null, 1),
+          length: "-",
+          area: "-"
+        }
+      });
+    }
+
+    const m = rig.manilha;
+    if (m.ok) {
+      const mn = m.manilha, tipo = IC.manilhas.tipos[m.tipo];
+      pecas.push({
+        arquivo: nomeArquivo(`${ic.nome} - Manilha`),
+        props: {
+          titlePT: `Manilha içamento ${ic.nome}`,
+          specPT: `${tipo.especificacao || tipo.descricao}. Green Pin ${m.tipo} (${mn.codigo}) ou similar `
+            + `(CMT ${F.num(mn.cmt, 2)} ton)`,
+          material: "-",
+          mass: massaSw(mn.peso, 2),
+          length: "-",
+          area: "-"
+        }
+      });
+    }
+    return pecas;
+  }
+
+  async function baixarPecasSolidworks() {
+    const ic = atual();
+    const pecas = pecasSolidworks(ic);
+    if (!pecas.length) return;
+    try {
+      const arquivos = [];
+      for (const p of pecas)
+        arquivos.push({ name: semAcento(p.arquivo) + ".SLDPRT", data: await IC.sldprt.gerar(p.props) });
+      baixar(`pecas_solidworks_${semAcento(ic.nome || "icamento").replace(/ +/g, "_")}.zip`,
+        IC.xlsx.zip(arquivos), "application/zip");
+    } catch (err) {
+      console.error(err);
+      alert("Não foi possível gerar as peças SolidWorks: " + err.message);
+    }
+  }
+
   /* ------------------------------------------------------------ memorial no SMath Studio (.sm)
    * O estudo inteiro, içamento por içamento. Cada etapa de cálculo vai para uma área
    * recolhida do SMath com todas as contas; fora dela, os resultados da área são chamados de
@@ -1798,6 +1896,8 @@
     });
     const btXlsx = $("bt-material-xlsx");
     if (btXlsx) btXlsx.addEventListener("click", baixarMaterialXlsx);
+    const btSw = $("bt-material-sw");
+    if (btSw) btSw.addEventListener("click", baixarPecasSolidworks);
   }
 
   function baixar(nome, conteudo, tipo) {
@@ -1861,5 +1961,6 @@
   pintar();
 
   window.ICapp = { get estudo() { return E; }, resolver, atual, pintar, pontosDe, alturaGancho, eixosOlhalDe, angulosOlhal,
-    material: () => materialDe(atual()).itens, materialConsolidado, olhalDe, riggingDe };
+    material: () => materialDe(atual()).itens, materialConsolidado, olhalDe, riggingDe,
+    pecasSolidworks: () => pecasSolidworks(atual()) };
 })();

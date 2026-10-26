@@ -40,6 +40,14 @@ plano e a tensão combinada, com o **desenho de fabricação cotado** ao lado.
 **9 · Lista de material** — linga, sapatilho, manilha e olhal, com título, especificação,
 material e massa. Sai em `.xlsx`.
 
+**Peças para o SolidWorks** — o botão *Baixar peças SolidWorks (.zip)* traz a eslinga e a
+manilha do içamento como `.SLDPRT` vazios (SOLIDWORKS 2023), só com as propriedades `titlePT`,
+`specPT`, `material`, `mass`, `length` e `area`, para entrarem na lista de material do conjunto.
+A eslinga entra uma vez, com a massa do cabo todo; a manilha, uma vez por ponto, com a massa
+unitária. As peças saem de um modelo salvo pelo próprio SolidWorks
+(`tools/sldprt/modelo_vazio.SLDPRT`), com as propriedades trocadas no lugar — como e por quê em
+`site/js/core/sldprt.js`. Mudou o modelo: `node tools/sldprt/gerar_modelo.js`.
+
 Vários içamentos convivem no mesmo estudo (abas no topo), e a lista pode sair de um só ou
 consolidada do estudo inteiro.
 
