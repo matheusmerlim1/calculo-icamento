@@ -101,7 +101,7 @@ w₁ = (−cos φ₁, 0, sen φ₁)   n₁ = (sen φ₁, 0, cos φ₁)
 w₂ = ( cos φ₂, 0, sen φ₂)   n₂ = (−sen φ₂, 0, cos φ₂)
 ```
 
-**Inclinada** (peça reta, `P2` do lado de cima): um `φ` só, com `φ₁ = −φ`, `φ₂ = φ`. **Em V**: `φ₁` e `φ₂`.
+**Inclinada** (peça reta, `P2` do lado de cima): um `φ` só, com `φ₁ = −φ`, `φ₂ = φ`. Peça reta: só `y₁` é informado e `y₂ = y₁ + (x₁ + x₂)·tg φ`. **Em V**: `φ₁` e `φ₂`.
 
 Nas duas os furos entram pelas coordenadas a partir do CG, `P1 = (−x₁, 0, y₁)` e `P2 = (x₂, 0, y₂)`
 — `xᵢ` na horizontal, do eixo vertical do CG, e `yᵢ` a altura de cada furo (podem ser diferentes).

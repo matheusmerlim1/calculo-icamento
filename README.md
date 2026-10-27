@@ -69,7 +69,9 @@ opções. **Horizontal**: os pontos ficam na direção do CG. **Inclinada**: pe�
 com a horizontal. **Em V (dobrada)**: dois trechos, cada um com a sua inclinação (φ₁ e φ₂, positivos
 com o ponto acima da dobra). Na inclinada e no V os furos entram pelas coordenadas a partir do CG:
 x₁ e x₂ na horizontal (do eixo vertical do CG) e y₁ e y₂ na vertical (altura de cada furo — os olhais
-podem estar em níveis diferentes); o olhal fica sempre em pé sobre a peça. O programa
+podem estar em níveis diferentes). Na inclinada só y₁ é informado: y₂ = y₁ + (x₁ + x₂)·tg φ. O olhal
+fica sempre em pé sobre a peça. O ângulo da perna vale para a perna escolhida em "Medido na perna";
+se o gancho ficar abaixo de um furo, o programa avisa. O programa
 calcula onde ficam os pontos, o comprimento de cada linga para a peça ficar nessa posição e
 verifica o olhal com o ângulo real entre a linga e ele. O θ das fórmulas do olhal é o ângulo da
 linga com a base do olhal (antes entrava, errado, o ângulo com a vertical).

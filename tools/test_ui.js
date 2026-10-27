@@ -140,11 +140,10 @@ async function main() {
     // peça reta inclinada a 30°: cada furo por x (horizontal) e y (altura), a partir do CG
     await mudar('[data-incl="phi"]', "30"); await esperar(300);
     const camposI = await rodar(`return [...document.querySelectorAll("[data-medida]")].map(e => e.dataset.medida).join(",")`);
-    if (camposI !== "a1,a2,z1,z2") throw new Error("medidas da peça inclinada (x₁, x₂, y₁, y₂): " + camposI);
+    if (camposI !== "a1,a2,z1") throw new Error("medidas da peça inclinada (x₁, x₂, y₁ — y₂ sai da conta): " + camposI);
     await mudar('[data-medida="a1"]', "1000"); await esperar(300);
     await mudar('[data-medida="a2"]', "1200"); await esperar(300);
-    await mudar('[data-medida="z1"]', "-577"); await esperar(300);
-    await mudar('[data-medida="z2"]', "693"); await esperar(400);
+    await mudar('[data-medida="z1"]', "-577"); await esperar(400);
     const r = JSON.parse(await rodar(`const ic = ICapp.atual(); ic.olhal.modo = "fabricado"; ICapp.pintar();
       const r = ICapp.resolver(ic), P = ICapp.pontosDe(ic), ang = ICapp.angulosOlhal(ic, r);
       const o = ICapp.olhalDe(ic, ICapp.riggingDe(ic)), m = ic.medidas;
@@ -156,7 +155,33 @@ async function main() {
     if (r.campos !== 1) throw new Error("campos de ângulo da peça reta (só φ): " + r.campos);
     const f = 30 * Math.PI / 180, n = [-Math.sin(f), 0, Math.cos(f)];
     const pI = r.P.map(p => [p.x, p.y, p.z]);
-    if (JSON.stringify(pI) !== JSON.stringify([[-1000, 0, -577], [1200, 0, 693]])) throw new Error("inclinada: pontos " + JSON.stringify(pI));
+    // y₂ = y₁ + (x₁ + x₂)·tg φ
+    const y2 = -577 + 2200 * Math.tan(f);
+    const espI = [[-1000, 0, -577], [1200, 0, y2]];
+    pI.forEach((p, i) => { if (Math.hypot(...p.map((v, k) => v - espI[i][k])) > 1e-6) throw new Error("inclinada: pontos " + JSON.stringify(pI)); });
+    // modelo do usuário (peça a 58,27°): x₁ 551,83 · x₂ 420 · y₁ −750, 60° medido na perna de P2
+    await mudar('[data-incl="phi"]', "58,27"); await esperar(300);
+    await mudar('[data-medida="a1"]', "551,83"); await esperar(300);
+    await mudar('[data-medida="a2"]', "420"); await esperar(300);
+    await mudar('[data-medida="z1"]', "-750"); await esperar(300);
+    await mudar("#ic-angulo", "60"); await esperar(300);
+    await mudar("#ic-perna-ang", "0"); await esperar(400);
+    const errado = await rodar(`return document.getElementById("saida-altura").innerText`);
+    if (!/abaixo de P2/.test(errado)) throw new Error("ângulo na perna errada devia avisar: " + errado);
+    await mudar("#ic-perna-ang", "1"); await esperar(400);
+    const certo = JSON.parse(await rodar(`const ic = ICapp.atual(), r = ICapp.resolver(ic);
+      return JSON.stringify({ L: r.pernas.map(p => p.comprimento), z2: ic.medidas.z2, av: r.avisos,
+        txt: document.getElementById("saida-altura").innerText })`));
+    if (Math.abs(certo.z2 - 821.74) > 1) throw new Error("y₂ do modelo: " + certo.z2);
+    if (Math.abs(certo.L[0] - 2364.5) > 1.5 || Math.abs(certo.L[1] - 840) > 1.5) throw new Error("comprimentos do modelo: " + certo.L);
+    if (/abaixo/.test(certo.txt) || certo.av.some(a => /abaixo/.test(a))) throw new Error("aviso indevido com o ângulo na perna certa");
+    await mudar("#ic-perna-ang", "0"); await esperar(200);
+    await mudar('[data-incl="phi"]', "30"); await esperar(200);
+    await mudar('[data-medida="a1"]', "1000"); await esperar(200);
+    await mudar('[data-medida="a2"]', "1200"); await esperar(200);
+    await mudar('[data-medida="z1"]', "-577"); await esperar(300);
+    const txtY2 = await rodar(`return document.getElementById("saida-y2").innerText`);
+    if (!/y₂ = y₁ \+ \(x₁ \+ x₂\)·tg φ/.test(txtY2)) throw new Error("inclinada: y₂ calculado não aparece: " + txtY2);
     if (!(r.P[1].z > r.P[0].z)) throw new Error("P2 devia ficar acima de P1");
     // eixo do olhal: em pé sobre a peça nos dois pontos (→ n); ângulo com a linga conferido à mão
     const eixos = [n, n];

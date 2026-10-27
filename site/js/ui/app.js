@@ -275,6 +275,8 @@
     const tg = Math.tan(f[1]);
     if (m.z1 === undefined) m.z1 = est === "dobrada" ? 500 : Math.round(-Math.abs(numOu(m.a1, 0)) * tg);
     if (m.z2 === undefined) m.z2 = est === "dobrada" ? 500 : Math.round(Math.abs(numOu(m.a2, 0)) * tg);
+    // inclinada: peça reta, então y₂ sai de y₁, x₁, x₂ e φ — só y₁ é informado
+    if (est === "inclinada") m.z2 = numOu(m.z1, 0) + (Math.abs(numOu(m.a1, 0)) + Math.abs(numOu(m.a2, 0))) * tg;
     const P = [[-Math.abs(numOu(m.a1, 0)), 0, numOu(m.z1, 0)], [Math.abs(numOu(m.a2, 0)), 0, numOu(m.z2, 0)]];
     // dobra: D + s₁·w₁ = P1 e D + s₂·w₂ = P2  ->  s₁·w₁ − s₂·w₂ = P1 − P2 (em x e z)
     const det = -w[0][0] * w[1][2] + w[1][0] * w[0][2];
@@ -368,6 +370,12 @@
     if (inc && inc.dobrada && (inc.s[0] <= 0 || inc.s[1] <= 0))
       r.avisos.push("Com estas inclinações φ₁ e φ₂ os dois trechos não se encontram entre os pontos — confira os ângulos "
         + "(φ positivo com o ponto acima da dobra). O cálculo das cargas não muda; só o desenho e o ângulo do olhal dependem de φ.");
+    // gancho abaixo (ou no nível) de um furo: o ângulo foi dado na perna errada ou é pequeno demais
+    const Pts = pontosDe(ic), baixos = Pts.filter(p => r.gancho[2] - p.z < 1);
+    if (baixos.length && !TIPOS[ic.tipo].unica)
+      r.avisos.push(`Com o ângulo informado na perna ${Pts[Math.min(ic.pernaAngulo || 0, Pts.length - 1)].nome}, `
+        + `o gancho fica abaixo de ${baixos.map(p => p.nome).join(" e ")} — confira em qual perna o ângulo foi medido (campo "Medido na perna") `
+        + "ou aumente o ângulo. Os comprimentos das lingas não valem assim.");
     if (TIPOS[ic.tipo].pilar) r.pilar = { c: [Math.abs(ic.medidas.c1), Math.abs(ic.medidas.c2)], h: Number(ic.medidas.hp) || 0 };
     return r;
   }
@@ -693,8 +701,8 @@
           z2: "y₂ — altura do furo de P2 em relação ao CG, na vertical (eixo Y, + acima)"
         }
       }[est === "horizontal" ? "" : "xy"] || {};
-      const listaMedidas = est !== "horizontal"
-        ? [["a1", ROT.a1], ["a2", ROT.a2], ["z1", ROT.z1], ["z2", ROT.z2]] : t.medidas;
+      const listaMedidas = est === "dobrada" ? [["a1", ROT.a1], ["a2", ROT.a2], ["z1", ROT.z1], ["z2", ROT.z2]]
+        : est === "inclinada" ? [["a1", ROT.a1], ["a2", ROT.a2], ["z1", ROT.z1]] : t.medidas;
       const angCampo = (k, rot, valor) => `<label class="campo"><span>${F.esc(rot)}</span>
         <input type="text" inputmode="decimal" data-incl="${k}" data-key="incl-${k}" value="${paraCampo(valor)}"></label>`;
       const opc = (v, txt) => `<option value="${v}"${v === est ? " selected" : ""}>${txt}</option>`;
@@ -724,7 +732,9 @@
           ${angulos}
         </div>${dica}` : "")
         + `<div class="grade">${listaMedidas.map(([k, rot]) =>
-        `<label class="campo"><span>${F.esc(ROT[k] || rot)} (${uComp()})</span>${numCampo(k)}</label>`).join("")}</div>`;
+        `<label class="campo"><span>${F.esc(ROT[k] || rot)} (${uComp()})</span>${numCampo(k)}</label>`).join("")}</div>`
+        + (est === "inclinada" ? `<p class="dica" id="saida-y2">y₂ — altura do furo de P2, calculada pela inclinação:
+          y₂ = y₁ + (x₁ + x₂)·tg φ = <b>${txtComp(ic.medidas.z2)}</b></p>` : "");
     }
 
     // ângulo da perna com a estrutura (substitui a altura do gancho); com uma linga só ela é
@@ -741,7 +751,11 @@
       `<option value="${i}"${i === iAng ? " selected" : ""}>${F.esc(p.nome)}</option>`).join("");
     const H = alturaGancho(ic);
     const Lp = Math.hypot(P[iAng].x, P[iAng].y, H - P[iAng].z);
-    $("saida-altura").innerHTML = `Altura do gancho acima do CG: <b>${txtComp(H)}</b> · comprimento da perna ${F.esc(P[iAng].nome)}: <b>${txtComp(Lp)}</b>`
+    const baixos = t.unica ? [] : P.filter(p => H - p.z < 1);
+    $("saida-altura").innerHTML = (baixos.length ? `<span class="aviso aviso--erro" style="display:block;margin-bottom:6px">⚠ O gancho
+        ficou abaixo de ${baixos.map(p => F.esc(p.nome)).join(" e ")}: confira em qual perna o ângulo foi medido
+        (campo "Medido na perna") — o ângulo vale para a perna escolhida ali.</span>` : "")
+      + `Altura do gancho acima do CG: <b>${txtComp(H)}</b> · comprimento da perna ${F.esc(P[iAng].nome)}: <b>${txtComp(Lp)}</b>`
       + (inc ? ` · para a peça ficar ${inc.dobrada ? `com φ₁ = ${F.grau(inc.phi[0])} e φ₂ = ${F.grau(inc.phi[1])}` : `a ${F.grau(inc.phi[1])}`}, as lingas precisam ter
         ${P.map(p => `${F.esc(p.nome)} <b>${txtComp(Math.hypot(p.x, p.y, H - p.z))}</b>`).join(" e ")}` : "")
       + (t.unica ? ` · <b>uma linga só:</b> o ponto de içamento fica na vertical do centro de massa — o corpo gira até
