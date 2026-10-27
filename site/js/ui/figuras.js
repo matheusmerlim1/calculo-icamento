@@ -133,14 +133,14 @@ IC.figuras = (function () {
     const pt = q => `${Math.round(q[0] * 10) / 10},${Math.round(q[1] * 10) / 10}`;
     const P1 = at(-a1, hh), P2 = at(a2, hh), G = [cg[0], 52];
     const corpo = [at(-a1 - 40, -esp), at(a2 + 40, -esp), at(a2 + 40, esp - 6), at(-a1 - 40, esp - 6)];
-    // olhal em P1 em pé (γ = 90°) e em P2 inclinado (γ ≈ 50°), só para mostrar a medida
+    // olhal em pé sobre a peça nos dois pontos
     const olhal = (P, g, lado) => {
       const gr = g * Math.PI / 180;
       const d = [u[0] * lado * Math.cos(gr) + nv[0] * Math.sin(gr), u[1] * lado * Math.cos(gr) + nv[1] * Math.sin(gr)];
       const pe = [P[0] - d[0] * 28, P[1] - d[1] * 28];
       return { d, svg: `<line x1="${pe[0]}" y1="${pe[1]}" x2="${P[0]}" y2="${P[1]}" class="peca" style="stroke-width:9;stroke-linecap:round"/>` };
     };
-    const o1 = olhal(P1, 90, -1), o2 = olhal(P2, 50, 1);
+    const o1 = olhal(P1, 90, -1), o2 = olhal(P2, 90, 1);
     const eixo = (P, d, k = 70) => `<line x1="${P[0]}" y1="${P[1]}" x2="${P[0] + d[0] * k}" y2="${P[1] + d[1] * k}" class="eixo"/>`;
     const hor = (P, k) => `<line x1="${P[0]}" y1="${P[1]}" x2="${P[0] + k}" y2="${P[1]}" class="eixo"/>`;
     return `${cabeca(W, H)}
@@ -165,14 +165,10 @@ IC.figuras = (function () {
       <path d="M${at(-a1 - 40, -esp)[0] + 96},${at(-a1 - 40, -esp)[1]} A 96,96 0 0,0 ${at(-a1 - 40 + 96, -esp)[0]},${at(-a1 - 40 + 96, -esp)[1]}" class="arco"/>
       <text x="${at(-a1 - 40, -esp)[0] + 104}" y="${at(-a1 - 40, -esp)[1] - 6}" class="forca">φ</text>
 
-      ${eixo(P2, o2.d)}${eixo(P2, u, 64)}
-      <text x="${P2[0] + 52}" y="${P2[1] - 44}" class="forca">γ₂</text>
-      ${eixo(P1, o1.d, 60)}
-      <text x="${P1[0] + 8}" y="${P1[1] - 52}" class="forca">γ₁ = 90°</text>
 
       <text x="${W / 2}" y="${H - 40}" class="rot-peq" text-anchor="middle">φ — inclinação da peça com a horizontal (P2 do lado de cima) · a₁, a₂ — do CG a cada ponto, ao longo da peça</text>
       <text x="${W / 2}" y="${H - 24}" class="rot-peq" text-anchor="middle">h — do eixo da peça ao furo do olhal, perpendicular a ela · α — ângulo de uma perna com a horizontal</text>
-      <text x="${W / 2}" y="${H - 8}" class="rot-peq" text-anchor="middle">γ — eixo do olhal com o eixo da peça: 90° = em pé sobre a peça, 0° = na ponta, apontando para fora</text>
+      <text x="${W / 2}" y="${H - 8}" class="rot-peq" text-anchor="middle">o olhal fica em pé sobre a peça e é verificado com o ângulo real entre a linga e ele</text>
     </svg>`;
   }
 

@@ -53,7 +53,7 @@
   const paraCampo = v => F.num(isFinite(Number(v)) ? Number(v) : 0, 6);
 
   /* ---------------------------------------------------------- valor com unidade digitada
-   * O campo aceita "5000", "5 t", "5t", "12,5 kN". Quando vem unidade junto, é ela que vale
+   * O campo aceita "5000", "5 t", "5t", "12,5 kN" e contas ("20 + 30"). Quando vem unidade junto, é ela que vale
    * — e não a escolhida no topo. É o jeito natural de corrigir a unidade sem ter que trocar
    * o seletor e recalcular de cabeça.
    */
@@ -63,12 +63,55 @@
   };
   const FATOR_COMP = { mm: 1, cm: 10, m: 1000 };   // para mm
 
-  /** separa o número da unidade; devolve null na unidade quando não veio nenhuma */
-  function partesDoCampo(texto) {
-    const t = String(texto == null ? "" : texto).trim().toLowerCase().replace(/\s+/g, "");
-    const m = t.match(/^([-+]?[\d.,]+)([a-zçãéê]*)$/i);
-    if (!m) return { num: NaN, unid: null };
-    return { num: lerNum(m[1]), unid: m[2] || null };
+  /**
+   * Conta digitada no campo: "20 + 30", "(1500 - 200) / 2", "2 x 350", "2 m + 300 mm".
+   * Soma, subtração, multiplicação (*, x, ×), divisão e parênteses. Cada número pode trazer a
+   * sua unidade; `conv(unid)` dá o fator para a unidade do campo (undefined = unidade que não
+   * vale aqui) e o número sem unidade já está na unidade do campo. NaN se a conta não fecha.
+   */
+  function avaliarConta(texto, conv) {
+    const t = String(texto == null ? "" : texto).trim().toLowerCase().replace(/\s+/g, "").replace(/×/g, "*");
+    let i = 0;
+    const falha = () => { throw new Error("conta"); };
+    const unidade = v => {
+      const m = t.slice(i).match(/^[a-zçãéê°]+/);
+      if (!m || m[0] === "x") return v;                  // "x" é multiplicação, não unidade
+      const f = conv(m[0]);
+      if (f === undefined) falha();
+      i += m[0].length;
+      return v * f;
+    };
+    const fator = () => {
+      if (t[i] === "+") { i++; return fator(); }
+      if (t[i] === "-") { i++; return -fator(); }
+      if (t[i] === "(") {
+        i++; const v = soma();
+        if (t[i] !== ")") falha();
+        i++; return unidade(v);
+      }
+      const m = t.slice(i).match(/^[\d.,]+/);
+      if (!m || !/\d/.test(m[0])) falha();
+      i += m[0].length;
+      return unidade(lerNum(m[0]));
+    };
+    const produto = () => {
+      let v = fator();
+      while (t[i] === "*" || t[i] === "/" || t[i] === "x") {
+        const op = t[i++], w = fator();
+        v = op === "/" ? v / w : v * w;
+      }
+      return v;
+    };
+    const soma = () => {
+      let v = produto();
+      while (t[i] === "+" || t[i] === "-") { const op = t[i++], w = produto(); v = op === "+" ? v + w : v - w; }
+      return v;
+    };
+    try {
+      if (!t) return NaN;
+      const v = soma();
+      return i === t.length && isFinite(v) ? v : NaN;
+    } catch (e) { return NaN; }
   }
 
   /**
@@ -83,23 +126,22 @@
     else if ((t.match(/\./g) || []).length > 1) t = t.replace(/\./g, "");
     return Number(t);
   }
-  /** número do campo, ou o padrão quando o campo vem vazio ou com lixo */
-  const numCampoOu = (texto, padrao) => { const v = lerNum(texto); return isFinite(v) ? v : padrao; };
+  /** número do campo (aceita conta; "°" pode vir junto), ou o padrão quando vem vazio ou com lixo */
+  const numCampoOu = (texto, padrao) => {
+    const v = avaliarConta(texto, u => (u === "°" ? 1 : undefined));
+    return isFinite(v) ? v : padrao;
+  };
 
-  /** texto do campo -> kg */
+  /** texto do campo -> kg (a conta é feita na unidade do topo; número com unidade é convertido) */
   function lerMassa(texto) {
-    const { num, unid } = partesDoCampo(texto);
-    if (!isFinite(num)) return 0;
-    const f = unid ? FATOR_MASSA[unid] : null;
-    return f ? num * f : massaParaKg(num);
+    const v = avaliarConta(texto, u => (FATOR_MASSA[u] === undefined ? undefined : FATOR_MASSA[u] / UNID.massa[uMassa()].f));
+    return isFinite(v) ? massaParaKg(v) : 0;
   }
 
   /** texto do campo -> mm */
   function lerComp(texto) {
-    const { num, unid } = partesDoCampo(texto);
-    if (!isFinite(num)) return 0;
-    const f = unid ? FATOR_COMP[unid] : null;
-    return f ? num * f : compParaMm(num);
+    const v = avaliarConta(texto, u => (FATOR_COMP[u] === undefined ? undefined : FATOR_COMP[u] / UNID.comp[uComp()].f));
+    return isFinite(v) ? compParaMm(v) : 0;
   }
 
   /* ------------------------------------------------------------ tipos de arranjo
@@ -212,8 +254,8 @@
    * e φ₁, φ₂ dão só a direção de cada trecho. O olhal fica em pé sobre o trecho (γ = 90°), e a
    * dobra, onde os dois trechos se cruzam passando pelos furos, sai disso (serve ao desenho).
    * w[i] é o eixo do trecho i (da dobra para Pᵢ), n[i] a normal "para cima" dele.
-   * Inclinada: a₁ e a₂ ao longo da peça, h perpendicular a ela, e γ de cada olhal com o eixo da
-   * peça: 90° = em pé sobre ela, 0° = na ponta, apontando para fora. Na horizontal, nada disso entra.
+   * Inclinada: a₁ e a₂ ao longo da peça e h perpendicular a ela; o olhal fica sempre em pé sobre
+   * a peça (perpendicular a ela). Na horizontal, nada disso entra.
    */
   const estruturaDe = ic => (ic.tipo !== "duas" || !ic.inclinada ? "horizontal" : ic.dobrada ? "dobrada" : "inclinada");
 
@@ -229,7 +271,7 @@
     const w = [[-Math.cos(f[0]), 0, Math.sin(f[0])], [Math.cos(f[1]), 0, Math.sin(f[1])]];
     const n = [[Math.sin(f[0]), 0, Math.cos(f[0])], [-Math.sin(f[1]), 0, Math.cos(f[1])]];
     if (est !== "dobrada")
-      return { dobrada: false, phi, g: [numOu(c.g1, 90), numOu(c.g2, 90)], w, n, dobra: [0, 0, 0] };
+      return { dobrada: false, phi, g: [90, 90], w, n, dobra: [0, 0, 0] };
 
     const m = ic.medidas;
     if (m.z1 === undefined) m.z1 = 500;
@@ -602,7 +644,7 @@
 
     $("ic-nome").value = ic.nome;
     $("ic-massa").value = paraCampo(massaParaTela(ic.massa));
-    $("ic-massa").title = `Dá para digitar a unidade junto: "5 t", "800 kg", "50 kN".`;
+    $("ic-massa").title = `Dá para digitar a unidade junto e fazer conta: "5 t", "800 kg", "50 kN", "2 t + 350 kg".`;
     $("rot-massa").textContent = `Massa (${uMassa()})`;
     $("ic-origem").value = ic.origem;
     $("ic-local").value = ic.local;
@@ -640,7 +682,7 @@
     $("fig-medidas").innerHTML = FIG.medidas(ic.tipo, { inclinada: !!inc, dobrada: est === "dobrada" });
 
     const numCampo = k => `<input type="text" inputmode="decimal" data-medida="${k}"
-      data-key="medida-${k}" title="Dá para digitar a unidade junto: &quot;2,5 m&quot;, &quot;2500 mm&quot;."
+      data-key="medida-${k}" title="Dá para digitar a unidade junto e fazer conta: &quot;2,5 m&quot;, &quot;2500 mm&quot;, &quot;20 + 30&quot;, &quot;2 m + 300 mm&quot;."
       value="${paraCampo(compParaTela(ic.medidas[k]))}">`;
     if (t.porPonto) {
       $("campos-medidas").innerHTML = `<table class="tab tab--pontos"><thead><tr>
@@ -674,8 +716,6 @@
           + angCampo("phi2", "φ₂ — trecho de P2 com a horizontal (°)", inc.phi[1])
         : est === "inclinada"
           ? angCampo("phi", "φ — inclinação da peça com a horizontal (°)", inc.phi[1])
-            + angCampo("g1", "γ₁ — eixo do olhal em P1 com o eixo da peça (°)", inc.g[0])
-            + angCampo("g2", "γ₂ — eixo do olhal em P2 com o eixo da peça (°)", inc.g[1])
           : "";
       const dica = est === "dobrada"
         ? `<p class="dica">Cada trecho tem a sua inclinação com a horizontal: φ é positivo quando o
@@ -684,9 +724,9 @@
           trecho e é verificado com o ângulo real entre a linga e ele. A peça fica nesta posição se as
           lingas tiverem os comprimentos da tabela da etapa 5.</p>`
         : est === "inclinada"
-          ? `<p class="dica">γ = 90° é o olhal em pé sobre a peça; γ = 0° é o olhal na ponta, alinhado
-          com a peça e apontando para fora. A peça fica nesta inclinação se as lingas tiverem os
-          comprimentos da tabela da etapa 5 — o olhal é verificado com o ângulo real entre a linga e ele.</p>`
+          ? `<p class="dica">O olhal fica em pé sobre a peça (perpendicular a ela) e é verificado com o
+          ângulo real entre a linga e ele. A peça fica nesta inclinação se as lingas tiverem os
+          comprimentos da tabela da etapa 5.</p>`
           : "";
       $("campos-medidas").innerHTML = (ic.tipo === "duas" ? `<div class="grade">
           <label class="campo"><span>Estrutura</span><select id="ic-inclinada">
@@ -1565,8 +1605,7 @@
         + `φ₂ = ${F.grau(incM.phi[1])} com a horizontal (+ = ponto acima da dobra) · furos a a₁ = ${F.num(Math.abs(incM.pontos[0][0]), 0)} mm `
         + `e a₂ = ${F.num(incM.pontos[1][0], 0)} mm da vertical do CG, nas alturas z₁ = ${F.num(incM.pontos[0][2], 0)} mm e `
         + `z₂ = ${F.num(incM.pontos[1][2], 0)} mm · olhais em pé sobre o trecho`);
-      else if (incM) doc.texto(`Estrutura inclinada: φ = ${F.grau(incM.phi[1])} com a horizontal · olhal em P1 a γ₁ = ${F.grau(incM.g[0])} `
-        + `e em P2 a γ₂ = ${F.grau(incM.g[1])} com o eixo da peça`);
+      else if (incM) doc.texto(`Estrutura inclinada: φ = ${F.grau(incM.phi[1])} com a horizontal · olhais em pé sobre a peça`);
       if (TIPOS[ic.tipo].pilar) doc.texto("Pilar em pé: olhais soldados nas faces, com o eixo na horizontal, apontando para fora · "
         + "o olhal é verificado com o ângulo entre a linga e o eixo dele (θ com a base = ângulo da perna com a vertical)");
       doc.texto(P.map(p => `${p.nome}: x = ${F.num(p.x, 0)} mm · y = ${F.num(p.y, 0)} mm · z = ${F.num(p.z, 0)} mm`).join("\n"));

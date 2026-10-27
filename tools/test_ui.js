@@ -139,7 +139,7 @@ async function main() {
     await mudar("#ic-inclinada", "inclinada"); await esperar(400);
     // peça reta inclinada a 30°, com um ângulo só
     await mudar('[data-incl="phi"]', "30"); await esperar(300);
-    await mudar('[data-incl="g2"]', "0"); await esperar(400);
+    await esperar(400);
     const r = JSON.parse(await rodar(`const ic = ICapp.atual(); ic.olhal.modo = "fabricado"; ICapp.pintar();
       const r = ICapp.resolver(ic), P = ICapp.pontosDe(ic), ang = ICapp.angulosOlhal(ic, r);
       const o = ICapp.olhalDe(ic, ICapp.riggingDe(ic)), m = ic.medidas;
@@ -148,7 +148,7 @@ async function main() {
         piorGov: util(o.porPerna.find(x => x.perna.nome === o.governante.nome)),
         piorTodas: Math.max(...o.porPerna.map(util)), fig: document.getElementById("fig-medidas").innerText,
         tela: document.getElementById("resultado-olhal").innerText, campos: document.querySelectorAll("[data-incl]").length })`));
-    if (r.campos !== 3) throw new Error("campos de ângulo da peça reta: " + r.campos);
+    if (r.campos !== 1) throw new Error("campos de ângulo da peça reta (só φ): " + r.campos);
     const f = 30 * Math.PI / 180, u = [Math.cos(f), 0, Math.sin(f)], n = [-Math.sin(f), 0, Math.cos(f)];
     const esp = [[-r.a1, -1], [r.a2, 1]].map(([s]) => u.map((c, k) => c * s + n[k] * r.h));
     esp.forEach((e, i) => {
@@ -156,8 +156,8 @@ async function main() {
       if (Math.hypot(...p.map((v, k) => v - e[k])) > 0.01) throw new Error(`P${i + 1} fora do lugar: ${p} ≠ ${e}`);
     });
     if (!(r.P[1].z > r.P[0].z)) throw new Error("P2 devia ficar acima de P1");
-    // eixo do olhal: P1 em pé (γ = 90° → n), P2 na ponta (γ = 0° → +u); ângulo com a linga conferido à mão
-    const eixos = [n, u];
+    // eixo do olhal: em pé sobre a peça nos dois pontos (→ n); ângulo com a linga conferido à mão
+    const eixos = [n, n];
     r.ang.forEach((a, i) => {
       const d = [r.G[0] - r.P[i].x, r.G[1] - r.P[i].y, r.G[2] - r.P[i].z], L = Math.hypot(...d);
       const esperado = Math.acos(d.reduce((s, v, k) => s + v * eixos[i][k], 0) / L) * 180 / Math.PI;
@@ -632,6 +632,38 @@ async function main() {
       return JSON.stringify({k, v: ic.medidas[k]});`));
     if (Math.abs(med.v - 2500) > 1) throw new Error(`"2,5 m" virou ${med.v} mm`);
     await por("massa", "5000");
+    return true;
+  });
+
+  await passo("os campos fazem conta: 20 + 30 vira 50", async () => {
+    const medida = async texto => {
+      await rodar(`const e = document.querySelector('[data-medida]'); e.value = ${JSON.stringify(texto)};
+        e.dispatchEvent(new Event("change",{bubbles:true}));`);
+      await esperar(350);
+      return Number(await rodar(`const k = document.querySelector('[data-medida]').dataset.medida; return ICapp.atual().medidas[k]`));
+    };
+    const casos = [["20 + 30", 50], ["(1500 - 200) / 2", 650], ["2 x 350", 700], ["2 * 1,5 m", 3000],
+      ["2 m + 300 mm", 2300], ["-100 + 40", -60], ["1000", 1000]];
+    for (const [texto, esperado] of casos) {
+      const v = await medida(texto);
+      if (Math.abs(v - esperado) > 1e-6) throw new Error(`"${texto}" virou ${v}, esperado ${esperado}`);
+    }
+    // massa e ângulo também
+    await rodar(`const e = document.getElementById("ic-massa"); e.value = "2 t + 500";
+      e.dispatchEvent(new Event("change",{bubbles:true}));`);
+    await esperar(350);
+    const m = Number(await rodar(`return ICapp.atual().massa`));
+    if (Math.abs(m - 2500) > 1e-6) throw new Error(`"2 t + 500" virou ${m} kg`);
+    await rodar(`const e = document.getElementById("ic-angulo"); e.value = "90 - 30";
+      e.dispatchEvent(new Event("change",{bubbles:true}));`);
+    await esperar(350);
+    const a = Number(await rodar(`return ICapp.atual().angulo`));
+    if (Math.abs(a - 60) > 1e-6) throw new Error(`"90 - 30" virou ${a}°`);
+    // o campo volta com o resultado
+    const naTela = await rodar(`return document.getElementById("ic-angulo").value`);
+    if (naTela !== "60") throw new Error("o campo do ângulo devia mostrar 60, mostra " + naTela);
+    await rodar(`const e = document.getElementById("ic-massa"); e.value = "5000"; e.dispatchEvent(new Event("change",{bubbles:true}));`);
+    await esperar(300);
     return true;
   });
 

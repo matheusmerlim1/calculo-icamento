@@ -20,6 +20,7 @@ laterais), quatro pernas simétrico, ou quatro pernas com cada ponto na sua coor
 **3 · Medidas** — as **distâncias do centro de massa até cada ponto**, não coordenadas, e o
 **ângulo de uma das pernas com a estrutura** (em vez da altura do gancho, que sai calculada).
 Duas figuras acompanham: a vista 3D com as distâncias reais e o esquema do que informar.
+Todo campo numérico faz conta: "20 + 30" vira 50, e dá para misturar unidades ("2 m + 300 mm").
 
 **4 · Fatores de projeto** — margem de peso, amplificação dinâmica, consequência da falha,
 distribuição desigual e FS da linga. Vêm da base escolhida e podem ser ajustados; o memorial
@@ -65,7 +66,7 @@ entrar na boca da manilha, e isso é verificado.
 
 **Estrutura horizontal, inclinada ou em V.** Nas duas pernas, o campo "Estrutura" tem três
 opções. **Horizontal**: os pontos ficam na direção do CG. **Inclinada**: peça reta, com um ângulo φ
-com a horizontal e o ângulo γ de cada olhal com a peça. **Em V (dobrada)**: dois trechos, cada um
+com a horizontal; o olhal fica em pé sobre a peça. **Em V (dobrada)**: dois trechos, cada um
 com a sua inclinação (φ₁ e φ₂, positivos com o ponto acima da dobra); os furos entram direto, por
 a₁ e a₂ (na horizontal, da vertical do CG) e z₁ e z₂ (altura de cada furo em relação ao CG — os
 olhais podem estar em níveis diferentes), e o olhal fica em pé sobre o trecho. O programa

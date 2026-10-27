@@ -102,8 +102,8 @@ w₂ = ( cos φ₂, 0, sen φ₂)   n₂ = (−sen φ₂, 0, cos φ₂)
 ```
 
 **Inclinada** (peça reta, `P2` do lado de cima): um `φ` só, com `φ₁ = −φ`, `φ₂ = φ`, `D` no CG,
-`Pi = aᵢ·wᵢ + h·nᵢ` (`aᵢ` ao longo da peça, `h` perpendicular) e eixo do olhal `cos γᵢ·wᵢ + sen γᵢ·nᵢ`
-(γ = 90° em pé sobre a peça, 0° na ponta, para fora).
+`Pi = aᵢ·wᵢ + h·nᵢ` (`aᵢ` ao longo da peça, `h` perpendicular) e eixo do olhal `nᵢ`
+(o olhal fica sempre em pé sobre a peça, perpendicular a ela).
 
 **Em V**: os furos entram direto, `P1 = (−a₁, 0, z₁)` e `P2 = (a₂, 0, z₂)` — `aᵢ` na horizontal, da
 vertical do CG, e `zᵢ` a altura de cada furo em relação ao CG (podem ser diferentes). O olhal fica em
