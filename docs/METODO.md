@@ -109,6 +109,13 @@ O gancho continua na vertical do CG, e o equilíbrio é o das duas pernas em cot
 comprimento que cada linga precisa ter para a peça ficar nessa posição sai da geometria e é
 mostrado na etapa 3. Os comprimentos `L₁ = |G − P1|` e `L₂ = |G − P2|` são o que se encomenda.
 
+**Pilar — olhais laterais** — duas pernas, com `P1 = (−c₁, 0, h)` e `P2 = (c₂, 0, h)`. O olhal é
+soldado na face, com o eixo na horizontal e para fora: `eixo do olhal i = (sinal xᵢ, 0, 0)`. A
+linga sobe para dentro, por cima do pilar, e faz com o eixo um ângulo maior que 90° — vale o ângulo
+com a LINHA do eixo, `θ_eixo = acos|d·eixo|` (com `d` a direção da linga), e `θ = 90° − θ_eixo`. Com
+a perna a α da horizontal, `θ_eixo = α` e `θ = 90° − α` (o ângulo com a vertical): a componente
+axial `F·sen θ` empurra o olhal contra a solda e `F·cos θ` flete o olhal no plano.
+
 **Uma linga (ponto único)** — sistema determinado. O corpo gira até o CG ficar na vertical do
 ponto, então a perna é vertical (`β = 0`) e leva o peso de projeto inteiro, sem SKL:
 

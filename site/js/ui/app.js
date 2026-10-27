@@ -126,6 +126,21 @@
         { nome: "P2", x: +Math.abs(m.a2), y: 0, z: m.h }
       ]
     },
+    pilar: {
+      nome: "Pilar — olhais laterais", resumo: "peça em pé, olhais nas faces", pernas: 2, pilar: true,
+      // olhais soldados nas faces do pilar, com o eixo na horizontal, apontando para fora: a
+      // linga puxa inclinada em relação a ele (o ângulo da perna com a horizontal). c₁, c₂ e hp
+      // são só deste arranjo — as medidas são compartilhadas e o pilar não deve herdar o a = 1000
+      // nem o h = 0 das duas pernas (nem devolver os seus)
+      medidas: [["c1", "c₁ — do eixo do pilar (CG) até o furo do olhal em P1"],
+        ["c2", "c₂ — do eixo do pilar (CG) até o furo do olhal em P2"],
+        ["hp", "h — altura dos furos acima do CG"]],
+      padrao: { c1: 400, c2: 400, hp: 3000 },
+      pontos: m => [
+        { nome: "P1", x: -Math.abs(m.c1), y: 0, z: m.hp },
+        { nome: "P2", x: +Math.abs(m.c2), y: 0, z: m.hp }
+      ]
+    },
     quatroSim: {
       nome: "Quatro pernas — simétrico", resumo: "corpo simétrico, CG no centro", pernas: 4,
       medidas: [["a", "a — do CG ao ponto, no comprimento"], ["b", "b — do CG ao ponto, na largura"],
@@ -228,8 +243,10 @@
     return [p(0, Math.abs(m.a1), "P1"), p(1, Math.abs(m.a2), "P2")];
   }
 
-  /** eixo de cada olhal (unitário, do pé para o furo): vertical, ou girado com o trecho da peça */
+  /** eixo de cada olhal (unitário, do pé para o furo): vertical, girado com o trecho da peça,
+   *  ou — no pilar — na horizontal, para fora da face */
   function eixosOlhalDe(ic) {
+    if (TIPOS[ic.tipo].pilar) return pontosDe(ic).map(p => [Math.sign(p.x) || 1, 0, 0]);
     const inc = inclinacaoDe(ic);
     if (!inc) return pontosDe(ic).map(() => [0, 0, 1]);
     return [0, 1].map(i => {
@@ -247,7 +264,10 @@
     const eixos = eixosOlhalDe(ic);
     return r.pernas.map((p, i) => {
       const d = vsub(r.gancho, p.ponto), L = Math.hypot(...d) || 1;
-      const c = Math.max(-1, Math.min(1, vdot(d, eixos[i]) / L));
+      let c = Math.max(-1, Math.min(1, vdot(d, eixos[i]) / L));
+      // pilar: o olhal aponta para fora e a linga puxa para dentro, por cima do pilar — vale o
+      // ângulo com a LINHA do eixo (a componente axial empurra o olhal contra a solda)
+      if (TIPOS[ic.tipo].pilar) c = Math.abs(c);
       const eixo = Math.acos(c) * 180 / Math.PI;
       return { eixo, base: 90 - eixo };
     });
@@ -288,6 +308,7 @@
     const inc = inclinacaoDe(ic);
     if (inc) r.peca = { dobrada: inc.dobrada, phi: inc.phi, w: inc.w, n: inc.n, dobra: inc.dobra,
       a: [Math.abs(ic.medidas.a1), Math.abs(ic.medidas.a2)], h: Number(ic.medidas.h) || 0 };
+    if (TIPOS[ic.tipo].pilar) r.pilar = { c: [Math.abs(ic.medidas.c1), Math.abs(ic.medidas.c2)], h: Number(ic.medidas.hp) || 0 };
     return r;
   }
 
@@ -657,8 +678,8 @@
     // vertical e quem dá a altura do gancho é o comprimento informado nas medidas
     const P = pontosDe(ic);
     $("ic-angulo").closest(".campo").style.display = t.unica ? "none" : "";
-    // com a peça inclinada, "a estrutura" não é mais horizontal: o ângulo informado é com a horizontal
-    $("ic-angulo").previousElementSibling.textContent = inc
+    // com a peça inclinada ou em pé, "a estrutura" não é mais horizontal: o ângulo informado é com a horizontal
+    $("ic-angulo").previousElementSibling.textContent = inc || t.pilar
       ? "Ângulo da perna com a horizontal (°)" : "Ângulo da perna com a estrutura (°)";
     $("ic-perna-ang").closest(".campo").style.display = t.unica ? "none" : "";
     const iAng = Math.min(ic.pernaAngulo || 0, P.length - 1);
@@ -761,7 +782,7 @@
     const menor = Math.min(...r.pernas.map(p => p.tracao));
     const desiguais = maior - menor > 0.05;
     $("tab-cargas").innerHTML = `
-      <thead><tr><th>Perna</th><th>Comprimento</th><th>Ângulo c/ a ${r.peca ? "horizontal" : "estrutura"}</th><th>Ângulo c/ a vertical</th>
+      <thead><tr><th>Perna</th><th>Comprimento</th><th>Ângulo c/ a ${r.peca || r.pilar ? "horizontal" : "estrutura"}</th><th>Ângulo c/ a vertical</th>
         <th>Vertical</th><th>Tração</th><th>Tração</th><th>Horizontal</th></tr></thead>
       <tbody>${r.pernas.map((p, i) => `<tr class="${desiguais && p.tracao >= maior - 1e-6 ? "maior" : ""}">
         <td>${F.esc(p.nome)}</td>
@@ -814,7 +835,7 @@
           ${aberto ? `
             <div class="item"><span>Peso do corpo</span><b>${F.kn(rx.pesoKN)}</b></div>
             <div class="item"><span>Peso de projeto</span><b>${F.kn(rx.pesoProjKN)}</b></div>
-            <div class="item"><span>Ângulo da perna</span><b>${TIPOS[x.tipo].unica ? "vertical (linga única)" : `${F.grau(x.angulo)} c/ a estrutura`}</b></div>
+            <div class="item"><span>Ângulo da perna</span><b>${TIPOS[x.tipo].unica ? "vertical (linga única)" : `${F.grau(x.angulo)} c/ a ${TIPOS[x.tipo].pilar ? "horizontal" : "estrutura"}`}</b></div>
             <div class="item"><span>Altura do gancho</span><b>${txtComp(alturaGancho(x))}</b></div>
             <div class="item"><span>γ peso × DAF × γc</span><b>${F.num(fx.peso, 2)} × ${F.num(fx.daf, 2)} × ${F.num(fx.consequencia, 2)}</b></div>
             <div class="item"><span>SKL</span><b>${F.num(fx.skl, 2)}</b></div>` : ""}
@@ -1520,6 +1541,8 @@
         + `olhal em P1 a γ₁ = ${F.grau(incM.g[0])} e em P2 a γ₂ = ${F.grau(incM.g[1])} com o eixo do trecho`);
       else if (incM) doc.texto(`Estrutura inclinada: φ = ${F.grau(incM.phi[1])} com a horizontal · olhal em P1 a γ₁ = ${F.grau(incM.g[0])} `
         + `e em P2 a γ₂ = ${F.grau(incM.g[1])} com o eixo da peça`);
+      if (TIPOS[ic.tipo].pilar) doc.texto("Pilar em pé: olhais soldados nas faces, com o eixo na horizontal, apontando para fora · "
+        + "o olhal é verificado com o ângulo entre a linga e o eixo dele (θ com a base = ângulo da perna com a vertical)");
       doc.texto(P.map(p => `${p.nome}: x = ${F.num(p.x, 0)} mm · y = ${F.num(p.y, 0)} mm · z = ${F.num(p.z, 0)} mm`).join("\n"));
       mem.definir("H", `${F.num(H, 1)} mm`);
 

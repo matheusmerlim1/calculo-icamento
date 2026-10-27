@@ -141,6 +141,12 @@ IC.fbd = (function () {
       return { trechos, olhal: Math.max(r.h - topo, esp * 0.5) };
     })() : null;
     if (barra) barra.trechos.flat().forEach(c => q.ver(c));
+    // pilar: corpo em pé, mais estreito que os furos, com os olhais saindo das faces
+    const pilar = res.pilar ? (() => {
+      const meia = Math.max(Math.min(...res.pilar.c) * 0.6, 1), zf = res.pilar.h;
+      return { meia, topo: zf + meia * 0.8, base: Math.min(-zf, -4 * meia) };
+    })() : null;
+    if (pilar) { q.ver([-pilar.meia, pilar.topo]); q.ver([pilar.meia, pilar.base]); }
     q.ver([0, Gk[2]]);
     q.ver([0, 0]);
     q.ajustar();
@@ -168,6 +174,10 @@ IC.fbd = (function () {
         const pe = [proj[i][0] - d[0] * barra.olhal, proj[i][1] - d[2] * barra.olhal];
         q.itens.push(`<line x1="${n(q.X(pe[0]))}" y1="${n(q.Y(pe[1]))}" x2="${n(q.X(proj[i][0]))}" y2="${n(q.Y(proj[i][1]))}" class="peca" style="stroke-width:7;stroke-linecap:round"/>`);
       });
+    } else if (pilar) {
+      const x0 = q.X(-pilar.meia), x1 = q.X(pilar.meia), yT = q.Y(pilar.topo), yB = q.Y(pilar.base);
+      q.itens.push(`<rect x="${n(x0)}" y="${n(yT)}" width="${n(x1 - x0)}" height="${n(yB - yT)}" class="corpo"/>`);
+      proj.forEach(p => q.itens.push(`<line x1="${n(q.X(Math.sign(p[0]) * pilar.meia))}" y1="${n(q.Y(p[1]))}" x2="${n(q.X(p[0]))}" y2="${n(q.Y(p[1]))}" class="peca" style="stroke-width:7;stroke-linecap:round"/>`));
     } else if (res.pernas.length === 1) {
       // linga única: o corpo vai do ponto (no topo) até abaixo do CG, que fica dentro dele
       const yTopo = q.Y(Math.max(...zs)), yBase = Math.max(q.Y(0), yTopo) + 30;

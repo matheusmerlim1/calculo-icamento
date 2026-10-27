@@ -94,6 +94,17 @@ IC.figuras = (function () {
       return `${cabeca(W, H)}${sombra(c)}${caixa(c, 13)}${amarracao(p, 13, 62, [])}${cg(0, 0, 13)}</svg>`;
     }
 
+    if (tipo === "pilar") {
+      // peça em pé: os olhais saem das faces, na horizontal, perto do topo
+      const c = [[-17, -17], [17, -17], [17, 17], [-17, 17]];
+      const alt = 50, hp = 44;
+      const olhais = [[-17, -34], [17, 34]].map(([x0, x1]) => {
+        const a = S(x0, 0, hp), b = S(x1, 0, hp);
+        return `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="peca" style="stroke-width:3.5;stroke-linecap:round"/>`;
+      }).join("");
+      return `${cabeca(W, H)}${sombra(c)}${caixa(c, alt)}${olhais}${amarracao([[-34, 0], [34, 0]], hp, 76, [])}${cg(0, 0, 25)}</svg>`;
+    }
+
     if (tipo === "quatroSim") {
       const c = [[-38, -26], [38, -26], [38, 26], [-38, 26]];
       // as duas de trás (y negativo no fundo da vista) saem tracejadas
@@ -109,6 +120,7 @@ IC.figuras = (function () {
 
   /* ---------------------------------------------------------- medidas a informar */
   const medidas = (tipo, opts = {}) => (tipo === "uma" ? medidasUma()
+    : tipo === "pilar" ? medidasPilar()
     : tipo === "duas" ? (opts.dobrada ? medidasDuasDobrada() : opts.inclinada ? medidasDuasReta() : medidasDuas())
     : medidasQuatro(tipo === "quatroDif"));
 
@@ -301,6 +313,43 @@ IC.figuras = (function () {
       <path d="M${x1 + 60},${y} A 60,60 0 0,0 ${x1 + 42},${y - 42}" class="arco"/>
       <text x="${x1 + 74}" y="${y - 16}" class="forca" text-anchor="start">α — ângulo da perna com a estrutura</text>
       <text x="${W / 2}" y="${H - 8}" class="rot-peq" text-anchor="middle">h — altura dos pontos em relação ao CG (+ acima, − abaixo)</text>
+    </svg>`;
+  }
+
+  /** pilar: vista de frente, olhais nas faces com o eixo na horizontal, c₁, c₂, h e α */
+  function medidasPilar() {
+    const W = 720, H = 440;
+    const gx = 360, gy = 56, yF = 196, xa = 300, xb = 420, c1 = 236, c2 = 484, yCG = 330;
+    const olhal = (xFace, xFuro) => {
+      const s = Math.sign(xFuro - xFace);
+      return `<path d="M${xFace},${yF - 34} L${xFuro},${yF - 16} A16,16 0 0,${s > 0 ? 1 : 0} ${xFuro},${yF + 16} L${xFace},${yF + 34} z" class="corpo"/>
+        <circle cx="${xFuro}" cy="${yF}" r="6" class="ponto"/>`;
+    };
+    return `${cabeca(W, H)}
+      <text x="${W / 2}" y="20" class="titulo" text-anchor="middle">MEDIDAS A INFORMAR — PILAR, OLHAIS LATERAIS</text>
+      <rect x="${xa}" y="${yF - 70}" width="${xb - xa}" height="${yCG + 40 - (yF - 70)}" class="corpo"/>
+      ${olhal(xa, c1)}${olhal(xb, c2)}
+      <path d="M${gx},${gy - 22} v12" class="peca"/><circle cx="${gx}" cy="${gy - 4}" r="8" class="gancho-i"/>
+      <line x1="${gx}" y1="${gy}" x2="${c1}" y2="${yF}" class="perna"/>
+      <line x1="${gx}" y1="${gy}" x2="${c2}" y2="${yF}" class="perna"/>
+      <text x="${c1 - 12}" y="${yF - 12}" text-anchor="end">P1</text>
+      <text x="${c2 + 12}" y="${yF - 12}" text-anchor="start">P2</text>
+
+      <line x1="${gx}" y1="${gy + 10}" x2="${gx}" y2="${yCG + 50}" class="eixo"/>
+      <circle cx="${gx}" cy="${yCG}" r="7" class="cg"/>
+      <text x="${gx + 12}" y="${yCG + 4}" class="rot">CG</text>
+
+      <line x1="${c1 - 70}" y1="${yF}" x2="${c2 + 70}" y2="${yF}" class="eixo"/>
+      ${cota(c1, yF + 56, gx, yF + 56, "c₁")}
+      ${cota(gx, yF + 56, c2, yF + 56, "c₂")}
+      ${cota(c2 + 56, yF, c2 + 56, yCG, "h", "start")}
+      <line x1="${c2}" y1="${yCG}" x2="${c2 + 70}" y2="${yCG}" class="eixo"/>
+
+      <path d="M${c1 + 60},${yF} A 60,60 0 0,0 ${(c1 + 60 * Math.cos(Math.atan2(yF - gy, gx - c1))).toFixed(1)},${(yF - 60 * Math.sin(Math.atan2(yF - gy, gx - c1))).toFixed(1)}" class="arco"/>
+      <text x="${c1 + 66}" y="${yF - 10}" class="forca" text-anchor="start">α</text>
+      <text x="40" y="${H - 50}" class="rot-peq">c₁, c₂ — do eixo do pilar (CG) até o furo de cada olhal, na horizontal</text>
+      <text x="40" y="${H - 34}" class="rot-peq">h — altura dos furos acima do CG · α — ângulo da perna com a horizontal</text>
+      <text x="40" y="${H - 18}" class="rot-peq">olhais soldados nas faces, com o eixo na horizontal: a linga puxa a α do eixo deles</text>
     </svg>`;
   }
 

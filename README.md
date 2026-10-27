@@ -14,8 +14,8 @@ dependência, sem internet.
 **1 · Corpo a içar** — massa, origem do peso (pesado, calculado ou estimado), local da operação
 e a base normativa que define os fatores de projeto.
 
-**2 · Tipo de içamento** — uma linga (um único ponto de içamento), duas pernas, quatro pernas
-simétrico, ou quatro pernas com cada ponto na sua coordenada.
+**2 · Tipo de içamento** — uma linga (um único ponto de içamento), duas pernas, pilar (olhais
+laterais), quatro pernas simétrico, ou quatro pernas com cada ponto na sua coordenada.
 
 **3 · Medidas** — as **distâncias do centro de massa até cada ponto**, não coordenadas, e o
 **ângulo de uma das pernas com a estrutura** (em vez da altura do gancho, que sai calculada).
@@ -71,6 +71,13 @@ CG (e). Nas duas últimas entra também o ângulo γ de cada olhal com a peça (
 calcula onde ficam os pontos, o comprimento de cada linga para a peça ficar nessa posição e
 verifica o olhal com o ângulo real entre a linga e ele. O θ das fórmulas do olhal é o ângulo da
 linga com a base do olhal (antes entrava, errado, o ângulo com a vertical).
+
+**Pilar — olhais laterais.** Peça em pé, içada por dois olhais soldados nas faces, com o eixo na
+horizontal, apontando para fora. Informa-se c₁ e c₂ (do eixo do pilar, que passa pelo CG, até o
+furo de cada olhal), h (altura dos furos acima do CG) e o ângulo da perna com a horizontal. A
+linga puxa para dentro, por cima do pilar: o olhal é verificado com o ângulo entre a linga e a linha
+do eixo dele, ou seja, θ com a base = ângulo da perna com a vertical (com 60° na horizontal, θ = 30°).
+É diferente da estrutura em V, em que o olhal fica sobre a peça.
 
 **Usar a maior carga do estudo.** Um içamento com essa opção leva o mesmo conjunto do içamento de
 maior carga: mesma linga, mesma manilha e o mesmo olhal. Mudar um deles em qualquer dos dois muda

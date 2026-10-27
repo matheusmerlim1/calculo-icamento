@@ -46,6 +46,17 @@ IC.iso3d = (function () {
     }
     const alturaCorpo = Math.max(dx, dy) * 0.35;
     let zTop = Math.max(...zs, 0), zBot = Math.min(zTop - alturaCorpo, 0);
+    // pilar: corpo em pé, mais estreito que os furos (os olhais saem das faces), um pouco acima
+    // dos furos e descendo tanto abaixo do CG quanto sobe — só para o desenho
+    const pilar = res.pilar ? (() => {
+      const meia = Math.max(Math.min(...res.pilar.c) * 0.6, 1);
+      return { meia, olhal: Math.min(...res.pilar.c) - meia };
+    })() : null;
+    if (pilar) {
+      x0 = -pilar.meia; x1 = pilar.meia; y0 = -pilar.meia; y1 = pilar.meia;
+      zTop = Math.max(...zs) + pilar.meia * 0.8;
+      zBot = Math.min(-Math.max(...zs), -4 * pilar.meia);
+    }
 
     let cantos = [
       [x0, y0, zBot], [x1, y0, zBot], [x1, y1, zBot], [x0, y1, zBot],
@@ -119,8 +130,8 @@ IC.iso3d = (function () {
 
     /* --------------------------------------------------- olhais (peça inclinada) */
     // um traço do pé ao furo, na direção do eixo do olhal: mostra para onde ele aponta
-    if (peca && res.eixosOlhal) res.pernas.forEach((p, i) => {
-      const d = res.eixosOlhal[i], k = peca.olhal;
+    if ((peca || pilar) && res.eixosOlhal) res.pernas.forEach((p, i) => {
+      const d = res.eixosOlhal[i], k = (peca || pilar).olhal;
       linha(S([p.ponto[0] - d[0] * k, p.ponto[1] - d[1] * k, p.ponto[2] - d[2] * k]), S(p.ponto), "peca olhal-eixo");
     });
 
@@ -139,7 +150,9 @@ IC.iso3d = (function () {
     res.pernas.forEach((p, i) => {
       const a = S(p.ponto);
       // linga única: o ponto cai no meio do desenho, em cima do CG — o rótulo sai para a direita
-      let ux = unica ? 1 : a[0] - centroTela[0], uy = unica ? -0.35 : a[1] - centroTela[1];
+      // pilar: o centro do desenho fica lá embaixo, no meio do pilar — os rótulos saem para os lados
+      let ux = unica ? 1 : pilar ? a[0] - gk[0] : a[0] - centroTela[0];
+      let uy = unica ? -0.35 : pilar ? 0.25 * Math.abs(ux) : a[1] - centroTela[1];
       const m = Math.hypot(ux, uy) || 1;
       ux /= m; uy /= m;
       const alvo = [a[0] + ux * 72, a[1] + uy * 50];
@@ -175,6 +188,12 @@ IC.iso3d = (function () {
         texto([A2[0], A2[1] + 22], `a₂ ${comp(r.a[1])}`, "cota-t");
         texto([cg[0] + 14, cg[1] + 32], `φ ${F.grau(r.phi[1])} c/ a horizontal`, "forca", "start");
       }
+    } else if (pilar) {
+      // pilar: c₁ e c₂ do eixo até cada furo, h dos furos sobre o CG e o ângulo com a horizontal
+      // (c₁ e c₂ já saem no x de cada ponto)
+      const r = res.pilar;
+      texto([cg[0] + 14, (cg[1] + S([0, 0, r.h])[1]) / 2], `h ${comp(r.h)}`, "cota-t", "start");
+      texto([gk[0] + 16, gk[1] + 4], `α ${F.grau(90 - res.pernas[0].angulo)} c/ a horizontal`, "forca", "start");
     } else if (unica) {
       // linga única: o comprimento da linga e a altura do ponto sobre o CG
       const p = res.pernas[0];

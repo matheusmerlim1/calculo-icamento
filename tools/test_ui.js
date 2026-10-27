@@ -79,7 +79,7 @@ async function main() {
 
   await passo("cada tipo tem o seu desenho no cartão", async () => {
     const n = await rodar(`return document.querySelectorAll('.tipo .tipo__fig svg').length`);
-    if (n !== 4) throw new Error("desenhos nos cartões: " + n);
+    if (n !== 5) throw new Error("desenhos nos cartões: " + n);
     return true;
   });
 
@@ -94,7 +94,7 @@ async function main() {
     return true;
   });
 
-  for (const [tipo, pernas] of [["uma", 1], ["duas", 2], ["quatroDif", 4], ["quatroSim", 4]]) {
+  for (const [tipo, pernas] of [["uma", 1], ["duas", 2], ["pilar", 2], ["quatroDif", 4], ["quatroSim", 4]]) {
     await passo(`tipo ${tipo} calcula ${pernas} pernas`, async () => {
       await rodar(`document.querySelector('[data-tipo="${tipo}"]').click();`);
       await esperar(500);
@@ -198,6 +198,28 @@ async function main() {
 
     await mudar("#ic-inclinada", "horizontal"); await esperar(400);
     if ((await pontos()) !== reto) throw new Error("desmarcar a inclinação devia voltar aos mesmos pontos");
+    return true;
+  });
+
+  await passo("pilar: olhal na horizontal, θ com a base é o ângulo da perna com a vertical", async () => {
+    await rodar(`document.querySelector('[data-tipo="pilar"]').click();`);
+    await esperar(400);
+    await rodar(`const e=document.getElementById("ic-angulo"); e.value="60"; e.dispatchEvent(new Event("change",{bubbles:true}));`);
+    await esperar(400);
+    const r = JSON.parse(await rodar(`const ic = ICapp.atual(), r = ICapp.resolver(ic); return JSON.stringify({
+      pontos: ICapp.pontosDe(ic).map(p => [p.x, p.y, p.z]), eixos: ICapp.eixosOlhalDe(ic),
+      angs: ICapp.angulosOlhal(ic, r), T: r.pernas.map(p => p.tracao), W: r.pesoProjKN, skl: r.fatores.skl,
+      rot: document.getElementById("ic-angulo").previousElementSibling.textContent,
+      fig: document.getElementById("fig-medidas").innerText, cab: document.querySelector("#tab-cargas thead").innerText })`));
+    if (JSON.stringify(r.pontos) !== JSON.stringify([[-400, 0, 3000], [400, 0, 3000]])) throw new Error("pontos: " + JSON.stringify(r.pontos));
+    if (JSON.stringify(r.eixos) !== JSON.stringify([[-1, 0, 0], [1, 0, 0]])) throw new Error("eixos do olhal: " + JSON.stringify(r.eixos));
+    r.angs.forEach(a => { if (Math.abs(a.eixo - 60) > 1e-6 || Math.abs(a.base - 30) > 1e-6) throw new Error("ângulo no olhal: " + JSON.stringify(a)); });
+    const esperado = r.W / 2 / Math.sin(Math.PI / 3);   // duas pernas: sem SKL
+    r.T.forEach(t => { if (Math.abs(t - esperado) > 1e-6) throw new Error(`tração ${t}, esperado ${esperado}`); });
+    if (!/horizontal/.test(r.rot)) throw new Error("rótulo do ângulo: " + r.rot);
+    if (!/PILAR/.test(r.fig)) throw new Error("figura das medidas não é a do pilar");
+    if (!/horizontal/i.test(r.cab)) throw new Error("cabeçalho da tabela: " + r.cab);
+    await foto("ic_pilar");
     return true;
   });
 
