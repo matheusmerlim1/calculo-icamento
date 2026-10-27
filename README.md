@@ -50,11 +50,14 @@ unitária. As peças saem de um modelo salvo pelo próprio SolidWorks
 `site/js/core/sldprt.js`. Mudou o modelo: `node tools/sldprt/gerar_modelo.js`.
 
 **Memorial no SMath Studio** — o botão *SMath (.sm)* gera a folha do estudo inteiro, organizada
-como os modelos feitos à mão: seções numeradas (1. dados do estudo; 2. primeiro içamento, com
-2.1 dados, 2.2 geometria, 2.3 peso de projeto, 2.4 cargas nas eslingas, … até o resumo), a
-descrição de cada variável em cima da conta, o conteúdo recuado e as contas intermediárias em
-áreas recolhidas. Entram as figuras da estrutura, com legenda "Figura N": a vista 3D com as
+como os modelos feitos à mão: sumário no início, capítulos e seções numerados (1 dados do estudo;
+2 primeiro içamento, com 2.1 dados, 2.2 geometria, 2.3 peso de projeto, 2.4 cargas nas eslingas, …
+até o resumo), a descrição de cada variável em cima da conta, o conteúdo recuado e as contas
+intermediárias em áreas recolhidas. Entram as figuras da estrutura, com legenda: a vista 3D com as
 distâncias, o diagrama de corpo livre, a planta (quatro pernas), a manilha e o olhal fabricado.
+Títulos, legendas e sumário são regiões do plugin **Sumario Region** (SumarioRegion.dll 1.1.0.0),
+que numera sozinho (1, 1.1, Figura N) e monta o índice com a lista de figuras e o número da página
+— o plugin precisa estar instalado no SMath.
 As coordenadas de cada ponto viram variáveis (`x.P1`, `z.P1`, …).
 
 Vários içamentos convivem no mesmo estudo (abas no topo), e a lista pode sair de um só ou

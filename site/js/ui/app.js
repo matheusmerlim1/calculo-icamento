@@ -1638,34 +1638,36 @@
   }
 
   /**
-   * Monta a folha do SMath, organizada como os modelos feitos à mão: seções numeradas
-   * ("2.3 CARGAS NAS ESLINGAS"), descrição em cima de cada variável, conteúdo recuado, contas
-   * intermediárias em áreas recolhidas e as figuras da estrutura com legenda.
+   * Monta a folha do SMath, organizada como os modelos feitos à mão: descrição em cima de cada
+   * variável, conteúdo recuado, contas intermediárias em áreas recolhidas e as figuras da
+   * estrutura. Títulos, legendas e o sumário são do plugin Sumario Region do SMath: ele numera
+   * (1, 1.1, Figura N) e monta o índice com a lista de figuras e o número da página.
    */
   async function montarSmath() {
     const S = window.SMathExport;
-    const doc = new S.Documento({ autor: E.resp || "", casas: 3, recuo: 18, recuoTitulo: 9, descricaoEmCima: true });
+    const doc = new S.Documento({ autor: E.resp || "", casas: 3, recuo: 18, recuoTitulo: 9, descricaoEmCima: true, sumario: true });
     const mem = new S.Memorial(doc, { descricao: descricaoSimbolo });
-    const nv = { nivel: 3 };
+    const nv = { nivel: 3, numerado: true };
+    const capitulo = t => doc.titulo(t.toUpperCase(), 2, { numerado: true });
     doc.titulo("MEMORIAL DE CÁLCULO DE IÇAMENTO", 1);
+    doc.indice({ maxLevel: 2, figuras: true });
 
-    doc.titulo("1. DADOS DO ESTUDO", 2);
+    capitulo("Dados do estudo");
     doc.texto([`Estudo: ${E.nome || "—"}`, `Documento: ${E.doc || "—"}`, `Responsável: ${E.resp || "—"}`,
       `Emitido em: ${new Date().toLocaleDateString("pt-BR")}`, `Içamentos: ${E.icamentos.length}`].join("\n"));
-    doc.texto("Índice:\n" + E.icamentos.map((ic, k) => `${k + 2}. ${ic.nome}`).join("\n"));
 
     for (let k = 0; k < E.icamentos.length; k++) {
       const ic = E.icamentos[k];
       const r = resolver(ic), f = r.fatores, P = pontosDe(ic), H = alturaGancho(ic);
       const rig = riggingDe(ic), o = olhalDe(ic, rig);
-      const num = k + 2;
-      let sub = 0;
-      const sec = t => `${num}.${++sub} ${t.toUpperCase()}`;
+      // a numeração (2, 2.1, 2.2...) é do plugin
+      const sec = t => t.toUpperCase();
+      const secao = t => doc.titulo(sec(t), 3, { numerado: true });
       doc.espaco(18);
-      doc.titulo(`${num}. ${String(ic.nome).toUpperCase()}`, 2);
+      capitulo(String(ic.nome));
 
       /* dados */
-      doc.titulo(sec("Dados do içamento"), 3);
+      secao("Dados do içamento");
       doc.texto(`Arranjo: ${TIPOS[ic.tipo].nome}` + (TIPOS[ic.tipo].pernas > 2 ? ` · hipótese: ${r.hipotese}` : "")
         + ` · base: ${(FAT.bases[ic.base] || {}).nome || ic.base}`);
       mem.definir("m", `${F.num(ic.massa, 3)} kg`, "Massa do corpo");
@@ -1677,7 +1679,7 @@
       mem.definir("FS_linga", F.num(f.fsLinga, 3), "Fator de segurança da linga");
 
       /* geometria */
-      doc.titulo(sec("Geometria do içamento"), 3);
+      secao("Geometria do içamento");
       const incM = inclinacaoDe(ic);
       if (incM && incM.dobrada) doc.texto(`Estrutura em V (dobrada): trecho de P1 a φ₁ = ${F.grau(incM.phi[0])} e trecho de P2 a `
         + `φ₂ = ${F.grau(incM.phi[1])} com a horizontal (+ = ponto acima da dobra) · olhais em pé sobre o trecho`);
@@ -1725,7 +1727,7 @@
           { t: "Utilização da linga", f: "u = MBL_req / MBL", r: `u = ${F.num(l.utilizacao * 100, 1)} %`, ok: l.utilizacao <= 1 });
         mem.secao(sec("Linga"), passos, nv);
       } else {
-        doc.titulo(sec("Linga"), 3);
+        secao("Linga");
         doc.texto(`Nenhum cabo da tabela atende à MBL requerida (${F.kn(l.mblReqKN)}).`, { negrito: true, cor: "#A1332C" });
       }
 
@@ -1738,7 +1740,7 @@
         ], nv);
         await figuraSm(doc, FIG.manilha(m.manilha), 360, `Manilha ${IC.manilhas.tipos[m.tipo].nome} — ${m.manilha.codigo}`, 300);
       } else {
-        doc.titulo(sec("Manilha"), 3);
+        secao("Manilha");
         doc.texto(`Nenhuma manilha do tipo escolhido atende à carga de ${F.ton(m.cargaT)}.`, { negrito: true, cor: "#A1332C" });
       }
       if (rig.casos.length) {
@@ -1776,7 +1778,7 @@
           s: `${F.num(ch.boca, 1)} − ${F.num(ch.espessura, 1)} = ${F.num(ch.folga, 1)} mm`, ok: ch.ok });
         o.verif.checks.forEach(c => passos.push(passoSm(`${c.n}. ${c.nome}`, c.formula,
           { ok: c.ok, n: `Utilização: ${F.num(c.utilizacao * 100, 0)} %` })));
-        doc.titulo(sec("Olhal fabricado — geometria"), 3);
+        secao("Olhal fabricado — geometria");
         doc.texto(["t", "tAnel", "base", "h", "R", "rAnel", "dFuro"].filter(k => k in g)
           .map(k => `${ROTULOS_GEOM[k]}: ${F.num(g[k], 2)}`).join("\n"));
         await figuraSm(doc, FIG.olhal(g), 420, `${ic.nome} — olhal fabricado`, 360);
@@ -1784,13 +1786,13 @@
       }
 
       /* material */
-      doc.titulo(sec("Lista de material"), 3);
+      secao("Lista de material");
       mem.tabela(["Item", "Qtd.", "Título", "Especificação", "Material", "Massa (kg)"],
         materialDe(ic).itens.map((it, i) => [i + 1, F.num(it.qtd, 0), it.titulo, it.especificacao, it.material,
           it.massa == null ? "-" : F.num(it.massa, 2)]));
 
       /* resumo */
-      doc.titulo(sec("Resumo"), 3);
+      secao("Resumo");
       mem.tabela(["Eslinga", "Comprimento (mm)", "Ângulo c/ horizontal", "Tração (kN)", "Tração (t)"],
         r.pernas.map(p => [p.nome, F.num(p.comprimento, 1), F.grau(90 - p.angulo), F.num(p.tracao, 2), F.num(p.toneladas, 2)]));
       doc.texto([

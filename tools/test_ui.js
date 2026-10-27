@@ -522,8 +522,10 @@ async function main() {
         png: pics.every(p => p.startsWith("iVBOR") && p.length > 2000), nFig: doc.nFiguras,
         // figura em branco comprime para quase nada: a do 3D tem traço e texto
         cheia: Math.min(...pics.map(p => p.length)) > 15000,
-        dep: /PictureRegion/.test(xml), titulos: /2\\.1 DADOS DO IÇAMENTO/.test(xml) && /2\\.2 GEOMETRIA DO IÇAMENTO/.test(xml),
-        legenda: /Figura 1: /.test(xml), topo: /position="Top"/.test(xml), direita: /position="Right"/.test(xml),
+        dep: /PictureRegion/.test(xml) && /name="Sumario Region" version="1\\.1\\.0\\.0"/.test(xml),
+        itens: [...d.getElementsByTagName("item")].map(x => [x.getAttribute("kind"), x.getAttribute("level"),
+          x.getElementsByTagName("text")[0].textContent, x.parentNode.nodeName, x.parentNode.parentNode.nodeName]),
+        topo: /position="Top"/.test(xml), direita: /position="Right"/.test(xml),
         recuo: [...d.getElementsByTagName("region")].filter(x => x.getAttribute("left") === "0").length,
         pontos: /x\\.P1/.test(xml) && /z\\.P1/.test(xml), resumo: /RESUMO/.test(xml) });
     });`));
@@ -532,8 +534,16 @@ async function main() {
     if (!r.png) throw new Error("as figuras não são PNG");
     if (!r.cheia) throw new Error("alguma figura saiu em branco");
     if (!r.dep) throw new Error("falta a dependência PictureRegion");
-    if (!r.titulos || !r.resumo) throw new Error("seções numeradas faltando");
-    if (!r.legenda) throw new Error("legenda das figuras faltando");
+    // títulos, legendas e índice do plugin Sumario Region (ele numera sozinho)
+    const tipos = k => r.itens.filter(x => x[0] === k);
+    if (r.itens.some(x => x[3] !== "sumarioRegion" || x[4] !== "region")) throw new Error("item do sumário fora de <region><sumarioRegion>");
+    if (tipos("toc").length !== 1) throw new Error("devia haver um sumário");
+    const tit = tipos("heading").map(x => `${x[1]}:${x[2]}`);
+    if (!tit.includes("1:DADOS DO ESTUDO") || !tit.includes("2:DADOS DO IÇAMENTO") || !tit.includes("2:RESUMO"))
+      throw new Error("títulos numerados: " + tit.join(" | "));
+    if (tit.some(t => /^\d:\d/.test(t))) throw new Error("título com número escrito à mão (o plugin numera)");
+    if (tipos("caption").length !== r.nFig) throw new Error("uma legenda por figura");
+    if (!r.resumo) throw new Error("resumo faltando");
     if (!r.topo || r.direita) throw new Error("a descrição das variáveis devia ficar em cima");
     if (r.recuo) throw new Error(`${r.recuo} região(ões) sem recuo`);
     if (!r.pontos) throw new Error("coordenadas dos pontos faltando");

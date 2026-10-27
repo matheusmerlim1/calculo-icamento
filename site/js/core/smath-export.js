@@ -10,6 +10,10 @@
       Opções de leiaute (todas opcionais, o padrão é o de antes): recuo do conteúdo e dos
       títulos, descrição das variáveis em cima da conta (como nos modelos feitos à mão) e figuras
       PNG (região "picture", com legenda "Figura N: ...").
+      Com sumario: true, títulos numerados, legendas e o índice saem como regiões do plugin
+      "Sumario Region" (SumarioRegion.dll, 1.1.0.0): ele numera 1, 1.1, 1.1.1 e Figura N sozinho
+      e monta o sumário com a lista de figuras e o número da página. Formato tirado da própria
+      DLL: <region><sumarioRegion><item version="1" kind="heading|caption|toc" .../></...>.
    3. Memorial: recebe os passos do memorial da página ({t, f, s, r, ok, n}) e escreve cada
       seção numa área recolhida; fora dela, chama de novo o resultado da área.
       Uma fórmula só vira conta "viva" do SMath quando todos os símbolos dela já estão
@@ -257,11 +261,35 @@
   class Documento {
     /** recuo: margem do conteúdo (px); recuoTitulo: margem dos títulos; descricaoEmCima: legenda
      *  das variáveis acima da conta, e não à direita */
-    constructor({autor = '', casas = 4, recuo = 0, recuoTitulo = 0, descricaoEmCima = false} = {}) {
+    constructor({autor = '', casas = 4, recuo = 0, recuoTitulo = 0, descricaoEmCima = false, sumario = false} = {}) {
       this.autor = autor; this.casas = casas;
       this.recuo = recuo; this.recuoTitulo = recuoTitulo; this.descricaoEmCima = descricaoEmCima;
+      this.sumario = sumario;
       this.y = 0; this.raiz = []; this.pilha = [this.raiz]; this.areas = [];
-      this.nFiguras = 0;
+      this.nFiguras = 0; this.nTitulos = 0; this.indiceRes = null; this.usaSumario = false;
+    }
+    /** item do plugin Sumario Region; os atributos que não valem para o tipo vão com o padrão dele */
+    _itemSumario(kind, texto, o = {}) {
+      this.usaSumario = true;
+      const at = {version: '1', kind, font: 'Arial', size: String(o.size || 10), bold: o.bold ? 'true' : 'false',
+        italic: o.italic ? 'true' : 'false', color: '#000000', align: o.align || 'left', level: String(o.level || 1),
+        numbered: o.numbered === false ? 'false' : 'true', toc: o.toc === false ? 'false' : 'true', type: o.type || 'figure',
+        headings: 'true', figures: o.figures === false ? 'false' : 'true', tables: o.tables ? 'true' : 'false',
+        pages: o.pages === false ? 'false' : 'true', maxLevel: String(o.maxLevel || 3), width: '0',
+        titleToc: o.titleToc || 'SUMÁRIO', titleFigures: o.titleFigures || 'LISTA DE FIGURAS', titleTables: 'LISTA DE TABELAS'};
+      return E('sumarioRegion', {}, [E('item', at, [E('text', {}, String(texto || ''))])]);
+    }
+    /**
+     * Sumário do plugin (índice + lista de figuras), no ponto atual. A altura dele só é conhecida
+     * no fim: o espaço é reservado aqui e, ao gravar, tudo o que vem depois desce o que faltar.
+     */
+    indice({maxLevel = 2, figuras = true} = {}) {
+      const alt = 60;
+      const reg = E('region', {left: String(this.recuoTitulo), top: String(this.y), width: String(LARG - this.recuoTitulo),
+        height: String(alt), color: '#000000', fontSize: '10'}, [this._itemSumario('toc', '', {maxLevel, figures: figuras})]);
+      this.pilha[this.pilha.length - 1].push(reg);
+      this.indiceRes = {reg, top: this.y, alt, maxLevel, figuras, niveis: []};
+      this.y = grade(this.y + alt + ESPACO);
     }
     _regiao(alt, interno, larg, extra = {}, left = this.recuo) {
       this.pilha[this.pilha.length - 1].push(E('region', {left: String(Math.round(left)), top: String(this.y), width: String(Math.round(larg)),
@@ -270,9 +298,18 @@
     }
     espaco(px = 9) { this.y = grade(this.y + px); }
 
-    titulo(txt, nivel = 2) {
+    titulo(txt, nivel = 2, {numerado = false} = {}) {
       const tam = {1: 14, 2: 12, 3: 10}[nivel] || 10;
       if (nivel <= 2 && this.y) this.espaco(9);
+      if (numerado && this.sumario) {
+        // título numerado do plugin: nível 2 da folha -> capítulo (1), nível 3 -> seção (1.1)
+        const level = Math.max(1, Math.min(4, nivel - 1));
+        if (this.indiceRes) this.indiceRes.niveis.push(level);
+        this.nTitulos++;
+        const larg = LARG - this.recuoTitulo;
+        this._regiao(Math.ceil(tam * 1.9) + 4, this._itemSumario('heading', txt, {level, size: tam, bold: true}), larg, {}, this.recuoTitulo);
+        return;
+      }
       const estilo = `font-size: ${tam}px; font-weight: bold; text-align: ${nivel === 1 ? 'center' : 'left'};`;
       const larg = LARG - this.recuoTitulo;
       this._regiao(alturaTexto(txt, larg, tam) + (nivel === 1 ? 4 : 0),
@@ -299,7 +336,11 @@
       this._regiao(Math.round(alt), E('picture', {}, [E('raw', {format: 'png', encoding: 'base64'}, png)]), larg,
         {}, this.recuo + Math.max(0, (util - larg) / 2));
       this.nFiguras++;
-      if (legenda) this.texto(`Figura ${this.nFiguras}: ${legenda}`, {italico: true, alinhamento: 'center'});
+      if (legenda && this.sumario) {
+        // legenda do plugin: ele põe "Figura N" e a figura entra na lista de figuras do sumário
+        const larg = LARG - this.recuo;
+        this._regiao(24, this._itemSumario('caption', legenda, {type: 'figure', italic: true, align: 'center'}), larg);
+      } else if (legenda) this.texto(`Figura ${this.nFiguras}: ${legenda}`, {italico: true, alinhamento: 'center'});
       return this.nFiguras;
     }
     _math(nos, lista, descricao, contrato, resultado, casas) {
@@ -353,8 +394,27 @@
       this.pilha.pop(); this.areas.pop();
       this.y = grade(fim + 27);
     }
+    /** abre espaço para o sumário: tudo abaixo dele desce o que faltar */
+    _ajustarIndice() {
+      const ir = this.indiceRes;
+      if (!ir || ir.ajustado) return;
+      ir.ajustado = true;
+      const linhas = ir.niveis.filter(n => n <= ir.maxLevel).length;
+      const alt = grade(40 + linhas * 18 + (ir.figuras && this.nFiguras ? 40 + this.nFiguras * 18 : 0));
+      const delta = alt - ir.alt;
+      if (delta <= 0) return;
+      ir.reg.attrs.height = String(alt);
+      const descer = lista => lista.forEach(el => {
+        if (el.nome !== 'region' || el === ir.reg) return;
+        if (Number(el.attrs.top) > ir.top) el.attrs.top = String(Number(el.attrs.top) + delta);
+        if (Array.isArray(el.filhos)) descer(el.filhos);
+      });
+      descer(this.raiz);
+      this.y += delta;
+    }
     xml() {
       while (this.areas.length) this.fecharArea();
+      this._ajustarIndice();
       const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID()
         : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16));
       const ws = E('worksheet', {xmlns: 'http://smath.info/schemas/worksheet/1.0'}, [
@@ -378,7 +438,8 @@
             E('assembly', {name: 'MathRegion', version: V_PLUGINS, guid: '02f1ab51-215b-466e-a74d-5d8b1cf85e8d'}),
             E('assembly', {name: 'TextRegion', version: V_PLUGINS, guid: '485d28c5-349a-48b6-93be-12a35a1c1e39'}),
             E('assembly', {name: 'AreaRegion', version: V_PLUGINS, guid: '4974b228-4974-44cf-8274-bf2936b4a766'}),
-            ...(this.nFiguras ? [E('assembly', {name: 'PictureRegion', version: V_PLUGINS, guid: '06b5df04-393e-4be7-9107-305196fcb861'})] : [])
+            ...(this.nFiguras ? [E('assembly', {name: 'PictureRegion', version: V_PLUGINS, guid: '06b5df04-393e-4be7-9107-305196fcb861'})] : []),
+            ...(this.usaSumario ? [E('assembly', {name: 'Sumario Region', version: '1.1.0.0', guid: '33f80779-a040-46cc-857f-b663fa1d2fc0'})] : [])
           ])
         ]),
         E('regions', {type: 'content'}, this.raiz)
@@ -564,11 +625,12 @@
      * Seção: título visível, todas as contas numa área recolhida e, fora dela, o resultado da
      * área chamado de novo: todos os resultados calculados nela (padrão) ou, com
      * opts.resultados = 'ultimo', só o último e as verificações. opts.depois(doc) escreve algo
-     * dentro da área depois dos passos (tabelas); opts.nivel é o nível do título (padrão 2).
+     * dentro da área depois dos passos (tabelas); opts.nivel é o nível do título (padrão 2) e
+     * opts.numerado faz dele um título numerado do plugin Sumario Region (com sumario: true).
      */
     secao(titulo, passos, opts = {}) {
       const doc = this.doc;
-      doc.titulo(limpar(titulo), opts.nivel || 2);
+      doc.titulo(limpar(titulo), opts.nivel || 2, {numerado: !!opts.numerado});
       doc.abrirArea(`Cálculos — ${limpar(titulo)}`, true);
       const infos = passos.filter(Boolean).flatMap(p => this.passo(p));
       if (opts.depois) opts.depois(doc);
