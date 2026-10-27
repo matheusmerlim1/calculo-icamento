@@ -169,33 +169,44 @@ async function main() {
     if (!/eixo do olhal/.test(r.tela)) throw new Error("tela do olhal sem o ângulo com o eixo");
     await foto("ic_duas_inclinada");
 
-    // peça em V: cada trecho com a sua inclinação, os dois pontos acima da dobra, dobra fora do CG
+    // peça em V: furos por a₁, a₂ (horizontal) e z₁, z₂ (alturas diferentes), φ só dá a direção dos trechos
     await mudar("#ic-inclinada", "dobrada"); await esperar(400);
-    const camposV = await rodar(`return [document.querySelectorAll("[data-incl]").length, document.getElementById("fig-medidas").innerText]`);
-    if (camposV[0] !== 4) throw new Error("campos de ângulo da peça em V: " + camposV[0]);
+    const camposV = await rodar(`return [document.querySelectorAll("[data-incl]").length, document.getElementById("fig-medidas").innerText,
+      [...document.querySelectorAll("[data-medida]")].map(e => e.dataset.medida).join(",")]`);
+    if (camposV[0] !== 2) throw new Error("campos de ângulo da peça em V (só φ₁ e φ₂): " + camposV[0]);
+    if (camposV[2] !== "a1,a2,z1,z2") throw new Error("medidas da peça em V: " + camposV[2]);
     if (!/EM V/.test(camposV[1])) throw new Error("figura das medidas não é a da peça em V");
-    await mudar('[data-incl="phi1"]', "40"); await esperar(300);
-    await mudar('[data-incl="phi2"]', "20"); await esperar(300);
-    await mudar('[data-medida="e"]', "200"); await esperar(400);
-    const v = JSON.parse(await rodar(`const ic = ICapp.atual(), m = ic.medidas;
-      return JSON.stringify({ P: ICapp.pontosDe(ic), eixos: ICapp.eixosOlhalDe(ic), a1: m.a1, a2: m.a2, h: m.h, e: m.e,
+    await mudar('[data-incl="phi1"]', "37"); await esperar(300);
+    await mudar('[data-incl="phi2"]', "29"); await esperar(300);
+    await mudar('[data-medida="a1"]', "1400"); await esperar(300);
+    await mudar('[data-medida="a2"]', "2000"); await esperar(300);
+    await mudar('[data-medida="z1"]', "900"); await esperar(300);
+    await mudar('[data-medida="z2"]', "700"); await esperar(400);
+    const v = JSON.parse(await rodar(`const ic = ICapp.atual(), r = ICapp.resolver(ic);
+      return JSON.stringify({ P: ICapp.pontosDe(ic), eixos: ICapp.eixosOlhalDe(ic), peca: r.peca, avisos: r.avisos,
         d3: document.getElementById("fig-3d-medidas").innerHTML.length })`));
+    const pv = v.P.map(p => [p.x, p.y, p.z]);
+    if (JSON.stringify(pv) !== JSON.stringify([[-1400, 0, 900], [2000, 0, 700]])) throw new Error("V: pontos " + JSON.stringify(pv));
     const rad = g => g * Math.PI / 180;
-    const w = [[-Math.cos(rad(40)), 0, Math.sin(rad(40))], [Math.cos(rad(20)), 0, Math.sin(rad(20))]];
-    const nV = [[Math.sin(rad(40)), 0, Math.cos(rad(40))], [-Math.sin(rad(20)), 0, Math.cos(rad(20))]];
-    [v.a1, v.a2].forEach((s, i) => {
-      const e = w[i].map((c, k) => (k === 0 ? v.e : 0) + c * Math.abs(s) + nV[i][k] * v.h);
-      const p = [v.P[i].x, v.P[i].y, v.P[i].z];
-      if (Math.hypot(...p.map((x, k) => x - e[k])) > 0.01) throw new Error(`V: P${i + 1} fora do lugar: ${p} ≠ ${e}`);
+    const nV = [[Math.sin(rad(37)), 0, Math.cos(rad(37))], [-Math.sin(rad(29)), 0, Math.cos(rad(29))]];
+    // olhal em pé sobre cada trecho: eixo = normal do trecho
+    v.eixos.forEach((e, i) => { if (Math.hypot(...e.map((c, k) => c - nV[i][k])) > 1e-9) throw new Error(`V: eixo do olhal P${i + 1} devia ser a normal do trecho`); });
+    // a dobra sai do cruzamento dos trechos que passam pelos furos
+    const w = [[-Math.cos(rad(37)), 0, Math.sin(rad(37))], [Math.cos(rad(29)), 0, Math.sin(rad(29))]];
+    [0, 1].forEach(i => {
+      const q = w[i].map((c, k) => v.peca.dobra[k] + c * v.peca.a[i]);
+      if (Math.hypot(...q.map((x, k) => x - pv[i][k])) > 0.01) throw new Error(`V: o trecho ${i + 1} não passa pelo furo`);
     });
-    if (!(v.P[0].z > 0 && v.P[1].z > 0)) throw new Error("V: os dois pontos deviam ficar acima da dobra");
-    // P2 com γ = 0°: o olhal aponta ao longo do trecho 2
-    if (Math.hypot(...v.eixos[1].map((c, k) => c - w[1][k])) > 1e-9) throw new Error("V: eixo do olhal em P2 devia seguir o trecho 2");
+    if (v.avisos.length) throw new Error("V: avisos inesperados " + v.avisos.join(" | "));
     if (!(v.d3 > 0)) throw new Error("V: desenho 3D vazio");
     await rodar(`document.getElementById("fig-3d-medidas").scrollIntoView()`); await esperar(200);
     await foto("ic_duas_v");
     await rodar(`window.scrollTo(0, 0)`);
 
+    // a₁ e a₂ são as mesmas medidas da horizontal (da vertical do CG ao ponto): volta os valores de antes
+    const r0 = JSON.parse(reto);
+    await mudar('[data-medida="a1"]', String(Math.abs(r0[0][0]))); await esperar(300);
+    await mudar('[data-medida="a2"]', String(Math.abs(r0[1][0]))); await esperar(300);
     await mudar("#ic-inclinada", "horizontal"); await esperar(400);
     if ((await pontos()) !== reto) throw new Error("desmarcar a inclinação devia voltar aos mesmos pontos");
     return true;

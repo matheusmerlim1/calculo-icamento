@@ -176,38 +176,33 @@ IC.figuras = (function () {
     </svg>`;
   }
 
-  /** duas pernas com a peça dobrada (em V): dois trechos que se encontram na dobra, cada um com a
-   *  sua inclinação φ; a₁, a₂ ao longo de cada trecho, h perpendicular, e da vertical do CG à dobra */
+  /** duas pernas com a peça dobrada (em V): os furos por a₁, a₂ (horizontal, da vertical do CG) e
+   *  z₁, z₂ (altura em relação ao CG), e a inclinação φ de cada trecho; o olhal em pé sobre o trecho */
   function medidasDuasDobrada() {
-    const W = 760, H = 500;
-    const fr = g => g * Math.PI / 180, f1 = fr(32), f2 = fr(18);
+    const W = 760, H = 470;
+    const fr = g => g * Math.PI / 180, f1 = fr(37), f2 = fr(29);
     // eixos de cada trecho (da dobra para o ponto) e a normal "para cima", em coordenadas de tela
     const w = [[-Math.cos(f1), -Math.sin(f1)], [Math.cos(f2), -Math.sin(f2)]];
     const nv = [[Math.sin(f1), -Math.cos(f1)], [-Math.sin(f2), -Math.cos(f2)]];
-    const D = [420, 300], cg = [360, 262], a = [230, 250], hh = 34, esp = 26;
+    const D = [400, 330], a = [220, 300], esp = 22;
     const at = (i, s, n) => [D[0] + w[i][0] * s + nv[i][0] * n, D[1] + w[i][1] * s + nv[i][1] * n];
     const pt = q => `${Math.round(q[0] * 10) / 10},${Math.round(q[1] * 10) / 10}`;
-    const P1 = at(0, a[0], hh), P2 = at(1, a[1], hh), G = [cg[0], 52];
-    const corpo = i => [at(i, -esp / 2, -esp), at(i, a[i] + 40, -esp), at(i, a[i] + 40, esp - 6), at(i, -esp / 2, esp - 6)];
-    // olhal em P1 em pé (γ = 90°) e em P2 inclinado (γ ≈ 50°), só para mostrar a medida
-    const olhal = (i, g) => {
-      const gr = fr(g), P = i ? P2 : P1;
-      const d = [w[i][0] * Math.cos(gr) + nv[i][0] * Math.sin(gr), w[i][1] * Math.cos(gr) + nv[i][1] * Math.sin(gr)];
-      const pe = [P[0] - d[0] * 28, P[1] - d[1] * 28];
-      return { d, svg: `<line x1="${pe[0]}" y1="${pe[1]}" x2="${P[0]}" y2="${P[1]}" class="peca" style="stroke-width:9;stroke-linecap:round"/>` };
+    const P1 = at(0, a[0], 0), P2 = at(1, a[1], 0);
+    const cg = [370, 262], G = [cg[0], 52];
+    const corpo = i => [at(i, -esp / 2, -esp / 2), at(i, a[i] + 40, -esp / 2), at(i, a[i] + 40, esp / 2), at(i, -esp / 2, esp / 2)];
+    // olhal em pé sobre o trecho, com o furo no ponto (o eixo do trecho passa pelo furo, no desenho)
+    const olhal = i => {
+      const P = i ? P2 : P1, pe = [P[0] - nv[i][0] * 18, P[1] - nv[i][1] * 18], top = [P[0] + nv[i][0] * 10, P[1] + nv[i][1] * 10];
+      return `<polyline points="${pt(pe)} ${pt(top)}" class="peca" style="stroke-width:9;stroke-linecap:round"/>`;
     };
-    const o1 = olhal(0, 90), o2 = olhal(1, 50);
-    const eixo = (P, d, k = 70) => `<line x1="${P[0]}" y1="${P[1]}" x2="${P[0] + d[0] * k}" y2="${P[1] + d[1] * k}" class="eixo"/>`;
     // φ de cada trecho: arco centrado na dobra, da horizontal até o eixo do trecho
-    const R = 92, ref = esp + 4;
-    const B = [D[0], D[1] + ref];          // a horizontal passa um pouco abaixo da peça, para o arco ficar à vista
+    const R = 80;
     const arco = i => {
-      const ini = [B[0] + (i ? R : -R), B[1]], fim = [B[0] + w[i][0] * R, B[1] + w[i][1] * R];
-      return `<line x1="${B[0] + (i ? 0 : -R - 30)}" y1="${B[1]}" x2="${B[0] + (i ? R + 30 : 0)}" y2="${B[1]}" class="eixo"/>
-        <line x1="${B[0]}" y1="${B[1]}" x2="${fim[0]}" y2="${fim[1]}" class="eixo"/>
+      const ini = [D[0] + (i ? R : -R), D[1]], fim = [D[0] + w[i][0] * R, D[1] + w[i][1] * R];
+      return `<line x1="${D[0] + (i ? 0 : -R - 24)}" y1="${D[1]}" x2="${D[0] + (i ? R + 24 : 0)}" y2="${D[1]}" class="eixo"/>
         <path d="M${pt(ini)} A ${R},${R} 0 0,${i ? 0 : 1} ${pt(fim)}" class="arco"/>`;
     };
-    const yE = D[1] + 92;
+    const yA = Math.min(P1[1], P2[1]) - 46;      // cotas horizontais acima dos furos
     return `${cabeca(W, H)}
       <text x="${W / 2}" y="20" class="titulo" text-anchor="middle">MEDIDAS A INFORMAR — DUAS PERNAS, ESTRUTURA DOBRADA (EM V)</text>
       <path d="M${G[0]},${G[1] - 22} v12" class="peca"/><circle cx="${G[0]}" cy="${G[1] - 4}" r="8" class="gancho-i"/>
@@ -215,34 +210,29 @@ IC.figuras = (function () {
       <line x1="${G[0]}" y1="${G[1] + 4}" x2="${P2[0]}" y2="${P2[1]}" class="perna"/>
       <polygon points="${corpo(0).map(pt).join(" ")}" class="corpo"/>
       <polygon points="${corpo(1).map(pt).join(" ")}" class="corpo"/>
-      ${o1.svg}${o2.svg}
+      ${olhal(0)}${olhal(1)}
       <circle cx="${P1[0]}" cy="${P1[1]}" r="5" class="ponto"/><circle cx="${P2[0]}" cy="${P2[1]}" r="5" class="ponto"/>
       <text x="${P1[0] - 14}" y="${P1[1] - 8}" text-anchor="end">P1</text>
-      <text x="${P2[0] + 12}" y="${P2[1] + 4}" text-anchor="start">P2</text>
-      <line x1="${G[0]}" y1="${G[1] + 10}" x2="${cg[0]}" y2="${yE + 10}" class="eixo"/>
+      <text x="${P2[0] + 14}" y="${P2[1] - 8}" text-anchor="start">P2</text>
+      <line x1="${G[0]}" y1="${G[1] + 10}" x2="${cg[0]}" y2="${H - 60}" class="eixo"/>
       <circle cx="${cg[0]}" cy="${cg[1]}" r="7" class="cg"/>
-      <text x="${cg[0] - 12}" y="${cg[1] - 10}" class="rot" text-anchor="end">CG</text>
-      <circle cx="${D[0]}" cy="${D[1]}" r="3.5" class="ponto"/>
+      <text x="${cg[0] + 12}" y="${cg[1] - 8}" class="rot" text-anchor="start">CG</text>
 
-      ${cota(...at(0, 0, -esp - 22), ...at(0, a[0], -esp - 22), "a₁")}
-      ${cota(...at(1, 0, -esp - 22), ...at(1, a[1], -esp - 22), "a₂")}
-      ${cota(...at(0, a[0] + 22, 0), ...at(0, a[0] + 22, hh), "h", "end")}
-      <line x1="${D[0]}" y1="${D[1]}" x2="${D[0]}" y2="${yE + 10}" class="eixo"/>
-      ${cota(cg[0], yE, D[0], yE, "e")}
-      <text x="${D[0] + 8}" y="${yE + 24}" class="rot-peq">dobra</text>
+      <line x1="${P1[0]}" y1="${P1[1]}" x2="${P1[0]}" y2="${yA - 6}" class="chamada"/>
+      <line x1="${P2[0]}" y1="${P2[1]}" x2="${P2[0]}" y2="${yA - 6}" class="chamada"/>
+      ${cota(P1[0], yA, cg[0], yA, "a₁")}
+      ${cota(cg[0], yA, P2[0], yA, "a₂")}
+      <line x1="${P1[0] - 50}" y1="${cg[1]}" x2="${P2[0] + 70}" y2="${cg[1]}" class="eixo"/>
+      ${cota(P1[0] - 34, cg[1], P1[0] - 34, P1[1], "z₁", "end")}
+      ${cota(P2[0] + 50, cg[1], P2[0] + 50, P2[1], "z₂", "start")}
 
       ${arco(0)}${arco(1)}
-      <text x="${B[0] - R - 10}" y="${B[1] - 16}" class="forca" text-anchor="end">φ₁</text>
-      <text x="${B[0] + R + 10}" y="${B[1] - 8}" class="forca">φ₂</text>
+      <text x="${D[0] - R - 8}" y="${D[1] - 22}" class="forca" text-anchor="end">φ₁</text>
+      <text x="${D[0] + R + 8}" y="${D[1] - 16}" class="forca">φ₂</text>
 
-      ${eixo(P2, o2.d)}${eixo(P2, w[1], 64)}
-      <text x="${P2[0] + 52}" y="${P2[1] - 44}" class="forca">γ₂</text>
-      ${eixo(P1, o1.d, 60)}
-      <text x="${P1[0] + 8}" y="${P1[1] - 52}" class="forca">γ₁ = 90°</text>
-
-      <text x="${W / 2}" y="${H - 40}" class="rot-peq" text-anchor="middle">φ₁, φ₂ — inclinação de cada trecho com a horizontal: + com o ponto acima da dobra, − abaixo</text>
-      <text x="${W / 2}" y="${H - 24}" class="rot-peq" text-anchor="middle">a₁, a₂ — da dobra a cada ponto, ao longo do trecho · h — do eixo do trecho ao furo · e — da vertical do CG à dobra</text>
-      <text x="${W / 2}" y="${H - 8}" class="rot-peq" text-anchor="middle">γ — eixo do olhal com o eixo do trecho: 90° = em pé sobre ele, 0° = na ponta, apontando para fora</text>
+      <text x="${W / 2}" y="${H - 40}" class="rot-peq" text-anchor="middle">a₁, a₂ — da vertical do CG até o furo de cada olhal, na horizontal · z₁, z₂ — altura de cada furo em relação ao CG</text>
+      <text x="${W / 2}" y="${H - 24}" class="rot-peq" text-anchor="middle">φ₁, φ₂ — inclinação de cada trecho com a horizontal: + com o ponto acima da dobra, − abaixo</text>
+      <text x="${W / 2}" y="${H - 8}" class="rot-peq" text-anchor="middle">o olhal fica em pé sobre o trecho e é verificado com o ângulo real entre a linga e ele</text>
     </svg>`;
   }
 

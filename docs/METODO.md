@@ -93,17 +93,24 @@ Para cada perna `i`, com o ponto de içamento em `Pi` e o gancho em `G = (0, 0, 
 ```
 
 **Estrutura inclinada ou em V (opções das duas pernas)** — a peça é vista como dois trechos que se
-encontram na dobra `D = (e, 0, 0)`, a `e` da vertical do CG (+ para o lado de `P2`). Cada trecho faz
-`φᵢ` com a horizontal, positivo quando `Pᵢ` fica acima da dobra. **Em V**: `φ₁`, `φ₂` e `e`
-informados. **Inclinada** (peça reta, `P2` do lado de cima): um `φ` só, com `φ₁ = −φ`, `φ₂ = φ` e
-`e = 0`. Com `wᵢ` o eixo do trecho (da dobra para `Pᵢ`) e `nᵢ` a normal dele:
+encontram na dobra `D`. Cada trecho faz `φᵢ` com a horizontal, positivo quando `Pᵢ` fica acima da
+dobra. Com `wᵢ` o eixo do trecho (da dobra para `Pᵢ`) e `nᵢ` a normal dele:
 
 ```
 w₁ = (−cos φ₁, 0, sen φ₁)   n₁ = (sen φ₁, 0, cos φ₁)
 w₂ = ( cos φ₂, 0, sen φ₂)   n₂ = (−sen φ₂, 0, cos φ₂)
-Pi = D + aᵢ·wᵢ + h·nᵢ                      (aᵢ ao longo do trecho; h perpendicular a ele)
-eixo do olhal i = cos γᵢ·wᵢ + sen γᵢ·nᵢ    (γ = 90° em pé sobre o trecho, 0° na ponta, para fora)
 ```
+
+**Inclinada** (peça reta, `P2` do lado de cima): um `φ` só, com `φ₁ = −φ`, `φ₂ = φ`, `D` no CG,
+`Pi = aᵢ·wᵢ + h·nᵢ` (`aᵢ` ao longo da peça, `h` perpendicular) e eixo do olhal `cos γᵢ·wᵢ + sen γᵢ·nᵢ`
+(γ = 90° em pé sobre a peça, 0° na ponta, para fora).
+
+**Em V**: os furos entram direto, `P1 = (−a₁, 0, z₁)` e `P2 = (a₂, 0, z₂)` — `aᵢ` na horizontal, da
+vertical do CG, e `zᵢ` a altura de cada furo em relação ao CG (podem ser diferentes). O olhal fica em
+pé sobre o trecho: eixo do olhal `i = nᵢ`. A dobra é o cruzamento dos dois trechos que passam pelos
+furos, `D + s₁·w₁ = P1` e `D + s₂·w₂ = P2`; ela só serve ao desenho — as cargas dependem só dos
+pontos, e `φ` entra no ângulo entre a linga e o olhal. Se `s₁` ou `s₂` sair negativo, os trechos não
+se encontram entre os pontos e o programa avisa.
 
 O gancho continua na vertical do CG, e o equilíbrio é o das duas pernas em cotas diferentes. O
 comprimento que cada linga precisa ter para a peça ficar nessa posição sai da geometria e é
