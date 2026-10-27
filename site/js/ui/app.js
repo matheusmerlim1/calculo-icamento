@@ -758,6 +758,17 @@
         ${P.map(p => `${F.esc(p.nome)} <b>${txtComp(Math.hypot(p.x, p.y, H - p.z))}</b>`).join(" e ")}` : "")
       + (t.unica ? ` · <b>uma linga só:</b> o ponto de içamento fica na vertical do centro de massa — o corpo gira até
         isso acontecer — e a linga trabalha na vertical, com o peso inteiro.` : "");
+    // cada eslinga: altura (do furo ao gancho), distância horizontal, comprimento e ângulo — com os
+    // furos em alturas diferentes as pernas não são iguais, e é daqui que sai o comprimento certo
+    $("saida-pernas").innerHTML = t.unica ? "" : `<table class="tab tab--pernas"><thead><tr>
+        <th>Eslinga</th><th>Altura (furo ao gancho)</th><th>Distância horizontal</th><th>Comprimento</th><th>Ângulo c/ a horizontal</th></tr></thead>
+      <tbody>${P.map(p => {
+        const v = H - p.z, hz = Math.hypot(p.x, p.y);
+        return `<tr><td>${F.esc(p.nome)}${p.x < -1e-6 ? " (esquerda)" : p.x > 1e-6 ? " (direita)" : ""}</td>
+          <td class="num">${txtComp(v)}</td><td class="num">${txtComp(hz)}</td>
+          <td class="num"><b>${txtComp(Math.hypot(hz, v))}</b></td>
+          <td class="num">${F.grau(Math.atan2(v, hz) * 180 / Math.PI)}</td></tr>`;
+      }).join("")}</tbody></table>`;
 
     // fatores
     const f = fatoresDe(ic);

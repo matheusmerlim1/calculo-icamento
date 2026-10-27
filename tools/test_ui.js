@@ -198,6 +198,17 @@ async function main() {
       if (Math.hypot(...q.map((x, k) => x - pv[i][k])) > 0.01) throw new Error(`V: o trecho ${i + 1} não passa pelo furo`);
     });
     if (v.avisos.length) throw new Error("V: avisos inesperados " + v.avisos.join(" | "));
+    // cada eslinga com a sua altura (furo ao gancho) e o seu comprimento
+    const tabP = JSON.parse(await rodar(`const ic = ICapp.atual(), H = ICapp.alturaGancho(ic);
+      return JSON.stringify({ H, linhas: [...document.querySelectorAll("#saida-pernas tbody tr")].map(tr => [...tr.cells].map(c => c.innerText)) })`));
+    if (tabP.linhas.length !== 2) throw new Error("V: tabela das eslingas com " + tabP.linhas.length + " linhas");
+    const num = s => Number(String(s).replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", "."));
+    [[900, 1400], [700, 2000]].forEach(([z, a], i) => {
+      const alt = tabP.H - z, L = Math.hypot(a, alt);
+      if (Math.abs(num(tabP.linhas[i][1]) - alt) > 1) throw new Error(`V: altura da eslinga P${i + 1} ${tabP.linhas[i][1]}, esperado ${alt}`);
+      if (Math.abs(num(tabP.linhas[i][3]) - L) > 1) throw new Error(`V: comprimento da eslinga P${i + 1} ${tabP.linhas[i][3]}, esperado ${L}`);
+    });
+    if (!/esquerda/.test(tabP.linhas[0][0]) || !/direita/.test(tabP.linhas[1][0])) throw new Error("V: lados das eslingas");
     if (!(v.d3 > 0)) throw new Error("V: desenho 3D vazio");
     await rodar(`document.getElementById("fig-3d-medidas").scrollIntoView()`); await esperar(200);
     await foto("ic_duas_v");
