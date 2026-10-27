@@ -249,13 +249,12 @@
    * Nas duas últimas a peça é vista como dois trechos que se encontram na dobra, cada um com a
    * sua inclinação φᵢ com a horizontal — positiva quando o ponto Pᵢ fica acima da dobra.
    * Inclinada: um φ só (P2 do lado de cima), que vira φ₁ = −φ, φ₂ = φ, com a dobra no CG.
-   * Dobrada: os pontos vêm direto — a₁, a₂ na horizontal, da vertical do CG até cada furo, e
-   * z₁, z₂ a altura de cada furo em relação ao CG (os olhais podem estar em níveis diferentes) —
-   * e φ₁, φ₂ dão só a direção de cada trecho. O olhal fica em pé sobre o trecho (γ = 90°), e a
-   * dobra, onde os dois trechos se cruzam passando pelos furos, sai disso (serve ao desenho).
-   * w[i] é o eixo do trecho i (da dobra para Pᵢ), n[i] a normal "para cima" dele.
-   * Inclinada: a₁ e a₂ ao longo da peça e h perpendicular a ela; o olhal fica sempre em pé sobre
-   * a peça (perpendicular a ela). Na horizontal, nada disso entra.
+   * Nas duas os pontos vêm direto: x₁, x₂ na horizontal, do eixo vertical do CG até cada furo
+   * (guardados em a1, a2), e y₁, y₂ a altura de cada furo em relação ao CG (z1, z2) — os olhais
+   * podem estar em níveis diferentes. φ dá só a direção de cada trecho: o olhal fica em pé sobre
+   * ele (γ = 90°), e a dobra, onde os trechos se cruzam passando pelos furos, sai disso (serve
+   * ao desenho). w[i] é o eixo do trecho i (da dobra para Pᵢ), n[i] a normal "para cima" dele.
+   * Na horizontal, nada disso entra.
    */
   const estruturaDe = ic => (ic.tipo !== "duas" || !ic.inclinada ? "horizontal" : ic.dobrada ? "dobrada" : "inclinada");
 
@@ -270,12 +269,12 @@
     const f = phi.map(v => v * Math.PI / 180);
     const w = [[-Math.cos(f[0]), 0, Math.sin(f[0])], [Math.cos(f[1]), 0, Math.sin(f[1])]];
     const n = [[Math.sin(f[0]), 0, Math.cos(f[0])], [-Math.sin(f[1]), 0, Math.cos(f[1])]];
-    if (est !== "dobrada")
-      return { dobrada: false, phi, g: [90, 90], w, n, dobra: [0, 0, 0] };
-
+    // os furos entram por x (na horizontal, do eixo vertical do CG) e y (altura em relação ao CG);
+    // ficam em a1, a2 (os mesmos da horizontal) e z1, z2. Sem y ainda: na inclinada, sobre a peça
     const m = ic.medidas;
-    if (m.z1 === undefined) m.z1 = 500;
-    if (m.z2 === undefined) m.z2 = 500;
+    const tg = Math.tan(f[1]);
+    if (m.z1 === undefined) m.z1 = est === "dobrada" ? 500 : Math.round(-Math.abs(numOu(m.a1, 0)) * tg);
+    if (m.z2 === undefined) m.z2 = est === "dobrada" ? 500 : Math.round(Math.abs(numOu(m.a2, 0)) * tg);
     const P = [[-Math.abs(numOu(m.a1, 0)), 0, numOu(m.z1, 0)], [Math.abs(numOu(m.a2, 0)), 0, numOu(m.z2, 0)]];
     // dobra: D + s₁·w₁ = P1 e D + s₂·w₂ = P2  ->  s₁·w₁ − s₂·w₂ = P1 − P2 (em x e z)
     const det = -w[0][0] * w[1][2] + w[1][0] * w[0][2];
@@ -285,12 +284,12 @@
       s1 = (-bx * w[1][2] + w[1][0] * bz) / det;
       s2 = (w[0][0] * bz - w[0][2] * bx) / det;
     } else {
-      // trechos paralelos (peça reta): a "dobra" fica na vertical do CG, sobre o trecho 1
+      // trechos paralelos (peça reta, a inclinada): a "dobra" fica na vertical do CG, sobre o trecho 1
       s1 = Math.abs(P[0][0]) / Math.max(Math.cos(f[0]), 1e-9);
       s2 = Math.hypot(P[1][0] - (P[0][0] - w[0][0] * s1), P[1][2] - (P[0][2] - w[0][2] * s1));
     }
     return {
-      dobrada: true, phi, g: [90, 90], w, n, pontos: P, s: [s1, s2],
+      dobrada: est === "dobrada", phi, g: [90, 90], w, n, pontos: P, s: [s1, s2],
       dobra: [P[0][0] - w[0][0] * s1, 0, P[0][2] - w[0][2] * s1]
     };
   }
@@ -298,13 +297,7 @@
   function pontosDe(ic) {
     const inc = inclinacaoDe(ic);
     if (!inc) return TIPOS[ic.tipo].pontos(ic.medidas);
-    if (inc.dobrada) return inc.pontos.map((v, i) => ({ nome: `P${i + 1}`, x: v[0], y: v[1], z: v[2] }));
-    const m = ic.medidas, h = Number(m.h) || 0;
-    const p = (i, s, nome) => {
-      const v = vsoma(inc.dobra, vsoma(vesc(inc.w[i], s), vesc(inc.n[i], h)));
-      return { nome, x: v[0], y: v[1], z: v[2] };
-    };
-    return [p(0, Math.abs(m.a1), "P1"), p(1, Math.abs(m.a2), "P2")];
+    return inc.pontos.map((v, i) => ({ nome: `P${i + 1}`, x: v[0], y: v[1], z: v[2] }));
   }
 
   /** eixo de cada olhal (unitário, do pé para o furo): vertical, girado com o trecho da peça,
@@ -371,8 +364,7 @@
     r.eixosOlhal = eixosOlhalDe(ic);
     const inc = inclinacaoDe(ic);
     if (inc) r.peca = { dobrada: inc.dobrada, phi: inc.phi, w: inc.w, n: inc.n, dobra: inc.dobra,
-      a: inc.dobrada ? inc.s.map(v => Math.max(v, 0)) : [Math.abs(ic.medidas.a1), Math.abs(ic.medidas.a2)],
-      h: inc.dobrada ? 0 : Number(ic.medidas.h) || 0 };
+      a: inc.s.map(v => Math.max(v, 0)), h: 0 };
     if (inc && inc.dobrada && (inc.s[0] <= 0 || inc.s[1] <= 0))
       r.avisos.push("Com estas inclinações φ₁ e φ₂ os dois trechos não se encontram entre os pontos — confira os ângulos "
         + "(φ positivo com o ponto acima da dobra). O cálculo das cargas não muda; só o desenho e o ângulo do olhal dependem de φ.");
@@ -692,21 +684,16 @@
           <td>${numCampo(`x${i}`)}</td><td>${numCampo(`y${i}`)}</td><td>${numCampo(`z${i}`)}</td>
           <td class="num som">${txtComp(Math.hypot(ic.medidas[`x${i}`], ic.medidas[`y${i}`]))}</td></tr>`).join("")}</tbody></table>`;
     } else {
-      // inclinada: a₁, a₂ e h passam a ser medidos na própria peça; dobrada: em cada trecho
+      // inclinada e em V: cada furo pelas suas coordenadas — x na horizontal e y na vertical, a partir do CG
       const ROT = {
-        inclinada: {
-          a1: "a₁ — do CG até P1 (lado de baixo), ao longo da peça",
-          a2: "a₂ — do CG até P2 (lado de cima), ao longo da peça",
-          h: "h — do eixo da peça ao furo do olhal, perpendicular à peça"
-        },
-        dobrada: {
-          a1: "a₁ — da vertical do CG até o furo de P1, na horizontal",
-          a2: "a₂ — da vertical do CG até o furo de P2, na horizontal",
-          z1: "z₁ — altura do furo de P1 em relação ao CG (+ acima)",
-          z2: "z₂ — altura do furo de P2 em relação ao CG (+ acima)"
+        xy: {
+          a1: "x₁ — do eixo vertical do CG até o furo de P1, na horizontal (eixo X)",
+          a2: "x₂ — do eixo vertical do CG até o furo de P2, na horizontal (eixo X)",
+          z1: "y₁ — altura do furo de P1 em relação ao CG, na vertical (eixo Y, + acima)",
+          z2: "y₂ — altura do furo de P2 em relação ao CG, na vertical (eixo Y, + acima)"
         }
-      }[est] || {};
-      const listaMedidas = est === "dobrada"
+      }[est === "horizontal" ? "" : "xy"] || {};
+      const listaMedidas = est !== "horizontal"
         ? [["a1", ROT.a1], ["a2", ROT.a2], ["z1", ROT.z1], ["z2", ROT.z2]] : t.medidas;
       const angCampo = (k, rot, valor) => `<label class="campo"><span>${F.esc(rot)}</span>
         <input type="text" inputmode="decimal" data-incl="${k}" data-key="incl-${k}" value="${paraCampo(valor)}"></label>`;
@@ -720,11 +707,12 @@
       const dica = est === "dobrada"
         ? `<p class="dica">Cada trecho tem a sua inclinação com a horizontal: φ é positivo quando o
           ponto fica <b>acima</b> da dobra e negativo quando fica abaixo — na peça em V, os dois
-          positivos. Os furos podem estar em alturas diferentes (z₁ e z₂). O olhal fica em pé sobre o
+          positivos. Os furos podem estar em alturas diferentes (y₁ e y₂). O olhal fica em pé sobre o
           trecho e é verificado com o ângulo real entre a linga e ele. A peça fica nesta posição se as
           lingas tiverem os comprimentos da tabela da etapa 5.</p>`
         : est === "inclinada"
-          ? `<p class="dica">O olhal fica em pé sobre a peça (perpendicular a ela) e é verificado com o
+          ? `<p class="dica">Cada furo pelas suas coordenadas a partir do CG: x na horizontal e y na
+          vertical. O olhal fica em pé sobre a peça (perpendicular a ela) e é verificado com o
           ângulo real entre a linga e ele. A peça fica nesta inclinação se as lingas tiverem os
           comprimentos da tabela da etapa 5.</p>`
           : "";
@@ -1613,10 +1601,12 @@
       mem.definir("FS_linga", F.num(f.fsLinga, 3), "fator de segurança da linga");
       const incM = inclinacaoDe(ic);
       if (incM && incM.dobrada) doc.texto(`Estrutura em V (dobrada): trecho de P1 a φ₁ = ${F.grau(incM.phi[0])} e trecho de P2 a `
-        + `φ₂ = ${F.grau(incM.phi[1])} com a horizontal (+ = ponto acima da dobra) · furos a a₁ = ${F.num(Math.abs(incM.pontos[0][0]), 0)} mm `
-        + `e a₂ = ${F.num(incM.pontos[1][0], 0)} mm da vertical do CG, nas alturas z₁ = ${F.num(incM.pontos[0][2], 0)} mm e `
-        + `z₂ = ${F.num(incM.pontos[1][2], 0)} mm · olhais em pé sobre o trecho`);
-      else if (incM) doc.texto(`Estrutura inclinada: φ = ${F.grau(incM.phi[1])} com a horizontal · olhais em pé sobre a peça`);
+        + `φ₂ = ${F.grau(incM.phi[1])} com a horizontal (+ = ponto acima da dobra) · furos a x₁ = ${F.num(Math.abs(incM.pontos[0][0]), 0)} mm `
+        + `e x₂ = ${F.num(incM.pontos[1][0], 0)} mm do eixo vertical do CG, nas alturas y₁ = ${F.num(incM.pontos[0][2], 0)} mm e `
+        + `y₂ = ${F.num(incM.pontos[1][2], 0)} mm · olhais em pé sobre o trecho`);
+      else if (incM) doc.texto(`Estrutura inclinada: φ = ${F.grau(incM.phi[1])} com a horizontal · furos a x₁ = `
+        + `${F.num(Math.abs(incM.pontos[0][0]), 0)} mm e x₂ = ${F.num(incM.pontos[1][0], 0)} mm do eixo vertical do CG, nas alturas `
+        + `y₁ = ${F.num(incM.pontos[0][2], 0)} mm e y₂ = ${F.num(incM.pontos[1][2], 0)} mm · olhais em pé sobre a peça`);
       if (TIPOS[ic.tipo].pilar) doc.texto("Pilar em pé: olhais soldados nas faces, com o eixo na horizontal, apontando para fora · "
         + "o olhal é verificado com o ângulo entre a linga e o eixo dele (θ com a base = ângulo da perna com a vertical)");
       doc.texto(P.map(p => `${p.nome}: x = ${F.num(p.x, 0)} mm · y = ${F.num(p.y, 0)} mm · z = ${F.num(p.z, 0)} mm`).join("\n"));
@@ -2039,11 +2029,12 @@
     // gravado quando φ₁ e φ₂ ficavam dentro de "inclinada": é a peça em V
     const incl = ic.inclinacao;
     if (ic.dobrada === undefined && incl && incl.phi === undefined && incl.phi1 !== undefined) ic.dobrada = true;
-    // peça em V gravada com a₁, a₂ ao longo dos trechos, h e e: passa para a₁, a₂ na horizontal e
-    // z₁, z₂ — os mesmos furos, nas medidas de agora
-    if (ic.dobrada && incl && ic.medidas && ic.medidas.z1 === undefined) {
-      const m = ic.medidas, h = Number(m.h) || 0, e = Number(m.e) || 0;
-      [[numOu(incl.phi1, 30), m.a1, -1], [numOu(incl.phi2, 30), m.a2, 1]].forEach(([phi, a, lado], i) => {
+    // inclinada ou em V gravada com a₁, a₂ ao longo da peça, h (e e): passa para x (a1, a2) e
+    // y (z1, z2) — os mesmos furos, nas medidas de agora
+    if (ic.inclinada && incl && ic.medidas && ic.medidas.z1 === undefined) {
+      const m = ic.medidas, h = Number(m.h) || 0, e = ic.dobrada ? Number(m.e) || 0 : 0;
+      const phis = ic.dobrada ? [numOu(incl.phi1, 30), numOu(incl.phi2, 30)] : [-numOu(incl.phi, 30), numOu(incl.phi, 30)];
+      [[phis[0], m.a1, -1], [phis[1], m.a2, 1]].forEach(([phi, a, lado], i) => {
         const f = phi * Math.PI / 180, s = Math.abs(Number(a) || 0);
         const x = e + lado * Math.cos(f) * s + -lado * Math.sin(f) * h, z = Math.sin(f) * s + Math.cos(f) * h;
         m[`a${i + 1}`] = Math.round(Math.abs(x) * 10) / 10;

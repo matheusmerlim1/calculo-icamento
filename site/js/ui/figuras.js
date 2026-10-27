@@ -124,7 +124,7 @@ IC.figuras = (function () {
     : tipo === "duas" ? (opts.dobrada ? medidasDuasDobrada() : opts.inclinada ? medidasDuasReta() : medidasDuas())
     : medidasQuatro(tipo === "quatroDif"));
 
-  /** duas pernas com a peça reta inclinada: a₁, a₂ ao longo da peça, h perpendicular, φ e γ */
+  /** duas pernas com a peça reta inclinada: os furos por x₁, x₂ (horizontal) e y₁, y₂ (altura), e φ */
   function medidasDuasReta() {
     const W = 760, H = 480;
     const f = 28 * Math.PI / 180, u = [Math.cos(f), -Math.sin(f)], nv = [-Math.sin(f), -Math.cos(f)];
@@ -132,6 +132,7 @@ IC.figuras = (function () {
     const at = (s, n) => [cg[0] + u[0] * s + nv[0] * n, cg[1] + u[1] * s + nv[1] * n];
     const pt = q => `${Math.round(q[0] * 10) / 10},${Math.round(q[1] * 10) / 10}`;
     const P1 = at(-a1, hh), P2 = at(a2, hh), G = [cg[0], 52];
+    const yX = 404;                              // cotas horizontais abaixo da peça
     const corpo = [at(-a1 - 40, -esp), at(a2 + 40, -esp), at(a2 + 40, esp - 6), at(-a1 - 40, esp - 6)];
     // olhal em pé sobre a peça nos dois pontos
     const olhal = (P, g, lado) => {
@@ -157,23 +158,27 @@ IC.figuras = (function () {
       <circle cx="${cg[0]}" cy="${cg[1]}" r="7" class="cg"/>
       <text x="${cg[0] + 12}" y="${cg[1] + 24}" class="rot">CG</text>
 
-      ${cota(...at(-a1, -esp - 22), ...at(0, -esp - 22), "a₁")}
-      ${cota(...at(0, -esp - 22), ...at(a2, -esp - 22), "a₂")}
-      ${cota(...at(-a1 - 22, 0), ...at(-a1 - 22, hh), "h", "end")}
+      <line x1="${P1[0]}" y1="${P1[1]}" x2="${P1[0]}" y2="${yX + 6}" class="chamada"/>
+      <line x1="${P2[0]}" y1="${P2[1]}" x2="${P2[0]}" y2="${yX + 6}" class="chamada"/>
+      ${cota(P1[0], yX, cg[0], yX, "x₁")}
+      ${cota(cg[0], yX, P2[0], yX, "x₂")}
+      <line x1="${P1[0] - 70}" y1="${cg[1]}" x2="${P2[0] + 70}" y2="${cg[1]}" class="eixo"/>
+      ${cota(P1[0] - 40, cg[1], P1[0] - 40, P1[1], "y₁", "end")}
+      ${cota(P2[0] + 50, cg[1], P2[0] + 50, P2[1], "y₂", "start")}
 
       ${hor(at(-a1 - 40, -esp), 150)}
       <path d="M${at(-a1 - 40, -esp)[0] + 96},${at(-a1 - 40, -esp)[1]} A 96,96 0 0,0 ${at(-a1 - 40 + 96, -esp)[0]},${at(-a1 - 40 + 96, -esp)[1]}" class="arco"/>
       <text x="${at(-a1 - 40, -esp)[0] + 104}" y="${at(-a1 - 40, -esp)[1] - 6}" class="forca">φ</text>
 
 
-      <text x="${W / 2}" y="${H - 40}" class="rot-peq" text-anchor="middle">φ — inclinação da peça com a horizontal (P2 do lado de cima) · a₁, a₂ — do CG a cada ponto, ao longo da peça</text>
-      <text x="${W / 2}" y="${H - 24}" class="rot-peq" text-anchor="middle">h — do eixo da peça ao furo do olhal, perpendicular a ela · α — ângulo de uma perna com a horizontal</text>
+      <text x="${W / 2}" y="${H - 40}" class="rot-peq" text-anchor="middle">x₁, x₂ — do eixo vertical do CG até o furo de cada olhal, na horizontal · y₁, y₂ — altura de cada furo em relação ao CG</text>
+      <text x="${W / 2}" y="${H - 24}" class="rot-peq" text-anchor="middle">φ — inclinação da peça com a horizontal (P2 do lado de cima) · α — ângulo de uma perna com a horizontal</text>
       <text x="${W / 2}" y="${H - 8}" class="rot-peq" text-anchor="middle">o olhal fica em pé sobre a peça e é verificado com o ângulo real entre a linga e ele</text>
     </svg>`;
   }
 
-  /** duas pernas com a peça dobrada (em V): os furos por a₁, a₂ (horizontal, da vertical do CG) e
-   *  z₁, z₂ (altura em relação ao CG), e a inclinação φ de cada trecho; o olhal em pé sobre o trecho */
+  /** duas pernas com a peça dobrada (em V): os furos por x₁, x₂ (horizontal, do eixo vertical do CG)
+   *  e y₁, y₂ (altura em relação ao CG), e a inclinação φ de cada trecho; o olhal em pé sobre o trecho */
   function medidasDuasDobrada() {
     const W = 760, H = 470;
     const fr = g => g * Math.PI / 180, f1 = fr(37), f2 = fr(29);
@@ -216,17 +221,17 @@ IC.figuras = (function () {
 
       <line x1="${P1[0]}" y1="${P1[1]}" x2="${P1[0]}" y2="${yA - 6}" class="chamada"/>
       <line x1="${P2[0]}" y1="${P2[1]}" x2="${P2[0]}" y2="${yA - 6}" class="chamada"/>
-      ${cota(P1[0], yA, cg[0], yA, "a₁")}
-      ${cota(cg[0], yA, P2[0], yA, "a₂")}
+      ${cota(P1[0], yA, cg[0], yA, "x₁")}
+      ${cota(cg[0], yA, P2[0], yA, "x₂")}
       <line x1="${P1[0] - 50}" y1="${cg[1]}" x2="${P2[0] + 70}" y2="${cg[1]}" class="eixo"/>
-      ${cota(P1[0] - 34, cg[1], P1[0] - 34, P1[1], "z₁", "end")}
-      ${cota(P2[0] + 50, cg[1], P2[0] + 50, P2[1], "z₂", "start")}
+      ${cota(P1[0] - 34, cg[1], P1[0] - 34, P1[1], "y₁", "end")}
+      ${cota(P2[0] + 50, cg[1], P2[0] + 50, P2[1], "y₂", "start")}
 
       ${arco(0)}${arco(1)}
       <text x="${D[0] - R - 8}" y="${D[1] - 22}" class="forca" text-anchor="end">φ₁</text>
       <text x="${D[0] + R + 8}" y="${D[1] - 16}" class="forca">φ₂</text>
 
-      <text x="${W / 2}" y="${H - 40}" class="rot-peq" text-anchor="middle">a₁, a₂ — da vertical do CG até o furo de cada olhal, na horizontal · z₁, z₂ — altura de cada furo em relação ao CG</text>
+      <text x="${W / 2}" y="${H - 40}" class="rot-peq" text-anchor="middle">x₁, x₂ — do eixo vertical do CG até o furo de cada olhal, na horizontal · y₁, y₂ — altura de cada furo em relação ao CG</text>
       <text x="${W / 2}" y="${H - 24}" class="rot-peq" text-anchor="middle">φ₁, φ₂ — inclinação de cada trecho com a horizontal: + com o ponto acima da dobra, − abaixo</text>
       <text x="${W / 2}" y="${H - 8}" class="rot-peq" text-anchor="middle">o olhal fica em pé sobre o trecho e é verificado com o ângulo real entre a linga e ele</text>
     </svg>`;

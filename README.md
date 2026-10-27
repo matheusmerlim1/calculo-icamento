@@ -66,10 +66,10 @@ entrar na boca da manilha, e isso é verificado.
 
 **Estrutura horizontal, inclinada ou em V.** Nas duas pernas, o campo "Estrutura" tem três
 opções. **Horizontal**: os pontos ficam na direção do CG. **Inclinada**: peça reta, com um ângulo φ
-com a horizontal; o olhal fica em pé sobre a peça. **Em V (dobrada)**: dois trechos, cada um
-com a sua inclinação (φ₁ e φ₂, positivos com o ponto acima da dobra); os furos entram direto, por
-a₁ e a₂ (na horizontal, da vertical do CG) e z₁ e z₂ (altura de cada furo em relação ao CG — os
-olhais podem estar em níveis diferentes), e o olhal fica em pé sobre o trecho. O programa
+com a horizontal. **Em V (dobrada)**: dois trechos, cada um com a sua inclinação (φ₁ e φ₂, positivos
+com o ponto acima da dobra). Na inclinada e no V os furos entram pelas coordenadas a partir do CG:
+x₁ e x₂ na horizontal (do eixo vertical do CG) e y₁ e y₂ na vertical (altura de cada furo — os olhais
+podem estar em níveis diferentes); o olhal fica sempre em pé sobre a peça. O programa
 calcula onde ficam os pontos, o comprimento de cada linga para a peça ficar nessa posição e
 verifica o olhal com o ângulo real entre a linga e ele. O θ das fórmulas do olhal é o ângulo da
 linga com a base do olhal (antes entrava, errado, o ângulo com a vertical).

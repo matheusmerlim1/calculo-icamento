@@ -137,24 +137,26 @@ async function main() {
     const opcoes = await rodar(`return [...document.getElementById("ic-inclinada").options].map(o => o.value).join(",")`);
     if (opcoes !== "horizontal,inclinada,dobrada") throw new Error("opções da estrutura: " + opcoes);
     await mudar("#ic-inclinada", "inclinada"); await esperar(400);
-    // peça reta inclinada a 30°, com um ângulo só
+    // peça reta inclinada a 30°: cada furo por x (horizontal) e y (altura), a partir do CG
     await mudar('[data-incl="phi"]', "30"); await esperar(300);
-    await esperar(400);
+    const camposI = await rodar(`return [...document.querySelectorAll("[data-medida]")].map(e => e.dataset.medida).join(",")`);
+    if (camposI !== "a1,a2,z1,z2") throw new Error("medidas da peça inclinada (x₁, x₂, y₁, y₂): " + camposI);
+    await mudar('[data-medida="a1"]', "1000"); await esperar(300);
+    await mudar('[data-medida="a2"]', "1200"); await esperar(300);
+    await mudar('[data-medida="z1"]', "-577"); await esperar(300);
+    await mudar('[data-medida="z2"]', "693"); await esperar(400);
     const r = JSON.parse(await rodar(`const ic = ICapp.atual(); ic.olhal.modo = "fabricado"; ICapp.pintar();
       const r = ICapp.resolver(ic), P = ICapp.pontosDe(ic), ang = ICapp.angulosOlhal(ic, r);
       const o = ICapp.olhalDe(ic, ICapp.riggingDe(ic)), m = ic.medidas;
       const util = x => Math.max(...x.verif.checks.map(c => c.utilizacao));
-      return JSON.stringify({ P, G: r.gancho, ang, a1: m.a1, a2: m.a2, h: m.h, gov: o.governante.nome,
+      return JSON.stringify({ P, G: r.gancho, ang, gov: o.governante.nome,
         piorGov: util(o.porPerna.find(x => x.perna.nome === o.governante.nome)),
         piorTodas: Math.max(...o.porPerna.map(util)), fig: document.getElementById("fig-medidas").innerText,
         tela: document.getElementById("resultado-olhal").innerText, campos: document.querySelectorAll("[data-incl]").length })`));
     if (r.campos !== 1) throw new Error("campos de ângulo da peça reta (só φ): " + r.campos);
-    const f = 30 * Math.PI / 180, u = [Math.cos(f), 0, Math.sin(f)], n = [-Math.sin(f), 0, Math.cos(f)];
-    const esp = [[-r.a1, -1], [r.a2, 1]].map(([s]) => u.map((c, k) => c * s + n[k] * r.h));
-    esp.forEach((e, i) => {
-      const p = [r.P[i].x, r.P[i].y, r.P[i].z];
-      if (Math.hypot(...p.map((v, k) => v - e[k])) > 0.01) throw new Error(`P${i + 1} fora do lugar: ${p} ≠ ${e}`);
-    });
+    const f = 30 * Math.PI / 180, n = [-Math.sin(f), 0, Math.cos(f)];
+    const pI = r.P.map(p => [p.x, p.y, p.z]);
+    if (JSON.stringify(pI) !== JSON.stringify([[-1000, 0, -577], [1200, 0, 693]])) throw new Error("inclinada: pontos " + JSON.stringify(pI));
     if (!(r.P[1].z > r.P[0].z)) throw new Error("P2 devia ficar acima de P1");
     // eixo do olhal: em pé sobre a peça nos dois pontos (→ n); ângulo com a linga conferido à mão
     const eixos = [n, n];
@@ -169,7 +171,7 @@ async function main() {
     if (!/eixo do olhal/.test(r.tela)) throw new Error("tela do olhal sem o ângulo com o eixo");
     await foto("ic_duas_inclinada");
 
-    // peça em V: furos por a₁, a₂ (horizontal) e z₁, z₂ (alturas diferentes), φ só dá a direção dos trechos
+    // peça em V: furos por x₁, x₂ (horizontal) e y₁, y₂ (alturas diferentes), φ só dá a direção dos trechos
     await mudar("#ic-inclinada", "dobrada"); await esperar(400);
     const camposV = await rodar(`return [document.querySelectorAll("[data-incl]").length, document.getElementById("fig-medidas").innerText,
       [...document.querySelectorAll("[data-medida]")].map(e => e.dataset.medida).join(",")]`);
