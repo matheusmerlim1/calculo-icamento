@@ -514,6 +514,35 @@ async function main() {
     return true;
   });
 
+  await passo("SMath: seções numeradas, descrição em cima e figuras da estrutura", async () => {
+    const r = JSON.parse(await rodar(`return ICapp.montarSmath().then(({ doc }) => {
+      const xml = doc.xml(), d = new DOMParser().parseFromString(xml, "application/xml");
+      const pics = [...d.getElementsByTagName("raw")].map(x => x.textContent);
+      return JSON.stringify({ erro: d.getElementsByTagName("parsererror").length, pics: pics.length,
+        png: pics.every(p => p.startsWith("iVBOR") && p.length > 2000), nFig: doc.nFiguras,
+        // figura em branco comprime para quase nada: a do 3D tem traço e texto
+        cheia: Math.min(...pics.map(p => p.length)) > 15000,
+        dep: /PictureRegion/.test(xml), titulos: /2\\.1 DADOS DO IÇAMENTO/.test(xml) && /2\\.2 GEOMETRIA DO IÇAMENTO/.test(xml),
+        legenda: /Figura 1: /.test(xml), topo: /position="Top"/.test(xml), direita: /position="Right"/.test(xml),
+        recuo: [...d.getElementsByTagName("region")].filter(x => x.getAttribute("left") === "0").length,
+        pontos: /x\\.P1/.test(xml) && /z\\.P1/.test(xml), resumo: /RESUMO/.test(xml) });
+    });`));
+    if (r.erro) throw new Error("XML do SMath inválido");
+    if (r.pics < 2 || r.pics !== r.nFig) throw new Error(`figuras: ${r.pics} imagens, ${r.nFig} contadas`);
+    if (!r.png) throw new Error("as figuras não são PNG");
+    if (!r.cheia) throw new Error("alguma figura saiu em branco");
+    if (!r.dep) throw new Error("falta a dependência PictureRegion");
+    if (!r.titulos || !r.resumo) throw new Error("seções numeradas faltando");
+    if (!r.legenda) throw new Error("legenda das figuras faltando");
+    if (!r.topo || r.direita) throw new Error("a descrição das variáveis devia ficar em cima");
+    if (r.recuo) throw new Error(`${r.recuo} região(ões) sem recuo`);
+    if (!r.pontos) throw new Error("coordenadas dos pontos faltando");
+    // SM_SAIDA=caminho grava a folha, para abrir no SMath e conferir
+    if (process.env.SM_SAIDA)
+      fs.writeFileSync(process.env.SM_SAIDA, "﻿" + await rodar(`return ICapp.montarSmath().then(({ doc }) => doc.xml())`));
+    return true;
+  });
+
   await passo("lista de material sai em Excel", async () => {
     const r = JSON.parse(await rodar(`const itens = ICapp.material();
       const bytes = IC.xlsx.build({name:"Lista de material", cols:[6,7,24,62,30,12],

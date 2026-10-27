@@ -7,6 +7,9 @@
    2. Documento: posiciona as regiões de cima para baixo (sem sobrepor) e escreve o XML com a
       indentação que o SMath exige — sem ela a folha abre VAZIA. Áreas recolhíveis são UMA
       região que contém o cabeçalho <area>, o conteúdo e o <area terminator>.
+      Opções de leiaute (todas opcionais, o padrão é o de antes): recuo do conteúdo e dos
+      títulos, descrição das variáveis em cima da conta (como nos modelos feitos à mão) e figuras
+      PNG (região "picture", com legenda "Figura N: ...").
    3. Memorial: recebe os passos do memorial da página ({t, f, s, r, ok, n}) e escreve cada
       seção numa área recolhida; fora dela, chama de novo o resultado da área.
       Uma fórmula só vira conta "viva" do SMath quando todos os símbolos dela já estão
@@ -252,12 +255,16 @@
   }
 
   class Documento {
-    constructor({autor = '', casas = 4} = {}) {
+    /** recuo: margem do conteúdo (px); recuoTitulo: margem dos títulos; descricaoEmCima: legenda
+     *  das variáveis acima da conta, e não à direita */
+    constructor({autor = '', casas = 4, recuo = 0, recuoTitulo = 0, descricaoEmCima = false} = {}) {
       this.autor = autor; this.casas = casas;
+      this.recuo = recuo; this.recuoTitulo = recuoTitulo; this.descricaoEmCima = descricaoEmCima;
       this.y = 0; this.raiz = []; this.pilha = [this.raiz]; this.areas = [];
+      this.nFiguras = 0;
     }
-    _regiao(alt, interno, larg, extra = {}) {
-      this.pilha[this.pilha.length - 1].push(E('region', {left: '0', top: String(this.y), width: String(Math.round(larg)),
+    _regiao(alt, interno, larg, extra = {}, left = this.recuo) {
+      this.pilha[this.pilha.length - 1].push(E('region', {left: String(Math.round(left)), top: String(this.y), width: String(Math.round(larg)),
         height: String(alt), color: '#000000', fontSize: '10', ...extra}, [interno]));
       this.y = grade(this.y + alt + ESPACO);
     }
@@ -267,28 +274,52 @@
       const tam = {1: 14, 2: 12, 3: 10}[nivel] || 10;
       if (nivel <= 2 && this.y) this.espaco(9);
       const estilo = `font-size: ${tam}px; font-weight: bold; text-align: ${nivel === 1 ? 'center' : 'left'};`;
-      this._regiao(alturaTexto(txt, LARG, tam) + (nivel === 1 ? 4 : 0),
-        E('text', {lang: 'por', width: String(LARG), fontFamily: 'Arial', fontSize: '10'}, [E('content', {}, paragrafos(txt, estilo))]),
-        LARG, nivel === 1 ? {border: 'true'} : {});
+      const larg = LARG - this.recuoTitulo;
+      this._regiao(alturaTexto(txt, larg, tam) + (nivel === 1 ? 4 : 0),
+        E('text', {lang: 'por', width: String(larg), fontFamily: 'Arial', fontSize: '10'}, [E('content', {}, paragrafos(txt, estilo))]),
+        larg, nivel === 1 ? {border: 'true'} : {}, this.recuoTitulo);
     }
     texto(txt, {negrito = false, italico = false, cor = null, alinhamento = 'left'} = {}) {
       if (txt == null || txt === '') return;
       const estilo = [`text-align: ${alinhamento};`, negrito ? 'font-weight: bold;' : '', italico ? 'font-style: italic;' : '',
         cor ? `color: ${cor};` : ''].filter(Boolean).join(' ');
-      this._regiao(alturaTexto(txt, LARG),
-        E('text', {lang: 'por', width: String(LARG), fontFamily: 'Arial', fontSize: '10'}, [E('content', {}, paragrafos(txt, estilo))]), LARG);
+      const larg = LARG - this.recuo;
+      this._regiao(alturaTexto(txt, larg),
+        E('text', {lang: 'por', width: String(larg), fontFamily: 'Arial', fontSize: '10'}, [E('content', {}, paragrafos(txt, estilo))]), larg);
+    }
+    /**
+     * Figura PNG (base64, sem o "data:"), centrada, com a legenda "Figura N: ..." embaixo.
+     * larg × alt é o tamanho na folha: o SMath ajusta a imagem a ele, então ela pode ter mais
+     * pixels (fica nítida na impressão).
+     */
+    figura(png, larg, alt, legenda) {
+      const util = LARG - this.recuo;
+      if (larg > util) { alt = Math.round(alt * util / larg); larg = util; }
+      this.espaco(9);
+      this._regiao(Math.round(alt), E('picture', {}, [E('raw', {format: 'png', encoding: 'base64'}, png)]), larg,
+        {}, this.recuo + Math.max(0, (util - larg) / 2));
+      this.nFiguras++;
+      if (legenda) this.texto(`Figura ${this.nFiguras}: ${legenda}`, {italico: true, alinhamento: 'center'});
+      return this.nFiguras;
     }
     _math(nos, lista, descricao, contrato, resultado, casas) {
       let a = 11, d = 6, larg = 0;
       for (const n of nos) { if (!n) continue; const c = caixa(n); a = Math.max(a, c[0]); d = Math.max(d, c[1]); larg += largura(n) + 16; }
       if (resultado) larg += 80;
       const filhos = [];
-      if (descricao) filhos.push(E('description', {active: 'true', position: 'Right', lang: 'por'}, [E('content', {}, paragrafos(descricao))]));
+      let extraAlt = 0;
+      if (descricao && this.descricaoEmCima) {
+        // em cima da conta, como nos modelos feitos à mão: a região cresce uma linha por linha da legenda
+        const largD = Math.max(260, Math.min(LARG - this.recuo, larg));
+        extraAlt = 4 + Math.ceil(String(descricao).length * 6.2 / largD) * 15;
+        filhos.push(E('description', {active: 'true', position: 'Top', lang: 'por', width: String(Math.round(largD))},
+          [E('content', {}, paragrafos(descricao))]));
+      } else if (descricao) filhos.push(E('description', {active: 'true', position: 'Right', lang: 'por'}, [E('content', {}, paragrafos(descricao))]));
       filhos.push(E('input', {}, lista));
       if (contrato) filhos.push(E('contract', {}, rpn(contrato)));
       // valor provisório: o SMath recalcula ao abrir a folha
       if (resultado) filhos.push(E('result', {action: 'numeric'}, [E('e', {type: 'operand'}, '0')]));
-      this._regiao(a + d + 12, E('math', casas != null ? {decimalPlaces: String(casas)} : {}, filhos), Math.min(LARG, larg));
+      this._regiao(a + d + 12 + extraAlt, E('math', casas != null ? {decimalPlaces: String(casas)} : {}, filhos), Math.min(LARG - this.recuo, larg));
     }
     /** nome := expr */
     atribuir(nome, expr, descricao) {
@@ -346,7 +377,8 @@
             E('assembly', {name: 'SMath Core', version: V_PLUGINS, guid: 'a37cba83-b69c-4c71-9992-55ff666763bd'}),
             E('assembly', {name: 'MathRegion', version: V_PLUGINS, guid: '02f1ab51-215b-466e-a74d-5d8b1cf85e8d'}),
             E('assembly', {name: 'TextRegion', version: V_PLUGINS, guid: '485d28c5-349a-48b6-93be-12a35a1c1e39'}),
-            E('assembly', {name: 'AreaRegion', version: V_PLUGINS, guid: '4974b228-4974-44cf-8274-bf2936b4a766'})
+            E('assembly', {name: 'AreaRegion', version: V_PLUGINS, guid: '4974b228-4974-44cf-8274-bf2936b4a766'}),
+            ...(this.nFiguras ? [E('assembly', {name: 'PictureRegion', version: V_PLUGINS, guid: '06b5df04-393e-4be7-9107-305196fcb861'})] : [])
           ])
         ]),
         E('regions', {type: 'content'}, this.raiz)
@@ -532,11 +564,11 @@
      * Seção: título visível, todas as contas numa área recolhida e, fora dela, o resultado da
      * área chamado de novo: todos os resultados calculados nela (padrão) ou, com
      * opts.resultados = 'ultimo', só o último e as verificações. opts.depois(doc) escreve algo
-     * dentro da área depois dos passos (tabelas).
+     * dentro da área depois dos passos (tabelas); opts.nivel é o nível do título (padrão 2).
      */
     secao(titulo, passos, opts = {}) {
       const doc = this.doc;
-      doc.titulo(limpar(titulo), 2);
+      doc.titulo(limpar(titulo), opts.nivel || 2);
       doc.abrirArea(`Cálculos — ${limpar(titulo)}`, true);
       const infos = passos.filter(Boolean).flatMap(p => this.passo(p));
       if (opts.depois) opts.depois(doc);

@@ -49,6 +49,14 @@ unitária. As peças saem de um modelo salvo pelo próprio SolidWorks
 (`tools/sldprt/modelo_vazio.SLDPRT`), com as propriedades trocadas no lugar — como e por quê em
 `site/js/core/sldprt.js`. Mudou o modelo: `node tools/sldprt/gerar_modelo.js`.
 
+**Memorial no SMath Studio** — o botão *SMath (.sm)* gera a folha do estudo inteiro, organizada
+como os modelos feitos à mão: seções numeradas (1. dados do estudo; 2. primeiro içamento, com
+2.1 dados, 2.2 geometria, 2.3 peso de projeto, 2.4 cargas nas eslingas, … até o resumo), a
+descrição de cada variável em cima da conta, o conteúdo recuado e as contas intermediárias em
+áreas recolhidas. Entram as figuras da estrutura, com legenda "Figura N": a vista 3D com as
+distâncias, o diagrama de corpo livre, a planta (quatro pernas), a manilha e o olhal fabricado.
+As coordenadas de cada ponto viram variáveis (`x.P1`, `z.P1`, …).
+
 Vários içamentos convivem no mesmo estudo (abas no topo), e a lista pode sair de um só ou
 consolidada do estudo inteiro.
 
