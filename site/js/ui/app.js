@@ -218,9 +218,10 @@
       tipo: "quatroSim", medidas: Object.assign({}, TIPOS.quatroSim.padrao),
       angulo: 60, pernaAngulo: 0,          // ângulo da perna com a estrutura, medido nesta perna
       hipotese4: "elastica", fatores: null, lingaPropria: true,
-      linga: { tipo: "6x19-aco", categoria: "1960" },
+      linga: { tipo: "6x19-aco", categoria: "1960", terminacao: "manual" },
       manilhaTipo: "G-4163", manilhaCodigo: null,   // null = escolha automática (menor manilha que encaixa em tudo)
-      olhal: { modo: "fabricado", tipoComprado: "GPAL-UNC", fy: 355, porPerna: [] }
+      olhal: { modo: "fabricado", tipoComprado: "GPAL-UNC", fy: 355, porPerna: [],
+        solda: { tipo: "penetracao", a: 0, eletrodo: "E70" } }
     };
   }
 
@@ -347,14 +348,29 @@
     const b = FAT.bases[ic.base] || FAT.bases.N001;
     const padrao = {
       peso: b.peso[ic.origem] ?? 1.05,
-      daf: FAT.daf(ic.base, ic.local, (Number(ic.massa) || 0) / 1000),
-      consequencia: b.consequencia[ic.consequencia] ?? 1,
+      cog: b.cog ?? 1,
       // uma linga só leva o peso inteiro: não há distribuição desigual a cobrir
       skl: TIPOS[ic.tipo].pernas > 2 ? b.skl.quatro : TIPOS[ic.tipo].pernas === 1 ? 1 : b.skl.duas,
       fsLinga: b.fsLinga.padrao,
       anguloMax: FAT.anguloMaximo
     };
-    return Object.assign(padrao, ic.fatores || {});
+    if (b.linga.modelo === "N001") Object.assign(padrao, {
+      gh: b.linga.gh, gc: b.linga.gc[ic.consequencia] ?? b.linga.gc.normal, gm: b.linga.gm, gw: b.linga.gw
+    });
+    const f = Object.assign(padrao, ic.fatores || {});
+    // DAF pela carga estática no gancho SHL = W·γ_peso·γ_CoG (t), salvo se foi digitado
+    f.shlT = (Number(ic.massa) || 0) / 1000 * f.peso * f.cog;
+    if (!(ic.fatores && ic.fatores.dafManual)) f.daf = FAT.daf(ic.base, ic.local, f.shlT);
+    return f;
+  }
+  /** fatores da linga para o rigging: os parciais da N001 ou o FS único das outras bases */
+  function fatoresLinga(ic) {
+    const f = fatoresDe(ic), b = FAT.bases[ic.base] || FAT.bases.N001;
+    if (b.linga.modelo !== "N001") return { modelo: "fs", fs: f.fsLinga };
+    const term = FAT.terminacoes[(ic.linga && ic.linga.terminacao) || "manual"] || FAT.terminacoes.manual;
+    const lg = ic.linga || {};
+    const Dtopo = lg.topo === "gancho" && Number(lg.dTopo) > 0 ? Number(lg.dTopo) : null;
+    return { modelo: "N001", gh: f.gh, gc: f.gc, gs: term.gs, gw: f.gw, gm: f.gm, terminacao: term.nome, Dtopo };
   }
 
   function resolver(ic) {
@@ -428,7 +444,7 @@
     // FS da linga do dono do conjunto: com a maior carga do estudo, a linga é a mesma de lá
     const f = fatoresDe(modeloDe(ic));
     const cargaGov = cargaGovernanteKN(ic);
-    const linga = RIG.escolherLinga({ cargaKN: cargaGov, fsLinga: f.fsLinga, tipo: ic.linga.tipo, categoria: ic.linga.categoria });
+    const linga = RIG.escolherLinga({ cargaKN: cargaGov, fl: fatoresLinga(modeloDe(ic)), tipo: ic.linga.tipo, categoria: ic.linga.categoria });
     const sapatilho = RIG.escolherSapatilho(linga.diametro);
     const manilha = RIG.escolherManilha({
       cargaKN: cargaGov, tipo: ic.manilhaTipo, sapatilho: sapatilho.sapatilho,
@@ -459,7 +475,9 @@
       ic.olhal.geom.dFuro = daManilha.dFuro;
       ic.olhal.geom.R = daManilha.R;
     }
-    ic.olhal.geom.rAnel = Number(ic.olhal.geom.R) || 0;
+    // N-2683 5.3.3: d_anel ≤ 2·(R − n·t_anel); com n = 1 o anel fica com raio R − t_anel
+    const tA = Number(ic.olhal.geom.tAnel) || 0;
+    ic.olhal.geom.rAnel = tA > 0 ? Math.max((Number(ic.olhal.geom.R) || 0) - tA, 0) : 0;
     return ic.olhal.geom;
   }
 
@@ -470,6 +488,12 @@
   }
 
   const piorUtilizacao = v => Math.max(...v.checks.map(c => c.utilizacao));
+  /** fator de consequência do olhal: N-2683 5.2 a) e DNV-ST-N001 Tabela 16-5 */
+  const FC_OLHAL = 1.30;
+  function soldaDe(ic) {
+    if (!ic.olhal.solda) ic.olhal.solda = { tipo: "penetracao", a: 0, eletrodo: "E70" };
+    return ic.olhal.solda;
+  }
 
   /**
    * O olhal do içamento (um só, igual em todos os pontos). O comercial vai pela perna mais
@@ -492,7 +516,9 @@
     const porPerna = pernas.map((p, i) => ({
       perna: p, angulo: angs[i],
       verif: RIG.verificarOlhalFabricado({
-        Fpino: p.tracao, thetaGraus: Math.max(0, angs[i].base), geom, Fy: fyDoOlhal(ic)
+        Flinga: p.tracao, fc: FC_OLHAL, thetaGraus: Math.max(0, angs[i].base), geom, Fy: fyDoOlhal(ic),
+        dPino: rig.manilha.manilha ? rig.manilha.manilha.b : null, solda: soldaDe(ic),
+        encaixe: { manilha: rig.manilha.manilha, sapatilho: rig.sapatilho.sapatilho }
       })
     }));
     const pior = porPerna.reduce((a, b) => (piorUtilizacao(b.verif) > piorUtilizacao(a.verif) + 1e-9 ? b : a), porPerna[0]);
@@ -648,7 +674,8 @@
     $("rot-massa").textContent = `Massa (${uMassa()})`;
     $("ic-origem").value = ic.origem;
     $("ic-local").value = ic.local;
-    $("ic-cons").value = ic.consequencia;
+    $("ic-cons").value = ic.consequencia === "reduzida" ? "reduzida" : "normal";
+    $("ic-cons").closest(".campo").style.display = (FAT.bases[ic.base] || FAT.bases.N001).linga.modelo === "N001" ? "" : "none";
     $("ic-hipotese").value = ic.hipotese4;
     $("ic-hipotese").closest(".campo").style.display = t.pernas > 2 ? "" : "none";
     $("dica-hipotese").style.display = t.pernas > 2 ? "" : "none";
@@ -666,8 +693,7 @@
     $("ic-base").innerHTML = Object.entries(FAT.bases)
       .map(([k, b]) => `<option value="${k}"${k === ic.base ? " selected" : ""}>${F.esc(b.nome)}</option>`).join("");
     const b = FAT.bases[ic.base];
-    $("dica-base").innerHTML = `${F.esc(b.nota)} ${b.conferir
-      ? "<b>Os valores das tabelas da norma precisam ser conferidos com a edição contratada.</b>" : ""}`;
+    $("dica-base").innerHTML = F.esc(b.nota);
 
     // cartões dos tipos, cada um com o seu desenho
     $("tipos").innerHTML = Object.entries(TIPOS).map(([k, tp]) =>
@@ -774,10 +800,12 @@
 
     // fatores
     const f = fatoresDe(ic);
-    const rotulos = {
-      peso: "Margem de peso γ", daf: "Amplificação dinâmica DAF", consequencia: "Consequência γc",
-      skl: "Distribuição desigual SKL", fsLinga: "FS da linga", anguloMax: "Ângulo máx. c/ a vertical (°)"
-    };
+    const n001 = (FAT.bases[ic.base] || FAT.bases.N001).linga.modelo === "N001";
+    const rotulos = Object.assign({
+      peso: "Margem de peso γ_peso", cog: "Imprecisão do CoG γ_CoG", daf: "Amplificação dinâmica DAF",
+      skl: "Distribuição desigual SKL"
+    }, n001 ? { gh: "Eslinga: fator de içamento γh", gc: "Eslinga: consequência γc", gm: "Eslinga: material γm",
+      gw: "Eslinga: desgaste e aplicação γw" } : { fsLinga: "FS da linga" }, { anguloMax: "Ângulo máx. c/ a vertical (°)" });
     $("campos-fatores").innerHTML = Object.entries(rotulos).map(([k, rot]) =>
       `<label class="campo"><span>${rot}</span><input type="text" inputmode="decimal" data-fator="${k}" data-key="fator-${k}" value="${paraCampo(f[k])}"></label>`).join("");
   }
@@ -801,11 +829,9 @@
             "um par diagonal sustenta 100 % do peso, o outro frouxo; sem SKL", dg, 1)}
         </tbody>
       </table>
-      <p class="dica">Razão diagonais / elástica × SKL = <b>${F.num(dg / el, 2)}</b>.
-        A elástica × SKL é o modelo da norma para lingas de comprimento controlado (conjunto
-        casado, tolerância de fabricação conhecida). Use pares diagonais quando as lingas não
-        forem casadas, o corpo for muito rígido e não houver controle do comprimento, ou quando
-        o cliente/certificadora exigir a envoltória.</p>`;
+      <p>Hipótese adotada: <b>${usada === "diagonais" ? "pares diagonais (envoltória)" : "elástica × SKL (DNV-ST-N001)"}</b>
+        · maior tração de projeto <b>${F.kn(usada === "diagonais" ? dg : el)}</b>
+        · razão diagonais / elástica × SKL = <b>${F.num(dg / el, 2)}</b>.</p>`;
   }
 
   /* ------------------------------------------------------------ passos do memorial
@@ -818,8 +844,8 @@
         resultado: `W = ${F.num(r.pesoKN, 2)} kN`
       },
       {
-        formula: "W_proj = W · γ_peso · DAF · γ_cons",
-        sub: `W_proj = ${F.num(r.pesoKN, 2)} × ${F.num(r.fatores.peso, 2)} × ${F.num(r.fatores.daf, 2)} × ${F.num(r.fatores.consequencia, 2)}`,
+        formula: "W_proj = W · γ_peso · γ_CoG · DAF",
+        sub: `W_proj = ${F.num(r.pesoKN, 2)} × ${F.num(r.fatores.peso, 2)} × ${F.num(r.fatores.cog, 2)} × ${F.num(r.fatores.daf, 3)}`,
         resultado: `W_proj = ${F.num(r.pesoProjKN, 2)} kN`
       }
     ];
@@ -915,7 +941,7 @@
             <div class="item"><span>Peso de projeto</span><b>${F.kn(rx.pesoProjKN)}</b></div>
             <div class="item"><span>Ângulo da perna</span><b>${TIPOS[x.tipo].unica ? "vertical (linga única)" : `${F.grau(x.angulo)} c/ a ${TIPOS[x.tipo].pilar ? "horizontal" : "estrutura"}`}</b></div>
             <div class="item"><span>Altura do gancho</span><b>${txtComp(alturaGancho(x))}</b></div>
-            <div class="item"><span>γ peso × DAF × γc</span><b>${F.num(fx.peso, 2)} × ${F.num(fx.daf, 2)} × ${F.num(fx.consequencia, 2)}</b></div>
+            <div class="item"><span>γ_peso × γ_CoG × DAF</span><b>${F.num(fx.peso, 2)} × ${F.num(fx.cog, 2)} × ${F.num(fx.daf, 3)}</b></div>
             <div class="item"><span>SKL</span><b>${F.num(fx.skl, 2)}</b></div>` : ""}
         </div>
         ${aberto ? `
@@ -1035,6 +1061,14 @@
     $("ic-linga-tipo").innerHTML = Object.entries(IC.lingas.tipos)
       .map(([k, t]) => `<option value="${k}"${k === ic.linga.tipo ? " selected" : ""}>${F.esc(t.nome)}</option>`).join("");
     $("ic-linga-cat").value = ic.linga.categoria;
+    $("ic-linga-term").innerHTML = Object.entries(FAT.terminacoes).map(([k, t]) =>
+      `<option value="${k}"${k === (ic.linga.terminacao || "manual") ? " selected" : ""}>${F.esc(t.nome)} — γs ${F.num(t.gs, 2)}</option>`).join("");
+    const lgN001 = (FAT.bases[modeloDe(ic).base] || FAT.bases.N001).linga.modelo === "N001";
+    $("ic-linga-term").closest(".campo").style.display = lgN001 ? "" : "none";
+    $("ic-linga-topo").value = ic.linga.topo === "gancho" ? "gancho" : "sapatilho";
+    $("ic-linga-topo").closest(".campo").style.display = lgN001 ? "" : "none";
+    $("ic-linga-dtopo").value = paraCampo(Number(ic.linga.dTopo) || 0);
+    $("ic-linga-dtopo").closest(".campo").style.display = lgN001 && ic.linga.topo === "gancho" ? "" : "none";
 
     const rig = riggingDe(ic);
     const l = rig.linga;
@@ -1047,7 +1081,12 @@
       <div class="linga-par__col">
         <div class="painel">
           <div class="item"><span>Carga governante</span><b>${F.kn(rig.cargaGov)} · ${F.ton(rig.cargaGov / G)}</b></div>
-          <div class="item"><span>FS da linga</span><b>${F.num(l.fsLinga, 2)}</b></div>
+          ${l.n001 ? `<div class="item"><span>Terminação (γs)</span><b>${F.esc(l.fl.terminacao)} — ${F.num(l.fl.gs, 2)}</b></div>
+          <div class="item"><span>Dobra no sapatilho, olho inferior (γb)</span><b>${F.num(l.fatores.gbSap, 3)} (D ${F.num(l.fatores.D, 1)} mm)</b></div>
+          <div class="item"><span>Dobra no olho superior (γb)</span><b>${F.num(l.fatores.gbTopo, 3)}${l.fatores.Dtopo
+            ? ` (D ${F.num(l.fatores.Dtopo, 1)} mm${l.fatores.Dtopo < l.diametro ? " — menor que o cabo: só o olho pode dobrar assim, 16.4.8.5" : ""})`
+            : ic.linga.topo === "gancho" ? " — informe o D do gancho ou elo" : " (com sapatilho)"}</b></div>` : ""}
+          <div class="item"><span>${l.n001 ? "Fator de segurança γsf (DNV-ST-N001 16.4.3)" : "FS da linga"}</span><b>${F.num(l.fsLinga, 3)}</b></div>
           <div class="item"><span>MBL requerida</span><b>${F.kn(l.mblReqKN)}</b></div>
           <div class="item"><span>Utilização (MBL requerida / MBL do cabo)</span><b>${F.num(l.utilizacao * 100, 0)} %</b></div>
         </div>
@@ -1268,12 +1307,13 @@
         <h4>${F.esc(quais)}</h4>
         <div class="painel">
           <div class="item"><span>Dimensionado pela perna</span><b>${F.esc(gov.nome)} — a mais solicitada no olhal</b></div>
-          <div class="item"><span>Carga no pino (F.pino)</span><b>${F.kn(gov.tracao)}</b></div>
+          <div class="item"><span>Força da linga (F.linga)</span><b>${F.kn(gov.tracao)}</b></div>
+          <div class="item"><span>Carga no pino F.pino = 1,30 · F.linga (N-2683 5.2)</span><b>${F.kn(v.FpinoKN)}</b></div>
           <div class="item"><span>Ângulo da linga com o eixo do olhal</span><b>${F.grau(o.angulo.eixo)}</b></div>
           <div class="item"><span>Ângulo da linga com a base do olhal (θ)</span><b>${F.grau(o.angulo.base)}</b></div>
         </div>
         ${o.porPerna.length > 1 ? `<table class="tab">
-          <thead><tr><th>Perna</th><th class="num">F.pino</th><th class="num">c/ o eixo do olhal</th>
+          <thead><tr><th>Perna</th><th class="num">F.linga</th><th class="num">c/ o eixo do olhal</th>
             <th class="num">θ c/ a base</th><th class="num">Maior utilização</th></tr></thead>
           <tbody>${o.porPerna.map(x => `<tr class="${x.perna === gov ? "maior" : ""}">
             <td>${F.esc(x.perna.nome)}</td><td class="num">${F.kn(x.perna.tracao)}</td>
@@ -1289,11 +1329,12 @@
         <figure class="fig-topo" id="fig-olhal">${FIG.olhal(g)}</figure>
         <div>
           <div class="olhal-bloco">
-            <h4>Medidas que você escolhe</h4>
-            <div class="olhal-geom">${GEOM_ESPESSURA.map(campoEspessura).join("")}${GEOM_ESCOLHA.map(campo).join("")}</div>
+            <h4 class="so-tela">Medidas que você escolhe</h4>
+            <div class="olhal-geom">${GEOM_ESPESSURA.map(campoEspessura).join("")}${GEOM_ESCOLHA.map(campo).join("")}
+              ${camposSolda(soldaDe(ic), g)}</div>
             <p class="dica">A <b>espessura</b> vem da lista de chapa comercial — é a bitola que se
-              compra. Ela tem que caber na boca da manilha com folga de até 11,75 mm — na escolha
-              automática, mudar a espessura troca a manilha. <b>Base</b> e <b>altura</b> definem o
+              compra. Ela tem que caber na boca W da manilha com folga de até mín(0,25·W ; 12 mm)
+              (N-2683 4.2.3.2) — na escolha automática, mudar a espessura troca a manilha. <b>Base</b> e <b>altura</b> definem o
               tamanho da chapa. O <b>reforço</b> é opcional: escolha "sem reforço" se o olhal não
               tiver anel.</p>
           </div>
@@ -1306,11 +1347,7 @@
               <div class="item"><span>R — raio do topo</span><b>${F.num(g.R, 1)} mm</b></div>
               <div class="item"><span>R.anel — raio do reforço</span><b>${F.num(g.rAnel, 1)} mm</b></div>
             </div>
-            ${mn ? memorial({
-              formula: "Ø furo = b(pino) + folga · R = f − g + b/2 + 5 · R.anel = R",
-              sub: `Ø furo = ${F.num(mn.b, 1)} + 1,15 · R = ${F.num(mn.f, 1)} − ${F.num(mn.g, 1)} + ${F.num(mn.b / 2, 1)} + 5`,
-              resultado: `Ø furo = ${F.num(g.dFuro, 2)} mm · R = R.anel = ${F.num(g.R, 1)} mm`
-            }) : ""}
+            ${mn ? memorial(passosFuro(mn, g)) : ""}
             <p class="dica">São calculadas a partir da manilha — mudou a manilha na etapa 7,
               mudam aqui e no desenho.</p>
           </div>
@@ -1320,19 +1357,49 @@
       ${chapa ? avisoChapa(chapa, rig.manilha.manual) : ""}
 
       <table class="tab">
-        <thead><tr><th>#</th><th>Verificação</th><th>Tensão</th><th>Admissível</th><th>Utilização</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>Verificação</th><th>Solicitante</th><th>Limite</th><th>Utilização</th><th></th></tr></thead>
         <tbody>${v.checks.map(c => `<tr>
           <td>${c.n}</td><td>${F.esc(c.nome)}</td>
-          <td class="num">${c.semUnidade ? F.num(c.tensao, 2) : F.num(c.tensao, 1) + " MPa"}</td>
-          <td class="num">${c.semUnidade ? "1" : F.num(c.admissivel, 1) + " MPa"}</td>
+          <td class="num">${valorCheck(c, c.tensao)}</td>
+          <td class="num">${valorCheck(c, c.admissivel)}</td>
           <td class="num"><div class="barra${c.utilizacao > 1 ? " estourou" : ""}"><i style="width:${Math.min(100, c.utilizacao * 100)}%"></i></div>${F.num(c.utilizacao * 100, 0)}%</td>
           <td class="selo-cel"><span class="selo ${c.ok ? "selo--ok" : "selo--erro"}">${c.ok ? "OK" : "falha"}</span></td>
         </tr>
         <tr class="linha-formula"><td colspan="6">${memorial(c.formula)}</td></tr>`).join("")}</tbody>
       </table>
-      <p class="dica">Solda não é verificada automaticamente — conferir à parte pela NBR 8800.</p>`;
+      ${v.soldaBase.tipo === "penetracao" ? `<p>Solda do olhal na estrutura: <b>penetração total</b> — resistência igual à da
+        chapa, verificada pelos itens de força axial, flexões, tensões combinadas e cisalhamento na base
+        (N-2683 5.4.10${g.t >= 12.7 ? "; chapa ≥ 12,7 mm, conforme a nota de 4.5" : ""}).</p>` : ""}`;
 
 
+  }
+
+  /** solda do olhal na estrutura: tipo, lado do filete e eletrodo */
+  function camposSolda(sd, g) {
+    const sel = (id, ops, v) => `<select data-olhal-solda="${id}" data-key="olhal-solda-${id}">${ops.map(([k, t]) =>
+      `<option value="${k}"${k === v ? " selected" : ""}>${t}</option>`).join("")}</select>`;
+    return `<label class="campo"><span>Solda na estrutura</span>${sel("tipo",
+        [["penetracao", "penetração total"], ["filete", "filete nas duas faces"]], sd.tipo)}</label>
+      ${sd.tipo === "filete" ? `<label class="campo"><span>a — lado do filete (mm)</span>
+        <input type="text" inputmode="decimal" data-olhal-solda="a" data-key="olhal-solda-a"
+          value="${paraCampo(Number(sd.a) > 0 ? sd.a : RIG.fileteMinimo(Number(g.t) || 0))}"></label>` : ""}
+      <label class="campo"><span>Eletrodo</span>${sel("eletrodo",
+        Object.entries(RIG.ELETRODOS).map(([k, fu]) => [k, `${k}xx — Fwu ${fu} MPa`]), sd.eletrodo || "E70")}</label>`;
+  }
+
+  /** solicitante/limite de uma verificação, com a unidade dela */
+  const valorCheck = (c, v) => c.semUnidade ? F.num(v, 2) : `${F.num(v, c.unidade === "mm" ? 2 : 1)} ${c.unidade || "MPa"}`;
+
+  /** Ø do furo (N-2683 5.3.1) e raio do topo, a partir da manilha */
+  function passosFuro(mn, g) {
+    const folga = RIG.folgaFuro(mn.b);
+    return [
+      { formula: "d_furo = d_pino + folga;  folga = 1 mm (d_pino ≤ 33 mm) ou mín(0,03·d_pino ; 6 mm)   (N-2683 5.3.1)",
+        sub: `d_furo = ${F.num(mn.b, 1)} + ${F.num(folga, 2)}`, resultado: `d_furo = ${F.num(g.dFuro, 2)} mm` },
+      { formula: "R = f − g + b/2 + 5", sub: `R = ${F.num(mn.f, 1)} − ${F.num(mn.g, 1)} + ${F.num(mn.b / 2, 1)} + 5`,
+        resultado: `R = ${F.num(g.R, 1)} mm` }
+    ].concat(Number(g.tAnel) > 0 ? [{ formula: "r_anel = R − n·t_anel, n = 1   (N-2683 5.3.3)",
+      sub: `r_anel = ${F.num(g.R, 1)} − ${F.num(g.tAnel, 1)}`, resultado: `r_anel = ${F.num(g.rAnel, 1)} mm` }] : []);
   }
 
   /* ------------------------------------------------------------ lista de material */
@@ -1360,11 +1427,23 @@
       + "catálogo da peça não traz. \u201c*\u201d é massa estimada pela chapa do olhal fabricado.";
   }
 
+  /** textos livres do relatório (capítulos de texto do memorial no SMath e no papel) */
+  const TEXTOS_RELATORIO = [
+    ["introducao", "Introdução", "O que é o documento e a que obra ou estrutura se refere."],
+    ["objetivo", "Objetivo", "O que este memorial demonstra."],
+    ["plano", "Plano de içamento", "Como e em que etapas a estrutura será içada."],
+    ["local", "Local da instalação", "Onde a estrutura será instalada (plataforma, elevação, área)."],
+    ["guindaste", "Dados do guindaste", "Guindaste ou embarcação usada, documento de referência, capacidade."],
+    ["referencias", "Referências", "Uma referência por linha: normas, desenhos, catálogos."]
+  ];
+  const textosRelatorio = () => Object.assign({}, E.textos || {});
+
   /** capa do relatório — só sai no papel */
   function pintarCapa() {
     const alvo = $("capa");
     if (!alvo) return;
     const hoje = new Date().toLocaleDateString("pt-BR");
+    const T = textosRelatorio();
     const linhas = E.icamentos.map(ic => {
       const r = resolver(ic);
       return `<tr><td>${F.esc(ic.nome)}</td>
@@ -1390,10 +1469,11 @@
           <th class="num">Carga no gancho</th><th class="num">Maior tração</th></tr></thead>
         <tbody>${linhas}</tbody>
       </table>
-      <p class="capa__nota">Roteiro do documento: cada etapa traz o que foi informado, a fórmula
-        usada, a substituição dos valores e o resultado. Os fatores de projeto vêm da base
-        normativa escolhida e estão registrados na etapa 4. Valores de catálogo e de norma
-        devem ser conferidos com a edição contratada antes da emissão.</p>`;
+      ${TEXTOS_RELATORIO.filter(([k]) => k !== "referencias" && T[k]).map(([k, rot]) =>
+        `<h2 class="capa__h">${rot}</h2><p class="capa__texto">${F.esc(T[k])}</p>`).join("")}`;
+    const refs = $("rel-referencias");
+    if (refs) refs.innerHTML = T.referencias
+      ? `<h2 class="capa__h">Referências</h2><p class="capa__texto">${F.esc(T.referencias)}</p>` : "";
   }
 
   /** no papel, campo de digitar não diz nada (e o select corta o texto): cada um ganha ao lado
@@ -1421,6 +1501,53 @@
       faixa.className = "tab-rolagem";
       t.before(faixa);
       faixa.appendChild(t);
+    });
+  }
+
+  /** relatório de todos os içamentos: cada um é pintado na tela e as etapas são copiadas
+   *  para uma área que só sai no papel; no fim volta o içamento que estava aberto */
+  function montarTodos() {
+    const alvo = $("impressao-todos");
+    const volta = E.atual;
+    alvo.innerHTML = "";
+    E.icamentos.forEach((ic, i) => {
+      E.atual = i;
+      pintar();
+      const bloco = document.createElement("section");
+      bloco.className = "rel-icamento";
+      bloco.innerHTML = `<h1 class="rel-icamento__titulo">Içamento ${i + 1} de ${E.icamentos.length} — ${F.esc(ic.nome)}</h1>`;
+      const copia = $("etapas").cloneNode(true);
+      copia.removeAttribute("id");
+      // os campos já estão espelhados em texto; tirá-los evita que o espelhamento da hora
+      // de imprimir leia o valor da cópia (o select clonado volta para a 1ª opção)
+      copia.querySelectorAll("input:not([type=checkbox]):not([type=radio]), select, textarea").forEach(el => el.remove());
+      renomearRefs(copia, `--r${i}`);
+      bloco.appendChild(copia);
+      alvo.appendChild(bloco);
+    });
+    E.atual = volta;
+    pintar();
+  }
+
+  /** ids citados por url(#…) ou href="#…" nos desenhos: cada cópia ganha os seus, senão as
+   *  setas e preenchimentos apontariam para os da etapa original (que não sai no papel) */
+  function renomearRefs(raiz, suf) {
+    const els = [raiz, ...raiz.querySelectorAll("*")];
+    const citados = new Set();
+    els.forEach(el => {
+      for (const a of el.attributes) {
+        for (const m of a.value.matchAll(/url\(["']?#([^)"']+)["']?\)/g)) citados.add(m[1]);
+        if (/(^|:)href$/.test(a.name) && a.value.startsWith("#")) citados.add(a.value.slice(1));
+      }
+    });
+    if (!citados.size) return;
+    els.forEach(el => {
+      if (el.id && citados.has(el.id)) el.id += suf;
+      for (const a of [...el.attributes]) {
+        let v = a.value.replace(/url\((["']?)#([^)"']+)\)/g, (t, q, id) => citados.has(id) ? `url(${q}#${id}${suf}${q})` : t);
+        if (/(^|:)href$/.test(a.name) && v.startsWith("#") && citados.has(v.slice(1))) v += suf;
+        if (v !== a.value) el.setAttribute(a.name, v);
+      }
     });
   }
 
@@ -1647,39 +1774,78 @@
     const S = window.SMathExport;
     const doc = new S.Documento({ autor: E.resp || "", casas: 3, recuo: 18, recuoTitulo: 9, descricaoEmCima: true, sumario: true });
     const mem = new S.Memorial(doc, { descricao: descricaoSimbolo });
-    const nv = { nivel: 3, numerado: true };
+    const T = textosRelatorio();
+    const varios = E.icamentos.length > 1;
+    // níveis do plugin: capítulo (1), seção (1.1), subseção (1.1.1), item (1.1.1.1)
     const capitulo = t => doc.titulo(t.toUpperCase(), 2, { numerado: true });
-    doc.titulo("MEMORIAL DE CÁLCULO DE IÇAMENTO", 1);
-    doc.indice({ maxLevel: 2, figuras: true });
+    const secao = t => doc.titulo(t.toUpperCase(), 3, { numerado: true });
+    const sub = t => doc.titulo(t, 4, { numerado: true });
+    const nv4 = { nivel: 4, numerado: true }, nv5 = { nivel: 5, numerado: true };
+    const criterio = ok => doc.texto(ok ? "Critério aceito" : "Critério NÃO aceito", { negrito: true, cor: ok ? "#256B4D" : "#A1332C" });
 
-    capitulo("Dados do estudo");
-    doc.texto([`Estudo: ${E.nome || "—"}`, `Documento: ${E.doc || "—"}`, `Responsável: ${E.resp || "—"}`,
-      `Emitido em: ${new Date().toLocaleDateString("pt-BR")}`, `Içamentos: ${E.icamentos.length}`].join("\n"));
+    // tudo o que é de cada içamento, calculado uma vez
+    const dados = E.icamentos.map(ic => {
+      const r = resolver(ic), rig = riggingDe(ic);
+      return { ic, r, f: r.fatores, fx: fatoresDe(modeloDe(ic)), P: pontosDe(ic), H: alturaGancho(ic), rig, o: olhalDe(ic, rig) };
+    });
 
-    for (let k = 0; k < E.icamentos.length; k++) {
-      const ic = E.icamentos[k];
-      const r = resolver(ic), f = r.fatores, P = pontosDe(ic), H = alturaGancho(ic);
-      const rig = riggingDe(ic), o = olhalDe(ic, rig);
-      // a numeração (2, 2.1, 2.2...) é do plugin
-      const sec = t => t.toUpperCase();
-      const secao = t => doc.titulo(sec(t), 3, { numerado: true });
-      doc.espaco(18);
-      capitulo(String(ic.nome));
-
-      /* dados */
-      secao("Dados do içamento");
-      doc.texto(`Arranjo: ${TIPOS[ic.tipo].nome}` + (TIPOS[ic.tipo].pernas > 2 ? ` · hipótese: ${r.hipotese}` : "")
-        + ` · base: ${(FAT.bases[ic.base] || {}).nome || ic.base}`);
+    function definirFatores({ f, ic }) {
+      const fx = fatoresDe(ic), fl = fatoresLinga(modeloDe(ic));
+      mem.definir("γ_peso", F.num(f.peso, 3), "Margem sobre o peso (DNV-ST-N001 5.6.2.2)");
+      mem.definir("γ_CoG", F.num(f.cog, 3), "Imprecisão do centro de gravidade (DNV-ST-N001 5.6.2.3)");
+      mem.definir("DAF", F.num(f.daf, 3), `Amplificação dinâmica — SHL = ${F.num(fx.shlT, 2)} t, local ${ic.local} (DNV-ST-N001 Tabela 16-1)`);
+      mem.definir("SKL", F.num(f.skl, 3), "Distribuição desigual entre as pernas (DNV-ST-N001 16.2.6)");
+      if (fl.modelo === "N001") {
+        mem.definir("γ_h", F.num(fl.gh, 3), "Eslinga: fator de içamento (16.4.4)");
+        mem.definir("γ_c", F.num(fl.gc, 3), "Eslinga: fator de consequência (16.4.5)");
+        mem.definir("γ_s", F.num(fl.gs, 3), `Eslinga: terminação — ${fl.terminacao} (Tabela 16-3)`);
+        mem.definir("γ_m", F.num(fl.gm, 3), "Eslinga: fator de material (16.4.9)");
+        mem.definir("γ_w", F.num(fl.gw, 3), "Eslinga: desgaste e aplicação (16.4.10)");
+      } else mem.definir("FS_linga", F.num(fl.fs, 3), "Fator de segurança da linga");
+    }
+    function definirGeometria({ ic, P, H }) {
       mem.definir("m", `${F.num(ic.massa, 3)} kg`, "Massa do corpo");
       mem.definir("g", "9,80665 m/s²", "Aceleração da gravidade");
-      mem.definir("γ_peso", F.num(f.peso, 3));
-      mem.definir("DAF", F.num(f.daf, 3));
-      mem.definir("γ_cons", F.num(f.consequencia, 3));
-      mem.definir("SKL", F.num(f.skl, 3));
-      mem.definir("FS_linga", F.num(f.fsLinga, 3), "Fator de segurança da linga");
+      P.forEach(p => {
+        mem.definir(`x_${p.nome}`, `${F.num(p.x, 1)} mm`, `Ponto ${p.nome}: distância horizontal ao CG, no comprimento (x)`);
+        if (Math.abs(p.y) > 1e-6) mem.definir(`y_${p.nome}`, `${F.num(p.y, 1)} mm`, `Ponto ${p.nome}: distância horizontal ao CG, na largura (y)`);
+        mem.definir(`z_${p.nome}`, `${F.num(p.z, 1)} mm`, `Ponto ${p.nome}: altura em relação ao CG (z)`);
+      });
+      mem.definir("H", `${F.num(H, 1)} mm`, "Altura do gancho acima do centro de massa");
+    }
+    /** Os capítulos são por tema e cada um passa por todos os içamentos. No SMath as variáveis
+     *  valem para a folha inteira (m, x.P1, H...): cada seção começa redefinindo as do seu
+     *  içamento numa área recolhida, senão a conta usaria o valor do último içamento. */
+    const contexto = d => {
+      if (!varios) return;
+      doc.abrirArea(`Dados de ${d.ic.nome}`, true);
+      definirGeometria(d);
+      definirFatores(d);
+      doc.fecharArea();
+    };
 
-      /* geometria */
-      secao("Geometria do içamento");
+    doc.titulo("MEMORIAL DE CÁLCULO DE IÇAMENTO", 1);
+    doc.texto([`Estudo: ${E.nome || "—"}`, `Documento: ${E.doc || "—"}`, `Responsável: ${E.resp || "—"}`,
+      `Emitido em: ${new Date().toLocaleDateString("pt-BR")}`].join("\n"));
+    doc.indice({ maxLevel: 2, figuras: true });
+
+    /* ---- capítulos de texto, como foram escritos no site */
+    const textoLivre = (k, rotulo) => { if (T[k]) { capitulo(rotulo); doc.texto(T[k]); } };
+    textoLivre("introducao", "Introdução");
+    textoLivre("objetivo", "Objetivo");
+    capitulo("Plano de içamento");
+    if (T.plano) doc.texto(T.plano);
+    doc.texto(`O estudo tem ${dados.length} içamento(s):\n` + dados.map(d =>
+      `- ${d.ic.nome}: ${TIPOS[d.ic.tipo].nome}, massa ${F.num(massaParaTela(d.ic.massa), 2)} ${uMassa()}`).join("\n"));
+    textoLivre("local", "Local da instalação");
+    textoLivre("guindaste", "Dados do guindaste");
+
+    /* ---- dados das estruturas */
+    capitulo("Dados das estruturas");
+    for (const d of dados) {
+      const { ic, r, P } = d;
+      secao(ic.nome);
+      doc.texto(`Arranjo: ${TIPOS[ic.tipo].nome}` + (TIPOS[ic.tipo].pernas > 2 ? ` · hipótese: ${r.hipotese}` : ""));
       const incM = inclinacaoDe(ic);
       if (incM && incM.dobrada) doc.texto(`Estrutura em V (dobrada): trecho de P1 a φ₁ = ${F.grau(incM.phi[0])} e trecho de P2 a `
         + `φ₂ = ${F.grau(incM.phi[1])} com a horizontal (+ = ponto acima da dobra) · olhais em pé sobre o trecho`);
@@ -1687,128 +1853,208 @@
       if (TIPOS[ic.tipo].pilar) doc.texto("Pilar em pé: olhais soldados nas faces, com o eixo na horizontal, apontando para fora · "
         + "o olhal é verificado com o ângulo entre a linga e o eixo dele (θ com a base = ângulo da perna com a vertical)");
       doc.texto("Coordenadas dos pontos de içamento a partir do centro de massa: x no comprimento, y na largura e z na altura.");
-      P.forEach(p => {
-        mem.definir(`x_${p.nome}`, `${F.num(p.x, 1)} mm`, `Ponto ${p.nome}: distância horizontal ao CG, no comprimento (x)`);
-        if (Math.abs(p.y) > 1e-6) mem.definir(`y_${p.nome}`, `${F.num(p.y, 1)} mm`, `Ponto ${p.nome}: distância horizontal ao CG, na largura (y)`);
-        mem.definir(`z_${p.nome}`, `${F.num(p.z, 1)} mm`, `Ponto ${p.nome}: altura em relação ao CG (z)`);
-      });
+      definirGeometria(d);
       if (!TIPOS[ic.tipo].unica)
         mem.definir("α", `${F.num(ic.angulo, 2)} °`, `Ângulo da perna ${P[Math.min(ic.pernaAngulo || 0, P.length - 1)].nome} com a `
           + (incM || TIPOS[ic.tipo].pilar ? "horizontal" : "estrutura"));
-      mem.definir("H", `${F.num(H, 1)} mm`, "Altura do gancho acima do centro de massa");
       await figuraSm(doc, IC.iso3d.desenhar(r, { modo: "medidas", comp: txtComp }), 560,
         `${ic.nome} — geometria do içamento (distâncias a partir do CG)`, 480);
+    }
 
-      /* cargas */
-      mem.secao(sec("Peso de projeto"), passosPeso(ic, r).map((p, i) => passoSm(i ? "Peso de projeto" : "Peso do corpo", p)), nv);
-      const passosCargas = [];
+    /* ---- fatores e peso de projeto */
+    capitulo("Fatores de projeto e peso de projeto");
+    for (const d of dados) {
+      const { ic, r } = d;
+      secao(ic.nome);
+      doc.texto(`Base normativa: ${(FAT.bases[ic.base] || {}).nome || ic.base}`);
+      contexto(d);
+      definirFatores(d);
+      mem.secao("Peso de projeto", passosPeso(ic, r).map((p, i) => passoSm(i ? "Peso de projeto" : "Peso do corpo", p)), nv4);
+    }
+
+    /* ---- cargas nas eslingas */
+    capitulo("Cálculo do carregamento nas eslingas");
+    for (const d of dados) {
+      const { ic, r, P, H } = d;
+      secao(ic.nome);
+      contexto(d);
+      if (r.pernas.length > 2) doc.texto(r.hipotese === "pares diagonais"
+        ? "Hipótese: pares diagonais — um par diagonal sustenta sozinho o peso inteiro e o outro fica frouxo (envoltória, sem SKL)."
+        : "Hipótese: elástica × SKL (DNV-ST-N001) — corpo rígido sobre quatro molas, rigidez vertical k = EA·cos²β/L; "
+          + `equilíbrio (ΣV = W, ΣM = 0) mais compatibilidade de deslocamentos, e depois × SKL ${F.num(r.fatores.skl, 2)}.`);
+      const passos = [];
       r.pernas.forEach((p, i) => {
         const [comp, ang, trac] = passosPerna(r, p, P[i], H);
-        passosCargas.push(
+        passos.push(
           passoSm(`Eslinga ${p.nome} — comprimento`, comp),
           passoSm(`Eslinga ${p.nome} — ângulo com a vertical`, ang),
           { t: `Eslinga ${p.nome} — componente vertical (equilíbrio do sistema)`, r: `V_${p.nome} = ${F.num(p.vertical, 3)} kN` },
           passoSm(`Eslinga ${p.nome} — tração`, trac));
       });
-      passosCargas.push({ t: "Carga no gancho", r: `F_gancho = ${F.num(r.cargaGanchoKN, 2)} kN` },
+      passos.push({ t: "Carga no gancho", r: `F_gancho = ${F.num(r.cargaGanchoKN, 2)} kN` },
         { t: "Maior tração por eslinga", r: `T_max = ${F.num(r.maiorTracaoKN, 2)} kN` });
-      mem.secao(sec("Cargas nas eslingas"), passosCargas, nv);
+      mem.secao("Cargas em cada eslinga", passos, nv4);
+      mem.tabela(["Eslinga", "Comprimento (mm)", "Ângulo c/ horizontal", "Vertical (kN)", "Tração (kN)", "Tração (t)"],
+        r.pernas.map(p => [p.nome, F.num(p.comprimento, 1), F.grau(90 - p.angulo), F.num(p.vertical, 2), F.num(p.tracao, 2), F.num(p.toneladas, 2)]));
+      if (r.comparacao) {
+        const c = r.comparacao, adot = r.hipotese === "pares diagonais";
+        sub("Comparação das hipóteses nas quatro pernas");
+        mem.tabela(["Hipótese", "SKL", "Maior tração (kN)", "Maior tração (t)"], [
+          [`Elástica × SKL (DNV-ST-N001)${adot ? "" : " — adotada"}`, F.num(c.elastica.skl, 2),
+            F.num(c.elastica.maiorTracaoKN, 2), F.num(c.elastica.maiorTracaoKN / G, 2)],
+          [`Pares diagonais (envoltória)${adot ? " — adotada" : ""}`, "1,00",
+            F.num(c.diagonais.maiorTracaoKN, 2), F.num(c.diagonais.maiorTracaoKN / G, 2)]]);
+      }
       await figuraSm(doc, IC.fbd.elevacao(r), 460, `${ic.nome} — diagrama de corpo livre (elevação)`, 440);
       if (P.length > 2) await figuraSm(doc, IC.fbd.planta(r), 420, `${ic.nome} — pontos de içamento em planta`, 380);
+    }
 
-      /* linga */
-      const l = rig.linga;
-      if (l.ok) {
-        const mblCabo = l.linha && l.linha["ruptura" + l.categoria];
-        const passos = [passoSm("MBL requerida", l.formula)];
-        if (mblCabo) passos.push(
-          { t: `Cabo escolhido — ${IC.lingas.tipos[l.tipo].nome}, Ø ${F.num(l.diametro, 1)} mm, categoria ${l.categoria} N/mm²`,
-            r: `MBL = ${F.num(mblCabo, 2)} kN` },
-          { t: "Utilização da linga", f: "u = MBL_req / MBL", r: `u = ${F.num(l.utilizacao * 100, 1)} %`, ok: l.utilizacao <= 1 });
-        mem.secao(sec("Linga"), passos, nv);
-      } else {
-        secao("Linga");
+    /* ---- eslinga */
+    capitulo("Dados da eslinga");
+    for (const d of dados) {
+      const { ic, rig } = d, l = rig.linga;
+      secao(ic.nome);
+      contexto(d);
+      if (!l.ok) {
         doc.texto(`Nenhum cabo da tabela atende à MBL requerida (${F.kn(l.mblReqKN)}).`, { negrito: true, cor: "#A1332C" });
+        continue;
       }
+      const mblCabo = l.linha && l.linha["ruptura" + l.categoria];
+      const passos = l.formula.map(st => passoSm(st.titulo, st));
+      if (mblCabo) passos.push(
+        { t: `Cabo escolhido — ${IC.lingas.tipos[l.tipo].nome}, Ø ${F.num(l.diametro, 1)} mm, categoria ${l.categoria} N/mm²`,
+          r: `MBL = ${F.num(mblCabo, 2)} kN` },
+        { t: "Utilização da linga", f: "u = MBL_req / MBL", r: `u = ${F.num(l.utilizacao * 100, 1)} %` });
+      mem.secao("Carga de ruptura mínima", passos, nv4);
+      doc.texto(`Eslinga escolhida: ${IC.lingas.tipos[l.tipo].nome}, Ø ${F.num(l.diametro, 1)} mm, categoria ${l.categoria} N/mm²`
+        + (mblCabo ? ` · MBL ${F.num(mblCabo, 2)} kN ≥ MBL requerida ${F.num(l.mblReqKN, 2)} kN` : ""));
+      if (mblCabo) criterio(l.utilizacao <= 1);
+    }
 
-      /* manilha e encaixe */
-      const m = rig.manilha;
-      if (m.ok) {
-        mem.secao(sec(`Manilha — ${m.manilha.codigo}`), [
-          passoSm("Carga no pino", m.formula),
-          passoSm(`CMT da manilha ${m.manilha.codigo}`, m.formulaCmt, { ok: m.manilha.cmt >= m.cargaT })
-        ], nv);
-        await figuraSm(doc, FIG.manilha(m.manilha), 360, `Manilha ${IC.manilhas.tipos[m.tipo].nome} — ${m.manilha.codigo}`, 300);
-      } else {
-        secao("Manilha");
+    /* ---- manilha */
+    capitulo("Cálculo da manilha");
+    for (const d of dados) {
+      const { ic, rig } = d, m = rig.manilha;
+      secao(ic.nome);
+      if (!m.ok) {
         doc.texto(`Nenhuma manilha do tipo escolhido atende à carga de ${F.ton(m.cargaT)}.`, { negrito: true, cor: "#A1332C" });
+        continue;
       }
-      if (rig.casos.length) {
-        mem.secao(sec(`Encaixe sapatilho ${rig.sapatilho.ok ? rig.sapatilho.sapatilho.codigo : ""} × manilha`), rig.casos.map(c => ({
-          t: `Caso ${c.n} — ${c.nome}`, f: c.formula,
-          s: `${F.num(c.a, 1)} mm ${c.ok ? ">" : "≤"} ${F.num(c.b, 1)} mm`,
-          r: c.ok ? `passa, com folga de ${F.num(c.a - c.b, 1)} mm` : `não passa — faltam ${F.num(c.b - c.a, 1)} mm`,
-          ok: c.ok
-        })), nv);
-      }
+      doc.texto(`Tipo de manilha escolhida: ${IC.manilhas.tipos[m.tipo].nome} · código ${m.manilha.codigo}`);
+      mem.secao("Carga no pino e CMT", [
+        passoSm("Carga no pino", m.formula),
+        passoSm(`CMT da manilha ${m.manilha.codigo}`, m.formulaCmt)
+      ], nv4);
+      doc.texto(`CMT ${F.num(m.manilha.cmt, 2)} t ≥ carga ${F.num(m.cargaT, 2)} t`);
+      criterio(m.manilha.cmt >= m.cargaT);
+      await figuraSm(doc, FIG.manilha(m.manilha), 360, `Manilha ${IC.manilhas.tipos[m.tipo].nome} — ${m.manilha.codigo}`, 300);
+    }
 
-      /* olhal */
+    /* ---- sapatilho e casos de encaixe */
+    capitulo("Cálculo do sapatilho e encaixe com a manilha");
+    for (const d of dados) {
+      const { ic, rig } = d, s = rig.sapatilho, m = rig.manilha;
+      secao(ic.nome);
+      if (!s.ok) { doc.texto("Nenhum sapatilho da tabela serve para o cabo escolhido.", { negrito: true, cor: "#A1332C" }); continue; }
+      doc.texto(`Diâmetro da eslinga: ${F.num(rig.linga.diametro, 1)} mm · sapatilho escolhido: ${s.sapatilho.codigo}`);
+      await figuraSm(doc, FIG.sapatilho(s.sapatilho), 360, `Dimensões do sapatilho ${s.sapatilho.codigo}`, 300);
+      if (!rig.casos.length) continue;
+      sub("Verificando condições de encaixe");
+      if (m.ok) await figuraSm(doc, FIG.encaixe(rig.casos, s.sapatilho, m.manilha, rig.linga.diametro), 600,
+        "Casos de encaixe do sapatilho e da manilha", 360);
+      rig.casos.forEach(c => doc.texto(`Caso ${c.n}: ${c.formula} — ${c.nome}\n`
+        + `${F.num(c.a, 1)} mm ${c.ok ? ">" : "≤"} ${F.num(c.b, 1)} mm → `
+        + (c.ok ? `Ok (folga de ${F.num(c.a - c.b, 1)} mm)` : `NÃO PASSA (faltam ${F.num(c.b - c.a, 1)} mm)`),
+        { negrito: !c.ok, cor: c.ok ? null : "#A1332C" }));
+      criterio(rig.casos.every(c => c.ok));
+    }
+
+    /* ---- olhais */
+    capitulo("Verificação dos olhais");
+    for (const d of dados) {
+      const { ic, rig, o } = d;
+      secao(ic.nome);
+      contexto(d);
       const quais = `${o.qtd} olhal(is) iguais (${o.nomes.join(", ")}), dimensionados pela perna ${o.governante.nome}`
         + (o.modo === "fabricado" ? " (a mais solicitada no olhal)" : " (a mais tracionada)");
       if (o.modo === "comprado") {
         const rc = o.resultado;
-        mem.secao(sec("Olhal comercial"), [rc.ok
-          ? { t: `${rc.olhal.codigo} — ${quais}`, f: "CMT ≥ carga", s: `${F.num(rc.olhal.cmt, 2)} t ≥ ${F.num(rc.cargaT, 2)} t`,
-              r: `utilização = ${F.num(rc.utilizacao * 100, 0)} %`, ok: true }
-          : { t: quais, r: `Nenhum olhal comercial atende ${F.ton(rc.cargaT)} com pino Ø ${F.num(rc.pinoMm, 1)} mm.`, ok: false }], nv);
-      } else {
-        const g = o.geom, mn = rig.manilha.ok ? rig.manilha.manilha : null;
-        const passos = [{ t: quais, r: `F_pino = ${F.num(o.governante.tracao, 3)} kN` },
-          { t: `Ângulo da linga com o olhal na perna ${o.governante.nome}`, f: "θ = 90° − ∠(linga, eixo do olhal)",
-            s: `θ = 90° − ${F.grau(o.angulo.eixo)}`, r: `θ = ${F.grau(o.angulo.base)}` }];
-        if (mn) passos.push({
-          t: "Medidas que vêm da manilha",
-          f: "Ø furo = b(pino) + folga · R = f − g + b/2 + 5 · R.anel = R",
-          s: `Ø furo = ${F.num(mn.b, 1)} + 1,15 · R = ${F.num(mn.f, 1)} − ${F.num(mn.g, 1)} + ${F.num(mn.b / 2, 1)} + 5`,
-          r: `Ø furo = ${F.num(g.dFuro, 2)} mm · R = R.anel = ${F.num(g.R, 1)} mm`
-        });
-        const ch = RIG.encaixeChapa(mn, espessuraChapa(ic));
-        if (ch) passos.push({ t: "A chapa tem que entrar na boca da manilha, com folga de até 11,75 mm",
-          f: "0 < boca − (t + 2·t_anel) ≤ 11,75 mm",
-          s: `${F.num(ch.boca, 1)} − ${F.num(ch.espessura, 1)} = ${F.num(ch.folga, 1)} mm`, ok: ch.ok });
-        o.verif.checks.forEach(c => passos.push(passoSm(`${c.n}. ${c.nome}`, c.formula,
-          { ok: c.ok, n: `Utilização: ${F.num(c.utilizacao * 100, 0)} %` })));
-        secao("Olhal fabricado — geometria");
-        doc.texto(["t", "tAnel", "base", "h", "R", "rAnel", "dFuro"].filter(k => k in g)
-          .map(k => `${ROTULOS_GEOM[k]}: ${F.num(g[k], 2)}`).join("\n"));
-        await figuraSm(doc, FIG.olhal(g), 420, `${ic.nome} — olhal fabricado`, 360);
-        mem.secao(sec("Olhal fabricado — verificação"), passos, nv);
+        doc.texto(quais);
+        if (rc.ok) {
+          doc.texto(`Olhal comercial ${rc.olhal.codigo}: CMT ${F.num(rc.olhal.cmt, 2)} t ≥ carga ${F.num(rc.cargaT, 2)} t `
+            + `(utilização ${F.num(rc.utilizacao * 100, 0)} %)`);
+          criterio(true);
+        } else doc.texto(`Nenhum olhal comercial atende ${F.ton(rc.cargaT)} com pino Ø ${F.num(rc.pinoMm, 1)} mm.`, { negrito: true, cor: "#A1332C" });
+        continue;
       }
+      const g = o.geom, mn = rig.manilha.ok ? rig.manilha.manilha : null;
+      mem.secao("Força de reação no olhal", [
+        { t: quais, r: `F_linga = ${F.num(o.governante.tracao, 3)} kN` },
+        { t: "Carga no pino (N-2683 5.2 a; DNV-ST-N001 Tabela 16-5)", f: "F_pino = 1,30 · F_linga",
+          s: `F_pino = 1,30 × ${F.num(o.governante.tracao, 3)}`, r: `F_pino = ${F.num(o.verif.FpinoKN, 3)} kN` },
+        { t: `Ângulo da linga com o olhal na perna ${o.governante.nome}`, f: "θ = 90° − ∠(linga, eixo do olhal)",
+          s: `θ = 90° − ${F.grau(o.angulo.eixo)}`, r: `θ = ${F.grau(o.angulo.base)}` }], nv4);
+      doc.texto(`Material do olhal: Fy = ${F.num(fyDoOlhal(ic), 0)} MPa`);
+      if (mn) mem.secao("Diâmetro do furo e raio do olhal", passosFuro(mn, g).map((st, i) =>
+        passoSm(["Diâmetro do furo", "Raio do topo", "Raio do anel de reforço"][i], st)), nv4);
+      sub("Geometria do olhal");
+      doc.texto(["t", "tAnel", "base", "h", "R", "rAnel", "dFuro"].filter(k => k in g)
+        .map(k => `${ROTULOS_GEOM[k]}: ${F.num(g[k], 2)}`).join("\n"));
+      if (!(g.tAnel > 0)) doc.texto("Sem anel de reforço: as medidas do anel ficam zeradas.");
+      await figuraSm(doc, FIG.olhal(g), 420, `${ic.nome} — dimensões do olhal`, 360);
+      const ch = RIG.encaixeChapa(mn, espessuraChapa(ic));
+      if (ch) {
+        sub("Encaixe da chapa na boca da manilha");
+        doc.texto(`0 < W − (t + 2·t_anel) ≤ mín(0,25·W ; 12 mm) = ${F.num(ch.folgaMax, 2)} mm (N-2683 4.2.3.2): `
+          + `${F.num(ch.boca, 1)} − ${F.num(ch.espessura, 1)} = ${F.num(ch.folga, 1)} mm`);
+        criterio(ch.ok);
+      }
+      sub("Verificação do olhal de içamento");
+      o.verif.checks.forEach(c => {
+        mem.secao(c.nome, [passoSm(c.nome, c.formula)], nv5);
+        doc.texto(`${valorCheck(c, c.tensao)} ${c.ok ? "≤" : ">"} limite ${valorCheck(c, c.admissivel)} · utilização ${F.num(c.utilizacao * 100, 0)} %`);
+        criterio(c.ok);
+      });
+      if (o.verif.soldaBase.tipo === "penetracao") doc.texto("Solda do olhal na estrutura: penetração total — resistência igual à da chapa, "
+        + "verificada pelos itens de força axial, flexões, tensões combinadas e cisalhamento na base (N-2683 5.4.10).", { negrito: true });
+    }
 
-      /* material */
-      secao("Lista de material");
+    /* ---- lista de material */
+    capitulo("Lista de material");
+    for (const d of dados) {
+      secao(d.ic.nome);
       mem.tabela(["Item", "Qtd.", "Título", "Especificação", "Material", "Massa (kg)"],
-        materialDe(ic).itens.map((it, i) => [i + 1, F.num(it.qtd, 0), it.titulo, it.especificacao, it.material,
+        materialDe(d.ic).itens.map((it, i) => [i + 1, F.num(it.qtd, 0), it.titulo, it.especificacao, it.material,
           it.massa == null ? "-" : F.num(it.massa, 2)]));
+    }
 
-      /* resumo */
-      secao("Resumo");
+    /* ---- resumo */
+    capitulo("Resumo dos parâmetros e critérios");
+    mem.tabela(["Içamento", "Massa", "Arranjo", "Carga no gancho (kN)", "Maior tração (t)"],
+      dados.map(({ ic, r }) => [ic.nome, `${F.num(massaParaTela(ic.massa), 2)} ${uMassa()}`, TIPOS[ic.tipo].nome,
+        F.num(r.cargaGanchoKN, 1), F.num(r.maiorTracaoT, 2)]));
+    for (const d of dados) {
+      const { ic, r, rig, o } = d, l = rig.linga, m = rig.manilha, s = rig.sapatilho;
+      secao(`Critérios adotados — ${ic.nome}`);
       mem.tabela(["Eslinga", "Comprimento (mm)", "Ângulo c/ horizontal", "Tração (kN)", "Tração (t)"],
         r.pernas.map(p => [p.nome, F.num(p.comprimento, 1), F.grau(90 - p.angulo), F.num(p.tracao, 2), F.num(p.toneladas, 2)]));
+      const casos = rig.casos.length ? (rig.casos.every(c => c.ok) ? "Ok" : "NÃO PASSA") : "—";
       doc.texto([
         `Carga no gancho: ${F.kn(r.cargaGanchoKN)} · maior tração por eslinga: ${F.kn(r.maiorTracaoKN)}`,
-        l.ok ? `Linga: ${IC.lingas.tipos[l.tipo].nome}, Ø ${F.num(l.diametro, 1)} mm, categoria ${l.categoria} N/mm²` : "Linga: nenhum cabo atende",
+        l.ok ? `Eslinga: ${IC.lingas.tipos[l.tipo].nome}, Ø ${F.num(l.diametro, 1)} mm, categoria ${l.categoria} N/mm²` : "Eslinga: nenhum cabo atende",
         m.ok ? `Manilha: ${IC.manilhas.tipos[m.tipo].nome} ${m.manilha.codigo} (CMT ${F.num(m.manilha.cmt, 2)} t)` : "Manilha: nenhuma atende",
+        s.ok ? `Sapatilho: ${s.sapatilho.codigo} · casos de encaixe: ${casos}` : "Sapatilho: nenhum serve",
         o.modo === "comprado"
           ? (o.resultado.ok ? `Olhal comercial: ${o.resultado.olhal.codigo}` : "Olhal comercial: nenhum atende")
-          : `Olhal fabricado: maior utilização ${F.num(Math.max(...o.verif.checks.map(c => c.utilizacao)) * 100, 0)} %`
-            + (o.verif.checks.every(c => c.ok) ? " — ATENDE" : " — NÃO ATENDE")
+          : `Olhal fabricado: t ${F.num(o.geom.t, 1)} mm, base ${F.num(o.geom.base, 0)} mm, h ${F.num(o.geom.h, 0)} mm, `
+            + `Ø furo ${F.num(o.geom.dFuro, 2)} mm, R ${F.num(o.geom.R, 1)} mm · maior utilização `
+            + `${F.num(Math.max(...o.verif.checks.map(c => c.utilizacao)) * 100, 0)} %`
+            + (o.verif.checks.every(c => c.ok) ? " — critérios aceitos" : " — NÃO ATENDE")
       ].join("\n"), { negrito: true });
     }
 
-    doc.espaco(9);
-    doc.texto("Valores de catálogo e de norma devem ser conferidos com a edição contratada antes da emissão. "
-      + "Solda não é verificada automaticamente — conferir à parte pela NBR 8800.", { italico: true });
+    if (T.referencias) { capitulo("Referências"); doc.texto(T.referencias); }
+
     return { doc, stats: mem.stats };
   }
 
@@ -1994,6 +2240,13 @@
       else if (el.id === "ic-linga") ic.lingaPropria = el.value === "propria";
       else if (el.id === "ic-linga-tipo") mod.linga.tipo = el.value;
       else if (el.id === "ic-linga-cat") mod.linga.categoria = el.value;
+      else if (el.id === "ic-linga-term") mod.linga.terminacao = el.value;
+      else if (el.id === "ic-linga-topo") mod.linga.topo = el.value;
+      else if (el.id === "ic-linga-dtopo") mod.linga.dTopo = Math.max(0, numCampoOu(el.value, 0));
+      else if (el.dataset.olhalSolda) {
+        const sd = soldaDe(mod), k = el.dataset.olhalSolda;
+        sd[k] = k === "a" ? Math.max(0, numCampoOu(el.value, 0)) : el.value;
+      }
       else if (el.id === "ic-manilha-tipo") { mod.manilhaTipo = el.value; mod.manilhaCodigo = null; }
       else if (el.id === "ic-manilha-codigo") mod.manilhaCodigo = el.value || null;
       else if (el.id === "ic-olhal-modo") mod.olhal.modo = el.value;
@@ -2016,7 +2269,8 @@
         if (!ic.inclinacao) ic.inclinacao = {};
         ic.inclinacao[el.dataset.incl] = numCampoOu(el.value, 0);
       }
-      else if (el.dataset.fator) ic.fatores = Object.assign(fatoresDe(ic), { [el.dataset.fator]: numCampoOu(el.value, 0) });
+      else if (el.dataset.fator) ic.fatores = Object.assign(fatoresDe(ic), { [el.dataset.fator]: numCampoOu(el.value, 0) },
+        el.dataset.fator === "daf" ? { dafManual: true } : {});
       else return;
       // o "change" de um campo numérico só sai quando a pessoa termina de digitar (Enter, Tab ou
       // clique fora); a repintura espera o foco chegar ao campo seguinte para não puxá-lo de volta
@@ -2087,7 +2341,41 @@
       gravar(); pintarCapa(); espelharCampos();
     };
     window.addEventListener("beforeprint", lerCabecalho);
-    $("bt-relatorio").addEventListener("click", () => { lerCabecalho(); window.print(); });
+    // textos livres do relatório: gravados no estudo a cada tecla
+    const dlgT = $("dlg-textos");
+    $("bt-textos").addEventListener("click", () => {
+      const T = textosRelatorio();
+      $("textos-campos").innerHTML = TEXTOS_RELATORIO.map(([k, rot, dica]) =>
+        `<label class="campo campo--texto"><span>${rot}</span>
+          <textarea rows="${k === "referencias" ? 5 : 3}" data-texto="${k}" placeholder="${F.esc(dica)}">${F.esc(T[k] || "")}</textarea></label>`).join("");
+      dlgT.showModal();
+    });
+    $("textos-campos").addEventListener("input", e => {
+      const k = e.target.dataset.texto;
+      if (!k) return;
+      E.textos = Object.assign({}, E.textos, { [k]: e.target.value });
+      gravar(); pintarCapa();
+    });
+    // com mais de um içamento, pergunta se o relatório leva só o aberto ou todos
+    const dlg = $("dlg-relatorio");
+    $("bt-relatorio").addEventListener("click", () => {
+      if (E.icamentos.length < 2) { lerCabecalho(); window.print(); return; }
+      $("rel-todos").textContent = `Todos os içamentos (${E.icamentos.length})`;
+      $("rel-atual").textContent = `Só "${atual().nome}"`;
+      dlg.returnValue = "";
+      dlg.showModal();
+    });
+    dlg.addEventListener("close", () => {
+      const v = dlg.returnValue;
+      if (v !== "atual" && v !== "todos") return;
+      lerCabecalho();
+      if (v === "todos") { montarTodos(); document.body.classList.add("rel-todos"); }
+      setTimeout(() => window.print(), 0);   // deixa o diálogo sair da tela antes
+    });
+    window.addEventListener("afterprint", () => {
+      document.body.classList.remove("rel-todos");
+      $("impressao-todos").innerHTML = "";
+    });
     $("bt-smath").addEventListener("click", () => {
       lerCabecalho();
       relatorioSmath().catch(err => { console.error(err); alert("Não foi possível gerar o arquivo SMath: " + err.message); });
@@ -2130,6 +2418,11 @@
       ic.medidas = novo;
     }
     if (!ic.linga) ic.linga = { tipo: "6x19-aco", categoria: "1960" };
+    if (!ic.linga.terminacao) ic.linga.terminacao = "manual";
+    // "severa" era um fator sobre a carga; na N001 o γc é da eslinga (16.4.5) e vale 1,30
+    if (ic.consequencia !== "reduzida") ic.consequencia = "normal";
+    // fatores digitados antes da cadeia da N001 (γ_cons sobre a carga, DAF por faixa antiga)
+    if (ic.fatores && ("consequencia" in ic.fatores || !("cog" in ic.fatores))) ic.fatores = null;
     if (!ic.manilhaTipo) ic.manilhaTipo = "G-4163";
     if (ic.manilhaCodigo === undefined) ic.manilhaCodigo = null;
     if (!ic.olhal) ic.olhal = { modo: "fabricado", tipoComprado: "GPAL-UNC", fy: 355, porPerna: [] };

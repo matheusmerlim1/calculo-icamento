@@ -37,6 +37,19 @@
 .bt:hover { filter: brightness(1.08); }
 .bt--fantasma { background: transparent; color: var(--c-acento); border: 1px solid var(--c-acento); }
 .bt--peq { padding: 4px 10px; font-weight: 600; font-size: var(--t-sm); }
+/* ---------------------------------------------------------- diálogo (escolha do relatório) */
+.dlg {
+  border: 1px solid var(--c-linha-forte); border-radius: var(--raio); padding: 18px 20px;
+  background: var(--c-superficie); color: var(--c-texto); max-width: min(440px, calc(100vw - 32px));
+}
+.dlg::backdrop { background: rgba(0, 0, 0, .45); }
+.dlg__titulo { margin: 0 0 6px; font-size: 1.15rem; }
+.dlg p { margin: 0 0 14px; color: var(--c-texto-2); }
+.dlg__acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.dlg--largo { width: min(680px, calc(100vw - 32px)); max-width: none; }
+.dlg__campos { display: grid; gap: 10px; margin-bottom: 14px; max-height: 65vh; overflow: auto; }
+.campo--texto { display: grid; gap: 4px; }
+.campo--texto textarea { width: 100%; resize: vertical; font: inherit; }
 .bt--risco { background: transparent; color: var(--c-erro); border: 1px solid var(--c-erro); }
 
 /* ---------------------------------------------------------- abas dos içamentos */
@@ -192,7 +205,7 @@ body.sem-memorial .etapa:not(.com-calculo) .linga-par__col--mem,
 .tab tbody tr:hover td { background: var(--c-superficie-2); }
 /* linha de verificação em destaque sobre o seu memorial */
 .tab tbody tr:has(+ tr.linha-formula) td { background: var(--c-superficie-2); font-weight: 600; }
-.tab td.num { font-family: var(--fonte-mono); }
+.tab td.num { font-variant-numeric: tabular-nums; }
 .tab--pontos input { width: 96px; text-align: right; }
 /* Ficha técnica: uma grade que se reparte em colunas conforme a largura, com o valor
    colado no rótulo. Como tabela, o valor ia parar do outro lado da linha. */

@@ -130,19 +130,19 @@ IC.cargas = (function () {
    *   massa: kg, alturaGancho: mm,
    *   pontos: [{x, y, z, nome}],
    *   hipotese4: "diagonais" | "elastica",
-   *   fatores: { peso, daf, consequencia, skl, anguloMax }
+   *   fatores: { peso, cog, daf, skl, anguloMax }
    * }
    */
   function resolver(dados) {
     const f = dados.fatores || {};
-    const gamaPeso = f.peso || 1, daf = f.daf || 1, gamaCons = f.consequencia || 1, skl = f.skl || 1;
+    const gamaPeso = f.peso || 1, gamaCog = f.cog || 1, daf = f.daf || 1, skl = f.skl || 1;
     const P = dados.pontos.map(p => [Number(p.x) || 0, Number(p.y) || 0, Number(p.z) || 0]);
     const n = P.length;
     const H = Number(dados.alturaGancho) || 0;
     const Gk = [0, 0, H];
 
     const W = (Number(dados.massa) || 0) * G_ACEL / 1000;         // kN
-    const Wproj = W * gamaPeso * daf * gamaCons;                  // kN de projeto
+    const Wproj = W * gamaPeso * gamaCog * daf;                   // kN de projeto (DNV-ST-N001 16.3)
 
     const avisos = [];
     const geo = P.map((p, i) => {
@@ -219,7 +219,7 @@ IC.cargas = (function () {
         if (n === 4) {
           const d1 = desvioDaLinha(P[0], P[2]), d2 = desvioDaLinha(P[1], P[3]);
           if (Math.min(d1, d2) > 1)
-            avisos.push("O centro de massa não está sobre nenhuma das diagonais — um par sozinho não equilibra o corpo; prefira a hipótese elástica × SKL.");
+            avisos.push("O centro de massa não está sobre nenhuma das diagonais — um par sozinho não equilibra o corpo: a hipótese de pares diagonais não se aplica a este içamento.");
         }
       } else {
         hipotese = "elástica × SKL";
@@ -235,7 +235,7 @@ IC.cargas = (function () {
     const somaV = pernas.reduce((a, x) => a + x.vertical, 0);
     return {
       pesoKN: W, pesoProjKN: Wproj, gancho: Gk,
-      fatores: { peso: gamaPeso, daf, consequencia: gamaCons, skl: sklUsado },
+      fatores: { peso: gamaPeso, cog: gamaCog, daf, skl: sklUsado },
       hipotese, detalhe, pernas, avisos, comparacao,
       cargaGanchoKN: Wproj,
       somaVerticaisProjKN: somaV,
