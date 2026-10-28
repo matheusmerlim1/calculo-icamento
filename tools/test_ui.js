@@ -569,21 +569,21 @@ async function main() {
   await passo("peças do SolidWorks: eslinga e manilha com as propriedades da lista", async () => {
     const r = JSON.parse(await rodar(`return JSON.stringify(ICapp.pecasSolidworks());`));
     if (r.length !== 2) throw new Error("esperava 2 peças, veio " + r.length);
-    const chaves = ["titlePT", "specPT", "material", "mass", "length", "area"];
+    const chaves = ["TitlePT", "SpecPT", "MaterialPT", "Mass", "LENGTHM", "BBOX"];
     for (const p of r) {
       const falta = chaves.filter(k => !(k in p.props));
       if (falta.length) throw new Error(p.arquivo + ": faltam " + falta.join(", "));
-      if (p.props.length !== "-" || p.props.area !== "-") throw new Error("length/area devem ser '-'");
-      if (p.props.mass !== "-" && !/^\d+(\.\d+)?$/.test(p.props.mass)) throw new Error("massa fora do formato: " + p.props.mass);
+      if (p.props.LENGTHM !== "-" || p.props.BBOX !== "-") throw new Error("LENGTHM/BBOX devem ser '-'");
+      if (p.props.Mass !== "-" && !/^\d+(\.\d+)?$/.test(p.props.Mass)) throw new Error("massa fora do formato: " + p.props.Mass);
     }
     const [esl, man] = r;
-    if (!/^Eslinga \d pernas? \(CMT [\d,]+ ton\) com .*sapatilho.*Cabo de aço \((AACI|AF)\) Ø/.test(esl.props.specPT))
-      throw new Error("especificação da eslinga: " + esl.props.specPT);
-    if (esl.props.material !== "Aço liga") throw new Error("material da eslinga: " + esl.props.material);
-    if (man.props.material !== "-") throw new Error("material da manilha: " + man.props.material);
-    if (!/Green Pin .* ou similar \(CMT/.test(man.props.specPT)) throw new Error("especificação da manilha: " + man.props.specPT);
-    console.log("      " + esl.props.titlePT + " | " + esl.props.specPT + " | " + esl.props.mass);
-    console.log("      " + man.props.titlePT + " | " + man.props.specPT + " | " + man.props.mass);
+    if (!/^Eslinga \d pernas? \(CMT [\d,]+ ton\) com .*sapatilho.*Cabo de aço \((AACI|AF)\) Ø/.test(esl.props.SpecPT))
+      throw new Error("especificação da eslinga: " + esl.props.SpecPT);
+    if (esl.props.MaterialPT !== "Aço liga") throw new Error("material da eslinga: " + esl.props.MaterialPT);
+    if (man.props.MaterialPT !== "-") throw new Error("material da manilha: " + man.props.MaterialPT);
+    if (!/Green Pin .* ou similar \(CMT/.test(man.props.SpecPT)) throw new Error("especificação da manilha: " + man.props.SpecPT);
+    console.log("      " + esl.props.TitlePT + " | " + esl.props.SpecPT + " | " + esl.props.Mass);
+    console.log("      " + man.props.TitlePT + " | " + man.props.SpecPT + " | " + man.props.Mass);
     return true;
   });
 

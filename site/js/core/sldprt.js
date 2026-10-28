@@ -1,7 +1,10 @@
 /*
  * Peça SolidWorks (.SLDPRT) vazia com propriedades personalizadas, sem o SolidWorks.
  *
- *   await IC.sldprt.gerar({ titlePT, specPT, material, mass, length, area })  ->  Uint8Array
+ *   await IC.sldprt.gerar({ TitlePT, SpecPT, MaterialPT, Mass, LENGTHM, BBOX })  ->  Uint8Array
+ *
+ * Os nomes são os do datacard das peças (TitlePT, SpecPT, MaterialPT, Mass; LENGTHM em m nos perfis e
+ * BBOX em m² nas chapas). Eslinga e manilha não são perfil nem chapa: LENGTHM e BBOX saem "-".
  *
  * O .SLDPRT é formato fechado; não se escreve um do zero. Parte-se de uma peça vazia salva pelo
  * próprio SolidWorks (data/sldprt-modelo.js, gerado por tools/sldprt/gerar_modelo.js), com
@@ -18,7 +21,7 @@ window.IC = window.IC || {};
 
 IC.sldprt = (function () {
   const M = () => IC.sldprtModelo;
-  const PROPS = ["titlePT", "specPT", "material", "mass", "length", "area"];
+  const PROPS = ["TitlePT", "SpecPT", "MaterialPT", "Mass", "LENGTHM", "BBOX"];
 
   const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
   const utf8 = s => new TextEncoder().encode(s);

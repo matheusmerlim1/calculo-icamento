@@ -4,7 +4,7 @@
  *   node tools/sldprt/gerar_modelo.js
  *
  * O modelo é uma peça vazia salva pelo próprio SolidWorks (2023), com as propriedades
- * titlePT, specPT, material, mass, length e area preenchidas com marcadores longos e
+ * TitlePT, SpecPT, MaterialPT, Mass, LENGTHM e BBOX preenchidas com marcadores longos e
  * aleatórios (tools/sldprt/marcadores.txt). Aleatórios para o deflate não encolher: o espaço
  * comprimido que eles ocupam é o espaço que a página tem para escrever os valores reais.
  *

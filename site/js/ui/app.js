@@ -1649,15 +1649,15 @@
       pecas.push({
         arquivo: nomeArquivo(`${ic.nome} - Eslinga`),
         props: {
-          titlePT: `Eslinga içamento ${ic.nome}`,
-          specPT: `Eslinga ${n} ${n > 1 ? "pernas" : "perna"} (CMT ${F.num(rig.cargaGov / G, 1)} ton) `
+          TitlePT: `Eslinga içamento ${ic.nome}`,
+          SpecPT: `Eslinga ${n} ${n > 1 ? "pernas" : "perna"} (CMT ${F.num(rig.cargaGov / G, 1)} ton) `
             + `com ${n > 1 ? "anelão e " : ""}sapatilho ${textoPernas(pernas)}. `
             + `Cabo de aço (${alma}) Ø${polegada(l.diametro)} (${F.num(l.diametro, 1)} mm): `
             + `classe ${classe} (${F.num(l.peso, 2)} kg/m). Categoria ${l.categoria} N/mm².`,
-          material: "Aço liga",
-          mass: massaSw(l.peso ? l.peso * compM : null, 1),
-          length: "-",
-          area: "-"
+          MaterialPT: "Aço liga",
+          Mass: massaSw(l.peso ? l.peso * compM : null, 1),
+          LENGTHM: "-",
+          BBOX: "-"
         }
       });
     }
@@ -1668,13 +1668,13 @@
       pecas.push({
         arquivo: nomeArquivo(`${ic.nome} - Manilha`),
         props: {
-          titlePT: `Manilha içamento ${ic.nome}`,
-          specPT: `${tipo.especificacao || tipo.descricao}. Green Pin ${m.tipo} (${mn.codigo}) ou similar `
+          TitlePT: `Manilha içamento ${ic.nome}`,
+          SpecPT: `${tipo.especificacao || tipo.descricao}. Green Pin ${m.tipo} (${mn.codigo}) ou similar `
             + `(CMT ${F.num(mn.cmt, 2)} ton)`,
-          material: "-",
-          mass: massaSw(mn.peso, 2),
-          length: "-",
-          area: "-"
+          MaterialPT: "-",
+          Mass: massaSw(mn.peso, 2),
+          LENGTHM: "-",
+          BBOX: "-"
         }
       });
     }
