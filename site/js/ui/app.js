@@ -546,7 +546,8 @@
     itens.push({
       titulo: "Linga",
       qtd: 1,
-      especificacao: `${tipoLinga.nome}, Ø ${F.num(rig.linga.diametro, 1)} mm, `
+      // CMT igual à do datacard do SolidWorks (carga governante do estudo)
+      especificacao: `${tipoLinga.nome} (CMT ${F.num(rig.cargaGov / G, 1)} ton), Ø ${F.num(rig.linga.diametro, 1)} mm, `
         + `${pernas.length} ${pernas.length > 1 ? "pernas" : "perna"} de ${pernas.map(p => F.num(p.comprimento, 0)).join(" / ")} mm`,
       material: `Cabo de aço, categoria ${rig.linga.categoria} N/mm²`,
       // peso do catálogo é kgf por metro de cabo
