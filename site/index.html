@@ -5,18 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cálculo de içamento</title>
   <!-- ?v= muda a cada versão: sem isso o navegador segue com o app.js antigo do cache -->
-  <link rel="stylesheet" href="css/base.css?v=20261028a">
-  <link rel="stylesheet" href="css/app.css?v=20261028a">
-  <link rel="stylesheet" href="css/desenho.css?v=20261028a">
+  <link rel="stylesheet" href="css/base.css?v=20261029a">
+  <link rel="stylesheet" href="css/app.css?v=20261029a">
+  <link rel="stylesheet" href="css/desenho.css?v=20261029a">
 </head>
 <body>
+  <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
   <!-- ===================================================== cabeçalho -->
   <header class="topo">
     <div class="topo__marca">
       <span class="topo__logo" aria-hidden="true">I</span>
       <div>
-        <div class="topo__nome">Cálculo de içamento</div>
+        <h1 class="topo__nome">Cálculo de içamento</h1>
         <div class="topo__sub" id="topo-sub">memorial de cálculo e lista de material</div>
       </div>
     </div>
@@ -56,7 +57,7 @@
   <!-- só aparece no papel: identificação do documento -->
   <section class="capa" id="capa" aria-hidden="true"></section>
 
-  <main class="folha">
+  <main class="folha" id="conteudo" tabindex="-1">
     <!-- coluna das etapas -->
     <div class="etapas" id="etapas">
 
@@ -233,18 +234,18 @@
   <!-- referências: fecham o relatório impresso -->
   <section class="capa-fim" id="rel-referencias" aria-hidden="true"></section>
 
-  <dialog class="dlg dlg--largo" id="dlg-textos">
+  <dialog class="dlg dlg--largo" id="dlg-textos" aria-labelledby="dlg-textos-t">
     <form method="dialog">
-      <h2 class="dlg__titulo">Textos do relatório</h2>
+      <h2 class="dlg__titulo" id="dlg-textos-t">Textos do relatório</h2>
       <p>Entram como capítulos no relatório impresso e no SMath. Campo vazio não aparece.</p>
       <div class="dlg__campos" id="textos-campos"></div>
       <div class="dlg__acoes"><button type="submit" class="bt" value="ok">Fechar</button></div>
     </form>
   </dialog>
 
-  <dialog class="dlg" id="dlg-relatorio">
+  <dialog class="dlg" id="dlg-relatorio" aria-labelledby="dlg-relatorio-t">
     <form method="dialog">
-      <h2 class="dlg__titulo">Relatório</h2>
+      <h2 class="dlg__titulo" id="dlg-relatorio-t">Relatório</h2>
       <p>Quais içamentos entram no relatório?</p>
       <div class="dlg__acoes">
         <button type="submit" class="bt" value="todos" id="rel-todos">Todos os içamentos</button>
@@ -253,6 +254,9 @@
       </div>
     </form>
   </dialog>
+
+  <!-- o resultado principal anunciado ao leitor de tela quando muda (app.js, anunciarResultado) -->
+  <p class="oculto-visual" id="anuncio" role="status" aria-live="polite"></p>
 
   <footer class="rodape">
     <span id="rodape-dir"></span>
@@ -284,7 +288,7 @@
   <script src="js/ui/app.js?v=20261029a"></script>
 <!-- === Botao de volta ao portfolio - cole antes de </body> === -->
 <a id="mr-portfolio-btn" href="https://matheusmerlim1.github.io/" target="_blank" rel="noopener"
-   aria-label="Abrir o portf&oacute;lio de Matheus Raposo" title="Ver todos os meus projetos">
+   aria-label="Portf&oacute;lio de Matheus Raposo (abre em nova aba)" title="Ver todos os meus projetos">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>

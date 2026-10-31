@@ -652,14 +652,21 @@
     }).join("") + `<button type="button" class="aba aba--novo" data-novo>+ içamento</button>`;
     // a lixeira some quando só resta um içamento: o estudo precisa de pelo menos um
     if (E.icamentos.length > 1) {
+      // a lixeira é um <button> ao lado da aba, num par: dentro da aba ela era um botão dentro
+      // de outro (o teclado não chegava nela e o leitor de tela não a anunciava)
       document.querySelectorAll("#abas .aba[data-aba]").forEach((b, i) => {
-        const lixo = document.createElement("span");
+        const par = document.createElement("span");
+        par.className = "aba-par";
+        b.before(par);
+        par.appendChild(b);
+        const lixo = document.createElement("button");
+        lixo.type = "button";
         lixo.className = "aba__lixo";
         lixo.dataset.remover = String(i);
         lixo.title = "Excluir este içamento";
-        lixo.setAttribute("role", "button");
+        lixo.setAttribute("aria-label", `Excluir o içamento ${E.icamentos[i].nome}`);
         lixo.textContent = "\u{1F5D1}";
-        b.appendChild(lixo);
+        par.appendChild(lixo);
       });
     }
   }
@@ -698,8 +705,8 @@
 
     // cartões dos tipos, cada um com o seu desenho
     $("tipos").innerHTML = Object.entries(TIPOS).map(([k, tp]) =>
-      `<button type="button" class="tipo${k === ic.tipo ? " on" : ""}" data-tipo="${k}" role="radio" aria-checked="${k === ic.tipo}">
-        <div class="tipo__fig">${FIG.icone(k)}</div>
+      `<button type="button" class="tipo${k === ic.tipo ? " on" : ""}" data-tipo="${k}" role="radio" aria-checked="${k === ic.tipo}" tabindex="${k === ic.tipo ? 0 : -1}">
+        <div class="tipo__fig" aria-hidden="true">${FIG.icone(k)}</div>
         <b>${F.esc(tp.nome)}</b><span>${F.esc(tp.resumo)}</span></button>`).join("");
 
     // figuras no alto da etapa das medidas: o 3D com as distâncias reais e o esquema do que informar
@@ -708,7 +715,9 @@
     const est = estruturaDe(ic);
     $("fig-medidas").innerHTML = FIG.medidas(ic.tipo, { inclinada: !!inc, dobrada: est === "dobrada" });
 
-    const numCampo = k => `<input type="text" inputmode="decimal" data-medida="${k}"
+    // rot: nome do campo quando ele está numa tabela, sem <label> próprio (só o title não basta
+    // para o leitor de tela)
+    const numCampo = (k, rot) => `<input type="text" inputmode="decimal" data-medida="${k}"${rot ? ` aria-label="${F.esc(rot)}"` : ""}
       data-key="medida-${k}" title="Dá para digitar a unidade junto e fazer conta: &quot;2,5 m&quot;, &quot;2500 mm&quot;, &quot;20 + 30&quot;, &quot;2 m + 300 mm&quot;."
       value="${paraCampo(compParaTela(ic.medidas[k]))}">`;
     if (t.porPonto) {
@@ -716,7 +725,7 @@
           <th>Ponto</th><th>x (${uComp()})</th><th>y (${uComp()})</th>
           <th>z — altura (${uComp()})</th><th>distância horizontal</th></tr></thead>
         <tbody>${[1, 2, 3, 4].map(i => `<tr><td>P${i}</td>
-          <td>${numCampo(`x${i}`)}</td><td>${numCampo(`y${i}`)}</td><td>${numCampo(`z${i}`)}</td>
+          <td>${numCampo(`x${i}`, `P${i} — x (${uComp()})`)}</td><td>${numCampo(`y${i}`, `P${i} — y (${uComp()})`)}</td><td>${numCampo(`z${i}`, `P${i} — z, altura (${uComp()})`)}</td>
           <td class="num som">${txtComp(Math.hypot(ic.medidas[`x${i}`], ic.medidas[`y${i}`]))}</td></tr>`).join("")}</tbody></table>`;
     } else {
       // inclinada e em V: cada furo pelas suas coordenadas — x na horizontal e y na vertical, a partir do CG
@@ -928,7 +937,7 @@
       const aberto = i === E.atual;
       return `<section class="resumo__ic${aberto ? " is-atual" : ""}" data-resumo="${i}"
                  ${aberto ? 'aria-current="true"' : ""}>
-        <h3>${F.esc(x.nome)}${aberto ? "" : ` <span class="resumo__ver">ver</span>`}</h3>
+        <h3>${F.esc(x.nome)}${aberto ? "" : ` <button type="button" class="resumo__ver" aria-label="ver o içamento ${F.esc(x.nome)}">ver</button>`}</h3>
         <div class="destaque">
           <div class="rot">Maior tração por perna</div>
           <div class="valor">${F.num(rx.maiorTracaoT, 2)} t</div>
@@ -1113,14 +1122,14 @@
     // a deixava ~300px mais alta que a do sapatilho, com um vazio embaixo do sapatilho
     let pecas = `<div class="pecas-par">`;
     pecas += s.ok
-      ? `<div class="peca-bloco"><h4 class="peca-bloco__t">Sapatilho</h4>
+      ? `<div class="peca-bloco"><h3 class="peca-bloco__t">Sapatilho</h3>
          <div class="ficha-par ficha-par--col">
           <figure class="fig-topo">${FIG.sapatilho(s.sapatilho)}</figure>
           ${ficha("Sapatilho escolhido", s.sapatilho, ["codigo", "cabo", "diametroCabo", "a", "b", "c", "d", "e", "f", "peso"], ROTULOS_SAPATILHO)}
         </div></div>`
       : `<div class="peca-bloco"><div class="aviso aviso--erro">Nenhum sapatilho cadastrado para Ø ${F.num(rig.linga.diametro, 1)} mm.</div></div>`;
 
-    html += `<div class="peca-bloco escolha-manilha"><h4 class="peca-bloco__t">Escolha da manilha</h4>
+    html += `<div class="peca-bloco escolha-manilha"><h3 class="peca-bloco__t">Escolha da manilha</h3>
       <div class="escolha-manilha__grade">
       <label class="campo"><span>Tipo de manilha</span>
         <select id="ic-manilha-tipo">${opcoesTipo}</select></label>`;
@@ -1145,7 +1154,7 @@
         ${memorial([m.formula, m.formulaCmt])}</div>`
       : `</div></div>`;
 
-    pecas += `<div class="peca-bloco"><h4 class="peca-bloco__t">Manilha</h4>`;
+    pecas += `<div class="peca-bloco"><h3 class="peca-bloco__t">Manilha</h3>`;
     pecas += m.ok
       ? `<div class="ficha-par ficha-par--col">
           <figure class="fig-topo">${FIG.manilha(rig.manilha.ok ? rig.manilha.manilha : null)}</figure>
@@ -1263,7 +1272,7 @@
         ? `<div class="aviso aviso--erro">Nenhum olhal comercial atende ${F.ton(r.cargaT)} com pino Ø ${F.num(r.pinoMm, 1)} mm.</div>`
         : `<div class="olhal-par">
             <figure class="fig-topo" id="fig-olhal">${FIG.olhalComprado(r.olhal)}</figure>
-            <div class="olhal-bloco"><h4>${F.esc(quais)}</h4>
+            <div class="olhal-bloco"><h3>${F.esc(quais)}</h3>
               <div class="painel">
                 <div class="item"><span>Dimensionado pela perna</span><b>${F.esc(gov.nome)} — a mais carregada</b></div>
                 <div class="item"><span>Carga</span><b>${F.kn(rig.cargaGov)} · ${F.ton(r.cargaT)}</b></div>
@@ -1305,7 +1314,7 @@
 
     $("resultado-olhal").innerHTML = `
       <div class="olhal-bloco olhal-bloco--largo">
-        <h4>${F.esc(quais)}</h4>
+        <h3>${F.esc(quais)}</h3>
         <div class="painel">
           <div class="item"><span>Dimensionado pela perna</span><b>${F.esc(gov.nome)} — a mais solicitada no olhal</b></div>
           <div class="item"><span>Força da linga (F.linga)</span><b>${F.kn(gov.tracao)}</b></div>
@@ -1330,7 +1339,7 @@
         <figure class="fig-topo" id="fig-olhal">${FIG.olhal(g)}</figure>
         <div>
           <div class="olhal-bloco">
-            <h4 class="so-tela">Medidas que você escolhe</h4>
+            <h3 class="so-tela">Medidas que você escolhe</h3>
             <div class="olhal-geom">${GEOM_ESPESSURA.map(campoEspessura).join("")}${GEOM_ESCOLHA.map(campo).join("")}
               ${camposSolda(soldaDe(ic), g)}</div>
             <p class="dica">A <b>espessura</b> vem da lista de chapa comercial — é a bitola que se
@@ -1340,7 +1349,7 @@
               tiver anel.</p>
           </div>
           <div class="olhal-bloco">
-            <h4>Medidas que vêm da manilha${mn ? ` <span class="olhal-bloco__tag">${F.esc(mn.codigo)}</span>` : ""}</h4>
+            <h3>Medidas que vêm da manilha${mn ? ` <span class="olhal-bloco__tag">${F.esc(mn.codigo)}</span>` : ""}</h3>
             ${mn ? `<p class="dica" style="margin:-2px 0 6px;">${F.esc(IC.manilhas.tipos[rig.manilha.tipo].nome)} —
               CMT ${F.num(mn.cmt, 2)} t · pino Ø ${F.num(mn.b, 1)} mm · boca ${F.num(mn.e, 1)} mm (etapa 7)</p>` : ""}
             <div class="painel">
@@ -1358,7 +1367,7 @@
       ${chapa ? avisoChapa(chapa, rig.manilha.manual) : ""}
 
       <table class="tab">
-        <thead><tr><th>#</th><th>Verificação</th><th>Solicitante</th><th>Limite</th><th>Utilização</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>Verificação</th><th>Solicitante</th><th>Limite</th><th>Utilização</th><th><span class="oculto-visual">Situação</span></th></tr></thead>
         <tbody>${v.checks.map(c => `<tr>
           <td>${c.n}</td><td>${F.esc(c.nome)}</td>
           <td class="num">${valorCheck(c, c.tensao)}</td>
@@ -1503,6 +1512,52 @@
       t.before(faixa);
       faixa.appendChild(t);
     });
+    marcarRolagem();
+  }
+  /** faixa que rola de lado precisa receber o foco, senão quem usa só o teclado não tem como
+   *  ver as colunas da direita (WCAG 2.1.1). Só as que rolam de fato: as outras seriam uma
+   *  parada de Tab à toa. Refeito ao mudar a largura e ao abrir uma caixa. */
+  function marcarRolagem() {
+    const porEtapa = new Map();     // a mesma etapa pode ter várias: cada região precisa de nome próprio
+    document.querySelectorAll(".etapa .tab-rolagem").forEach(f => {
+      const rola = f.scrollWidth > f.clientWidth + 1;
+      if (rola) {
+        f.tabIndex = 0;
+        f.setAttribute("role", "region");
+        const sec = f.closest(".etapa");
+        const n = (porEtapa.get(sec) || 0) + 1;
+        porEtapa.set(sec, n);
+        const nome = tituloEtapa(sec);
+        f.setAttribute("aria-label", `Tabela ${n}${nome ? " — " + nome : ""} (rola para os lados)`);
+      } else {
+        f.removeAttribute("tabindex"); f.removeAttribute("role"); f.removeAttribute("aria-label");
+      }
+    });
+  }
+  let marcarRolagemT = 0;
+  addEventListener("resize", () => { clearTimeout(marcarRolagemT); marcarRolagemT = setTimeout(marcarRolagem, 150); });
+
+  /** desenhos gerados em SVG: o leitor de tela só sabe que há um desenho se ele tiver papel
+   *  de imagem e um nome; o ícone do cartão de tipo é decorativo (o texto do cartão já diz) */
+  const NOME_FIGURA = {
+    "fig-3d-medidas": "Perspectiva do içamento com as distâncias do centro de massa até cada ponto",
+    "fig-medidas": "Esquema das medidas a informar para o tipo de içamento escolhido",
+    "fig-3d-cargas": "Perspectiva do içamento com a carga em cada perna",
+    "fig-planta": "Planta do içamento: posição dos pontos e carga em cada perna",
+    "fig-elevacao": "Elevação do içamento: pernas, ângulos e cargas",
+    "fig-encaixe": "Encaixe entre cabo, sapatilho e manilha, com as folgas verificadas",
+    "fig-olhal": "Desenho do olhal com as medidas"
+  };
+  function rotularFiguras() {
+    document.querySelectorAll(".folha svg.dw").forEach(svg => {
+      if (svg.closest(".tipo__fig")) { svg.setAttribute("aria-hidden", "true"); return; }
+      const fig = svg.closest("figure");
+      const bloco = svg.closest(".peca-bloco");
+      const tit = bloco && bloco.querySelector(".peca-bloco__t");
+      const nome = (fig && NOME_FIGURA[fig.id]) || (tit ? `Desenho: ${tit.textContent.trim()}` : "Desenho técnico");
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", nome);
+    });
   }
 
   /** relatório de todos os içamentos: cada um é pintado na tela e as etapas são copiadas
@@ -1552,12 +1607,26 @@
     });
   }
 
+  /** o resultado muda a cada campo, longe de onde se digita: a frase principal vai para uma
+   *  região de status (só quando muda), para o leitor de tela anunciar sem a pessoa ir atrás */
+  let ultimoAnuncio = null;
+  function anunciarResultado() {
+    const el = $("anuncio");
+    if (!el) return;
+    const ic = atual(), r = resolver(ic);
+    const txt = `${ic.nome}: maior tração por perna ${F.num(r.maiorTracaoT, 2)} t.`;
+    if (ultimoAnuncio !== null && txt !== ultimoAnuncio) el.textContent = txt;
+    ultimoAnuncio = txt;
+  }
+
   const pintar = () => {
     sincronizarPadrao();
     pintarAbas(); pintarEntrada(); pintarResultado();
     pintarLinga(); pintarSapatilhoManilha(); pintarOlhal(); pintarMaterial(); pintarCapa();
     espelharCampos();
     rolagemNasTabelas();
+    rotularFiguras();
+    anunciarResultado();
     // o conteúdo acabou de ser refeito: os botões de recolher e de esconder o cálculo
     // precisam ser recolocados (o do cálculo só existe onde há cálculo)
     if (typeof pintarDobra === "function") pintarDobra();
@@ -2093,6 +2162,13 @@
     return !document.body.classList.contains("sem-memorial");
   }
 
+  /** título da etapa sem o número e sem os botões que moram dentro do <h2> */
+  function tituloEtapa(sec) {
+    const h = sec.querySelector(":scope > h2");
+    if (!h) return "";
+    return [...h.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join("").trim();
+  }
+
   function pintarDobra() {
     const fech = fechadas();
     const escolhas = memEscolhas();
@@ -2105,6 +2181,8 @@
         b.textContent = fechada ? "+" : "\u2212";
         b.setAttribute("aria-expanded", fechada ? "false" : "true");
         b.title = fechada ? "Abrir esta caixa" : "Recolher esta caixa";
+        // o "−" sozinho não diz de que caixa é; o estado vai no aria-expanded
+        b.setAttribute("aria-label", `Recolher ou abrir: ${tituloEtapa(sec)}`);
       }
       // botão do memorial: só existe onde há cálculo para esconder
       const temCalculo = !!sec.querySelector(".formulas");
@@ -2126,10 +2204,12 @@
         bm.classList.toggle("is-on", visivel);
         bm.setAttribute("aria-pressed", visivel ? "true" : "false");
         bm.title = visivel ? "Esconder o cálculo desta caixa" : "Mostrar o cálculo desta caixa";
+        bm.setAttribute("aria-label", `ƒx — cálculo de ${tituloEtapa(sec)}`);
       }
     });
     const tudo = $("bt-dobrar-tudo");
     if (tudo) tudo.textContent = fech.size >= caixas.length ? "Abrir tudo" : "Recolher tudo";
+    marcarRolagem();     // caixa que abriu ou memorial que apareceu muda a largura das tabelas
   }
   // memoriais de cálculo: começam ocultos para a tela caber; no relatório impresso saem sempre
   const CHAVE_MEM = "ic-memoriais";
@@ -2289,10 +2369,25 @@
       pintar();
     });
 
+    // grupo de rádio: as setas trocam o tipo (e o foco vai junto), como num rádio nativo
+    $("tipos").addEventListener("keydown", e => {
+      const cartoes = [...$("tipos").querySelectorAll("[data-tipo]")];
+      const i = cartoes.indexOf(e.target.closest("[data-tipo]"));
+      if (i < 0) return;
+      const n = cartoes.length;
+      const j = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: n - 1 }[e.key];
+      if (j === undefined) return;
+      e.preventDefault();
+      const k = cartoes[(j + n) % n].dataset.tipo;
+      cartoes[(j + n) % n].click();
+      const novo = $("tipos").querySelector(`[data-tipo="${k}"]`);
+      if (novo) novo.focus();
+    });
+
     $("resumo").addEventListener("click", e => {
       // clicar na caixa de outro içamento abre ele (os botões seguem adiante)
       const cx = e.target.closest("[data-resumo]");
-      if (cx && !e.target.closest("button, select, input")) {
+      if (cx && (!e.target.closest("button, select, input") || e.target.closest(".resumo__ver"))) {
         const i = Number(cx.dataset.resumo);
         if (i !== E.atual) { E.atual = i; return pintar(); }
       }

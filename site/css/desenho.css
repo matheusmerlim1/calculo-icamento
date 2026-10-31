@@ -54,7 +54,7 @@
     --c-fundo: #fff; --c-superficie: #fff; --c-superficie-2: #fff; --c-papel: #fff;
     --c-linha: #bbb; --c-linha-forte: #888;
     --c-texto: #000; --c-texto-2: #222; --c-texto-3: #444;
-    --c-acento: #1d4f80; --c-acento-suave: #fff; --c-alerta: #7a4d00;
+    --c-acento: #1d4f80; --c-acento-forte: #1d4f80; --c-acento-suave: #fff; --c-alerta: #7a4d00;
     --sombra: none;
   }
   body {
@@ -62,7 +62,7 @@
     font: 10pt/1.45 var(--fonte);
   }
   .topo, .abas, .resumo, .rodape, #mr-portfolio-btn,
-  .topo__acoes, .etapa__dobra, .etapa__dobra--mem, .bt, .so-tela { display: none !important; }
+  .topo__acoes, .etapa__dobra, .etapa__dobra--mem, .bt, .so-tela, .pular { display: none !important; }
 
   /* ---- documento corrido: sem caixas, sem fundo, sem "não quebrar a caixa" (que empurrava
      etapas inteiras para a folha seguinte e deixava meia folha em branco) */
@@ -161,7 +161,7 @@
   /* ficha ao lado do desenho: em duas colunas, senão ela descia muito além do desenho */
   .ficha-par .ficha__grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* título de bloco não fica sozinho no pé da folha */
-  .peca-bloco__t, .olhal-bloco h4 { break-after: avoid; page-break-after: avoid; }
+  .peca-bloco__t, .olhal-bloco h3 { break-after: avoid; page-break-after: avoid; }
   .ficha__grade { grid-template-columns: repeat(auto-fit, minmax(58mm, 1fr)); gap: 0 6mm; }
   .ficha__item { border-bottom: .4pt solid #ccc; font-size: 9pt; padding: .6mm 0; }
   .pecas-par { display: block; }
@@ -230,7 +230,7 @@
   tr.linha-formula ~ tr.linha-formula .formulas--com-legenda { grid-template-columns: minmax(0, 1fr); }
   /* blocos do olhal: subtítulo e texto, sem moldura */
   .olhal-bloco { border: 0; border-radius: 0; background: none; padding: 0; margin: 4mm 0 2mm; }
-  .olhal-bloco h4 { font-size: 10.5pt; margin: 0 0 1.5mm; break-after: avoid; }
+  .olhal-bloco h3 { font-size: 10.5pt; margin: 0 0 1.5mm; break-after: avoid; }
   .olhal-bloco__tag { border: 0; background: none; padding: 0; color: #000; }
   .olhal-geom { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm 8mm; align-items: start; }
   .olhal-geom .campo { display: block; height: auto; }

@@ -10,9 +10,9 @@
 .topo__marca { display: flex; align-items: center; gap: 10px; }
 .topo__logo {
   display: grid; place-items: center; width: 30px; height: 30px;
-  border-radius: 6px; background: var(--c-acento); color: #fff; font-weight: 800;
+  border-radius: 6px; background: var(--c-acento-forte); color: #fff; font-weight: 800;
 }
-.topo__nome { font-weight: 700; }
+.topo__nome { font-weight: 700; font-size: inherit; margin: 0; }   /* é o <h1>, no tamanho de antes */
 .topo__sub { font-size: var(--t-xs); color: var(--c-texto-2); }
 .topo__acoes { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; align-items: center; }
 /* na barra, botões baixos: com o tamanho cheio a barra ocupava duas fileiras altas */
@@ -32,7 +32,7 @@
 
 .bt {
   border: 0; border-radius: 5px; padding: 7px 14px;
-  background: var(--c-acento); color: #fff; font-weight: 700; white-space: nowrap;
+  background: var(--c-acento-forte); color: #fff; font-weight: 700; white-space: nowrap;
 }
 .bt:hover { filter: brightness(1.08); }
 .bt--fantasma { background: transparent; color: var(--c-acento); border: 1px solid var(--c-acento); }
@@ -69,6 +69,15 @@
 .aba.on { background: var(--c-fundo); color: var(--c-texto); border-color: var(--c-linha-forte); font-weight: 700; }
 .aba__peso { color: var(--c-texto-3); font-size: var(--t-xs); margin-left: 6px; }
 .aba--novo { border-style: dashed; color: var(--c-acento); }
+/* aba + lixeira: a lixeira é um botão à parte, posto por cima da ponta direita da aba */
+.aba-par { position: relative; display: inline-flex; flex: none; }
+.aba-par > .aba { padding-right: 34px; }
+.aba__lixo {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  display: inline-grid; place-items: center; min-width: 24px; min-height: 24px; padding: 0;
+  border: 0; border-radius: 4px; background: transparent; color: var(--c-texto-2);
+}
+.aba__lixo:hover { background: var(--c-superficie-2); }
 
 /* ---------------------------------------------------------- corpo */
 .folha {
@@ -125,13 +134,14 @@
 
 .etapa__n {
   display: grid; place-items: center; width: 22px; height: 22px;
-  border-radius: 50%; background: var(--c-acento); color: #fff; font-size: var(--t-xs);
+  border-radius: 50%; background: var(--c-acento-forte); color: #fff; font-size: var(--t-xs);
 }
 /* dentro da caixa, o espaço é curto: o que está junto é junto. Entre caixas, --e-3. */
 .etapa__corpo { padding: var(--e-3); display: grid; gap: var(--e-2); min-width: 0; }
 .etapa__corpo > * { min-width: 0; }
 /* tabela larga numa tela estreita: rola dentro da caixa, em vez de esticar a página */
 .tab-rolagem { overflow-x: auto; max-width: 100%; }
+.tab-rolagem:focus-visible { outline-offset: -2px; }
 
 /* campo de texto longo (a base normativa): duas colunas da grade, para não cortar o nome */
 @media (min-width: 761px) { .campo--2 { grid-column: span 2; } }
@@ -193,6 +203,8 @@ body.sem-memorial .etapa:not(.com-calculo) .linga-par__col--mem,
 .tipo.on { border-color: var(--c-acento); background: var(--c-acento-suave); }
 .tipo b { font-size: var(--t-sm); }
 .tipo span { font-size: var(--t-xs); color: var(--c-texto-3); }
+/* no cartão escolhido o fundo azul escurece: o --c-texto-3 ficava em 4,2:1 */
+.tipo.on span { color: var(--c-texto-2); }
 .tipo .tipo__fig { grid-row: 1 / 3; margin-bottom: 0; }
 .tipo b { align-self: end; }
 .tipo span { align-self: start; }
@@ -242,8 +254,8 @@ body.sem-memorial .etapa:not(.com-calculo) .linga-par__col--mem,
 
 /* ---------------------------------------------------------- verificações (ok / falha) */
 .selo { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-xs); font-weight: 700; padding: 2px 8px; border-radius: 10px; }
-.selo--ok { color: var(--c-ok); background: rgba(47, 163, 107, .14); }
-.selo--erro { color: var(--c-erro); background: rgba(226, 96, 78, .14); }
+.selo--ok { color: var(--c-ok-texto); background: rgba(47, 163, 107, .14); }
+.selo--erro { color: var(--c-erro-texto); background: rgba(226, 96, 78, .14); }
 .tab td.selo-cel { text-align: center; }
 .barra { position: relative; height: 6px; border-radius: 3px; background: var(--c-superficie-2); overflow: hidden; min-width: 60px; }
 .barra > i { display: block; height: 100%; background: var(--c-ok); }
@@ -274,7 +286,7 @@ body.sem-memorial .etapa:not(.com-calculo) .linga-par__col--mem,
 .olhal-geom .campo > span { text-align: center; align-self: end; line-height: 1.25; }
 .olhal-geom input, .olhal-geom select { width: 100%; }
 .olhal-bloco { padding: 8px; border: 1px solid var(--c-linha); border-radius: var(--raio); margin-bottom: 10px; background: var(--c-superficie-2); }
-.olhal-bloco h4 { margin: 0 0 8px; font-size: var(--t-sm); }
+.olhal-bloco h3 { margin: 0 0 8px; font-size: var(--t-sm); }
 /* na largura toda, rótulo e valor ficavam a 1000px um do outro: duas colunas */
 /* no máximo duas colunas (com três, quatro itens ficavam desencontrados) e uma só quando a
    coluna não chega a 340px — senão o rótulo quebrava em duas linhas */
@@ -297,7 +309,7 @@ body.sem-memorial tr.linha-formula,
 /* a escolha da caixa vence o botão geral do topo, nos dois sentidos */
 .etapa.com-calculo .formulas { display: grid; }
 .etapa.com-calculo tr.linha-formula { display: table-row; }
-.bt--ligado { background: var(--c-acento); color: #fff; border-color: var(--c-acento); }
+.bt--ligado { background: var(--c-acento-forte); color: #fff; border-color: var(--c-acento); }
 
 .formulas {
   display: grid; gap: 5px; margin: 0; padding: 6px 8px; border-radius: 6px;
@@ -391,8 +403,14 @@ tr.linha-formula .formulas { border-color: var(--c-linha-forte); background: var
 /* o içamento que está sendo analisado */
 .resumo__ic.is-atual { border-color: var(--c-acento); box-shadow: 0 0 0 1px var(--c-acento), var(--sombra); }
 .resumo__ic:not(.is-atual) { cursor: pointer; opacity: .82; }
+/* com a caixa esmaecida, o título em --c-texto-3 caía para 4,0:1: sobe um tom */
+.resumo__ic:not(.is-atual) h3 { color: var(--c-texto-2); }
 .resumo__ic:not(.is-atual):hover { opacity: 1; border-color: var(--c-linha-forte); }
-.resumo__ver { float: right; text-transform: none; letter-spacing: 0; color: var(--c-acento); font-weight: 600; }
+/* "ver" é um botão (o teclado chega nele); a caixa inteira continua clicável com o mouse */
+.resumo__ver {
+  float: right; text-transform: none; letter-spacing: 0; color: var(--c-acento); font-weight: 600;
+  background: none; border: 0; padding: 0 6px; min-height: 24px; min-width: 24px; font-size: inherit;
+}
 .resumo h3 { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .6px; color: var(--c-texto-3); }
 .painel { display: grid; gap: 6px; }
 .item { display: flex; justify-content: space-between; gap: 10px; font-size: var(--t-sm); }
